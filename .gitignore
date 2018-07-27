@@ -1,5 +1,8 @@
-cache
-cache-downloads
-inspector
-api
-source/inspector.html
+BACKUP
+pylibma
+py3libma
+__pycache__
+testRes
+.settings
+.project
+.pydevproject
