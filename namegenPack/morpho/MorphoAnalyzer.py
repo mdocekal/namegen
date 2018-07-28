@@ -11,6 +11,10 @@ from abc import ABC, abstractmethod, abstractclassmethod
 from subprocess import Popen, PIPE
 from ..Errors import *
 from _dbus_bindings import ErrorMessage
+from .MorphCategories import *
+from namegenPack.morpho.MorphCategories import MorphCategory
+from typing import Set
+
 
 class MorphoAnalyzer(ABC):
     """
@@ -41,7 +45,7 @@ class MorphoAnalyzer(ABC):
         """
         pass
     
-    @abstractmethod
+    D
     def getWordInfo(self, word):
         """
         Získá informaci o daném slovu.
@@ -79,6 +83,8 @@ class MorphoAnalyzer(ABC):
         
         pass
     
+
+
 class MorphoAnalyzerException(ExceptionMessageCode):
     """
     Vyjímka pro problémy s morfologickým analyzátorem
@@ -160,7 +166,9 @@ class MorphoAnalyzerLibma(object):
             :type tagRule: str
             """
             #Příklad převodu: k1gFnPc1
+            #    
             #    {"k":"1","g":"F","n":"P","c":"1"}
+            
             return {tagRule[i]:tagRule[i+1] for i in range(0, len(tagRule)-1, 2)}
             
         def addTagRule(self, tagRule):
@@ -172,6 +180,20 @@ class MorphoAnalyzerLibma(object):
             """
             
             self._tagRules.append(self._convTagRule(tagRule))
+            
+        def getAll(self, morphCategory: MorphCategories) -> Set[MorphCategory]:
+            """
+            Vrácení všech možných hodnot dané mluvnické kategorie.
+            
+            :param morphCategory: Mluvnická kategorie.
+            :type morphCategory: MorphCategories
+            """
+            
+            for r in self._tagRules:
+                if M
+            
+            
+            
             
             
         @property
@@ -248,6 +270,15 @@ class MorphoAnalyzerLibma(object):
             """
             self._groups.append(group)
             
+        def getAllPOS(self):
+            """
+            Získání všech slovních druhů, kterých může slovo nabývat.
+            """
+            
+            return {  for g in self._groups }
+            
+            
+            
         @property
         def word(self):
             """
@@ -317,10 +348,6 @@ class MorphoAnalyzerLibma(object):
             if parts[0][-3:]=="<s>":
                 #začínáme číst novou skupinu slova
                 #<s> vstupní slovo (vzor 1)
-                
-                if parts[1] not in self._wordDatabase:
-                    #vytvoříme objekt pro uložení morfologické analýzy slova
-                    self._wordDatabase[parts[1]]=self.MAWord(parts[1])
                     
                 #vytvoříme skupinu
                 actWordGroup=self.MAWordGroup()
@@ -328,8 +355,17 @@ class MorphoAnalyzerLibma(object):
                 #nastavíme vzor
                 actWordGroup.paradigm=parts[2][1:-1]
                 
-                #vložíme skupinu do analýzy slova
-                self._wordDatabase[parts[1]].addGroup(actWordGroup)
+                try:
+                    #vložíme skupinu do analýzy slova
+                    self._wordDatabase[parts[1]].addGroup(actWordGroup)
+                except KeyError:
+                    #nové slovo
+                    #vytvoříme objekt pro uložení morfologické analýzy slova
+                    self._wordDatabase[parts[1]]=self.MAWord(parts[1])
+                    #a znovu vložíme
+                    self._wordDatabase[parts[1]].addGroup(actWordGroup)
+                    
+                
 
             elif parts[0][:3]=="<l>":
                 #lemma
@@ -346,14 +382,21 @@ class MorphoAnalyzerLibma(object):
             
     def analyze(self, word):
         """
+        Získání kompletních znalostí o slově. Slovo by mělo být 
+        jedním ze slov předaných v konstruktoru.
         
         :param word:
         :type word:
+        :return: Analýza slova. None pokud není slovo v databázi.
+        :rtype: MAWord 
         """
+        
         if word not in self._wordDatabase:
             return None
         
         return self._wordDatabase[word]
+
+    def 
         
         
         
