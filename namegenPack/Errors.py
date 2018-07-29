@@ -39,22 +39,21 @@ class ErrorMessenger(object):
     CODE_NO_DATA=6
     CODE_WORD_ANALYZE=7
     CODE_INVALID_CONFIG=8
-    CODE_GRAMMAR_EMPTY_SET_OF_NONTERMINALS=9
-    CODE_GRAMMAR_EMPTY_SET_OF_TERMINALS=10
-    CODE_GRAMMAR_NO_START_SYMBOL=11
-    CODE_GRAMMAR_NO_RULES=12
-    CODE_GRAMMAR_INVALID_FILE=13
-    CODE_GRAMMAR_EPSILON_IN_TERM_OR_NONTERM=14
-    CODE_GRAMMAR_AMBIGUITY=15
-    CODE_GRAMMAR_START_SYMBOL=16
-    CODE_GRAMMAR_SETS_TERM_NONTERM_NON_DIS=17
-    CODE_INVALID_NAME=18
-    CODE_WORD_NO_MORPHS_GENERATED=19
-    CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR=20
-    CODE_WORD_MISSING_MORF_FOR_CASE=21
-    CODE_GRAMMAR_UNKNOWN_TERMINAL=22
-    CODE_GRAMMAR_NOT_IN_LANGUAGE=23
-    CODE_MA_FAILURE=24
+    CODE_GRAMMAR_NO_START_SYMBOL=9
+    CODE_GRAMMAR_NO_RULES=10
+    CODE_GRAMMAR_INVALID_FILE=11
+    CODE_GRAMMAR_AMBIGUITY=12
+    CODE_GRAMMAR_START_SYMBOL=13
+    CODE_GRAMMAR_SETS_TERM_NONTERM_NON_DIS=14
+    CODE_INVALID_NAME=15
+    CODE_WORD_NO_MORPHS_GENERATED=16
+    CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR=17
+    CODE_WORD_MISSING_MORF_FOR_CASE=18
+    CODE_GRAMMAR_UNKNOWN_TERMINAL=19
+    CODE_GRAMMAR_NOT_IN_LANGUAGE=20
+    CODE_MA_FAILURE=21
+    CODE_MORPH_ENUM_INVALID_CATEGORY=22
+    CODE_MORPH_ENUM_INVALID_VALUE=23
     
     
     CODE_UNKNOWN_ERROR=100
@@ -71,12 +70,9 @@ class ErrorMessenger(object):
             CODE_INVALID_INPUT_FILE_UNKNOWN_NAME_TYPE:"Nevalidní vstupní soubor. Neznámý druh jména.",
             CODE_WORD_ANALYZE:"Nepodařilo se analyzovat slovo.",
             CODE_INVALID_CONFIG:"Nevalidní hodnota v konfiguračním souboru.",
-            CODE_GRAMMAR_EMPTY_SET_OF_NONTERMINALS:"Prázdná množina neterminálů.",
-            CODE_GRAMMAR_EMPTY_SET_OF_TERMINALS:"Prázdná množina terminálů.",
             CODE_GRAMMAR_NO_START_SYMBOL:"Není uveden startovací symbol.",
             CODE_GRAMMAR_NO_RULES:"Nejsou uvedena pravidla.",
             CODE_GRAMMAR_INVALID_FILE:"Nevalidní soubor s gramatikou.",
-            CODE_GRAMMAR_EPSILON_IN_TERM_OR_NONTERM:"Gramatiky nesmí obsahovat ε v množině terminálů či neterminálů.",
             CODE_GRAMMAR_AMBIGUITY:"Nejednoznačnost v gramatice.",
             CODE_GRAMMAR_START_SYMBOL:"Startovací symbol není v množině neterminálů.",
             CODE_GRAMMAR_SETS_TERM_NONTERM_NON_DIS:"Množina terminálů a neterminálů má neprázdný průnik.",
@@ -87,6 +83,8 @@ class ErrorMessenger(object):
             CODE_GRAMMAR_UNKNOWN_TERMINAL:"Neznámý terminál.",
             CODE_GRAMMAR_NOT_IN_LANGUAGE:"Selhání na příslušnosti do jazyka při: {} na zásobníku a {} na vstupu. Použitá pravidla: {}",
             CODE_MA_FAILURE:"Morfologický analyzátor selhal.",
+            CODE_MORPH_ENUM_INVALID_CATEGORY:"Neznámá morfologická kategorie: {}",
+            CODE_MORPH_ENUM_INVALID_VALUE:"Neznámá hodnota pro morfologickou kategorii {}: {}",
             
             CODE_UNKNOWN_ERROR:"Neznámá chyba."  ,
     }

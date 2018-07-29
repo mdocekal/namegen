@@ -8,13 +8,43 @@ Také obsahuje metody pro převod mezi formáty (lntrf).
 """
 
 from enum import Enum
-from abc import ABC, abstractmethod, abstractclassmethod, abstractproperty,\
-    abstractstaticmethod
-from os.path import stat
+from namegenPack import Errors
 
 
-class MorphoCategoriesUnknownLntrf():
-    pass
+class MorphCategoryException(Errors.ExceptionMessageCode):
+    """
+    Bázová vyjímka pro morfologické kategorie.
+    """
+
+class MorphCategoryInvalidException(MorphCategoryException):
+    """
+    Nevalidní morfologická kategorie. Používá se při vytváření enumu z dané hodnoty.
+    """
+    def __init__(self, value):
+        """
+        Konstruktor pro vyjímku nevalidní kategorie.
+
+        :param value: Hodnota způsobující potíže.
+        :type value: str
+        """
+        self.code = Errors.ErrorMessenger.CODE_MORPH_ENUM_INVALID_CATEGORY
+        self.message = Errors.ErrorMessenger.getMessage(self.code).format(value)
+        
+class MorphCategoryInvalidValueException(MorphCategoryException):
+    """
+    Nevalidní hodnota morfologické kategorie. Používá se při vytváření enumu z dané hodnoty.
+    """
+    def __init__(self, category, value):
+        """
+        Konstruktor pro vyjímku nevalidní hodnoty.
+        
+        :param category: Označení kategorie.
+        :type category: str
+        :param value: Hodnota způsobující potíže.
+        :type value: str
+        """
+        self.code = Errors.ErrorMessenger.CODE_MORPH_ENUM_INVALID_VALUE
+        self.message = Errors.ErrorMessenger.getMessage(self.code).format(category, value)
 
 class MorphCategories(Enum):
     """
@@ -72,16 +102,18 @@ class MorphCategories(Enum):
         :type val: str
         :return: Odpovídající mluvnickou kategorii.
         :rtype: MorphCategories
+        :raise MorphCategoryInvalidException: On invalid value.
         """
-        
-        return {v: k for k, v in cls._mappingLntrf().items()}[val]
+        try:
+            return {v: k for k, v in cls._mappingLntrf().items()}[val]
+        except KeyError:
+            raise MorphCategoryInvalidException(val)
         
 
 class MorphCategory(Enum):
     """
     Bázová třída pro morfologickou kategorii.
     """
-    
 
     @classmethod
     def _mappingLntrf(cls):
@@ -92,11 +124,13 @@ class MorphCategory(Enum):
         #implicitní mapování
         return {e:str(e.value) for e in cls}
     
-    @property
-    def _category(self):
+    @staticmethod
+    def category() -> MorphCategories:
         """
         Morfologická kategorie.
-        Používá se pro metodu lntrf k získání označení kategorie.
+        
+        :return: Morfoligická kategorie jejiž hodnoty jsou reprezentovány tímto enumem.
+        :rtype: MorphCategories
         """
         raise NotImplementedError
 
@@ -105,7 +139,7 @@ class MorphCategory(Enum):
         V lntrf formátu i s označením kategorie.
         Příklad:    k1
         """
-        return self._category.lntrf+self.lntrfValue
+        return self.category().lntrf+self.lntrfValue
     
     
     def lntrfValue(self):
@@ -113,6 +147,7 @@ class MorphCategory(Enum):
         V lntrf formátu, pouze hodnota.
         """
         return self._mappingLntrf()[self]
+    
         
     @classmethod    
     def fromLntrf(cls, val):
@@ -124,9 +159,13 @@ class MorphCategory(Enum):
         :type val: str
         :return: Odpovídající mluvnickou kategorii.
         :rtype: MorphCategory
+        :raise MorphCategoryInvalidValueException: On invalid value.
         """
         
-        return {v: k for k, v in cls._mappingLntrf().items()}[val]
+        try:
+            return {v: k for k, v in cls._mappingLntrf().items()}[val]
+        except KeyError:
+            raise MorphCategoryInvalidValueException(cls.category().lntrf, val)
     
 class POS(MorphCategory):
     """
@@ -162,8 +201,8 @@ class POS(MorphCategory):
     INTERJECTION=10
     """citoslovce"""
     
-    @property
-    def _category(self):
+    @staticmethod
+    def _category():
         return MorphCategories.POS
         
     
@@ -188,8 +227,8 @@ class Gender(MorphCategory):
     """rodina (příjmení) [asi něco navíc v libma?]"""
     
     
-    @property
-    def _category(self):
+    @staticmethod
+    def _category():
         return MorphCategories.GENDER
 
     
@@ -210,8 +249,8 @@ class Number(MorphCategory):
     R="R"
     """hromadné označení členů rodiny (Novákovi)"""
     
-    @property
-    def _category(self):
+    @staticmethod
+    def _category():
         return MorphCategories.NUMBER
 
             
@@ -242,8 +281,8 @@ class Case(MorphCategory):
     """7. pád: Instrumentál (kým, čím)"""
     
     
-    @property
-    def _category(self):
+    @staticmethod
+    def _category():
         return MorphCategories.CASE
 
     
@@ -258,8 +297,9 @@ class Negation(MorphCategory):
     NEGATED="N"
     """negace"""
    
-    
-    _category=MorphCategories.NEGATION
+    @staticmethod
+    def _category():
+        return MorphCategories.NEGATION
 
     
 class DegreeOfComparison(MorphCategory):
@@ -277,8 +317,8 @@ class DegreeOfComparison(MorphCategory):
     """superlativ (příklad: největší)"""
    
     
-    @property
-    def _category(self):
+    @staticmethod
+    def _category():
         return MorphCategories.DEGREE_OF_COMPARISON
     
 class Person(MorphCategory):
@@ -298,8 +338,8 @@ class Person(MorphCategory):
     ANY="X"
     """první nebo druhá nebo třetí"""
 
-    @property
-    def _category(self):
+    @staticmethod
+    def _category():
         return MorphCategories.PERSON
 
 

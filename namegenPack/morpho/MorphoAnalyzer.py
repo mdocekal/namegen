@@ -7,83 +7,61 @@ Tento modul obsahuje třídy pro morfologickou analýzu.
 :contact:    xdocek09@stud.fit.vubtr.cz
 """
 
-from abc import ABC, abstractmethod, abstractclassmethod
+from abc import ABC, abstractmethod, abstractclassmethod, abstractproperty
 from subprocess import Popen, PIPE
-from ..Errors import *
-from _dbus_bindings import ErrorMessage
-from .MorphCategories import *
-from namegenPack.morpho.MorphCategories import MorphCategory
+from ..Errors import ExceptionMessageCode, ErrorMessenger
+from namegenPack.morpho.MorphCategories import MorphCategory, MorphCategories
+    
 from typing import Set
 
 
 class MorphoAnalyzer(ABC):
     """
-    Abstraktní třída morfologického analyzátoru.
+    Interface morfologického analyzátoru.
     """
     
     @abstractmethod
-    def lemmatize(self, word):
+    def analyze(self, word:str) -> MorphoAnalyze:
         """
-        Vrátí lemma daného slova.
+        Získání morfologické analýzy slova.
         
-        :param word: Slovo pro lemmatizaci.
-        :type word: String
+        :param word: slovo pro analýzu
+        :type word: str
+        :return: Analýza slova. None při neúspěchu.
+        :rtype: MorphoAnalyze 
+        """
+        pass
+    
+class MorphoAnalyze(ABC):
+    """
+    Interface pro výsledky morfologické analýzy slova.
+    """
+    
+    @abstractproperty
+    def word(self):
+        """
+        Slovo pro nějž je tato morfologická analýza.
         """
         pass
     
     @abstractmethod
-    def genMorphs(self, lemma, tagWildcard=None):
+    def getAll(self, morphCategory: MorphCategories, valFilter: Set[MorphCategory] =None) -> Set[MorphCategory]:
         """
-        Vygeneruje tvary pro dané lemma.
+        Vrácení všech možných hodnot dané mluvnické kategorie.
         
-        :param lemma: Lemma pro generování
-        :type lemma: String
-        :param tagWildcard: Maska pro filtrování tvarů.
-        :type tagWildcard: String
-        :return: Tvary daného lemmatu ve dvojici s informací o slově. 
-        :rtype: list dvojic
+        :param morphCategory: Mluvnická kategorie.
+        :type morphCategory: MorphCategories
+        :param valFilter: (Volitelný) Filter, který určuje pevně stanovené 
+            hodnoty, které musí mít dané pravidlo, aby se bralo v úvahu.
+            Tedy není-li v daném pravidle/rozboru vůbec zminěná kategorie obsažena, tak pravidlo neprojde přes filtr.
+            Příklad: Chci získat všechny rody jakých může nabývat slovo pokud je podstatným jménem.
+            Nastavím filtr na: set(POS.NOUN)
+        :type valFilter: Set[MorphCategory]
+        :return: Hodnoty dané mluvnické kategorie.
+        :rtype: Set[MorphCategory]
         """
         pass
     
-    D
-    def getWordInfo(self, word):
-        """
-        Získá informaci o daném slovu.
-        
-        :param word: Slovo pro analýzu.
-        :returns: dict -- s informacemi o daném slově.
-            pos - slovní druh
-            g - rod
-            n - číslo
-            c - pád
-            e - negace
-            d - stupeň
-            p - osoba
-        """
-        pass
-    
-    @abstractclassmethod
-    def transInfoToLNTRF(cls, info):
-        """
-        Převod informací (z getWordInfo) do formátu lntrf.
-        
-        :param info: Informace o slově z getWordInfo.
-        :type info: dict
-        """
-        pass
-    
-    @abstractclassmethod
-    def getWordInfoLntrf(self, word):
-        """
-        Získá informace o daném slovu ve formátu vhodném v lntrf.
-        
-        :param word: Slovo pro analýzu.
-        :returns: String -- s informacemi o daném slově.
-        """
-        
-        pass
-    
-
 
 class MorphoAnalyzerException(ExceptionMessageCode):
     """
@@ -181,19 +159,33 @@ class MorphoAnalyzerLibma(object):
             
             self._tagRules.append(self._convTagRule(tagRule))
             
-        def getAll(self, morphCategory: MorphCategories) -> Set[MorphCategory]:
+        def getAll(self, morphCategory: MorphCategories, valFilter: Set[MorphCategory] =None) -> Set[MorphCategory]:
             """
             Vrácení všech možných hodnot dané mluvnické kategorie.
             
             :param morphCategory: Mluvnická kategorie.
             :type morphCategory: MorphCategories
+            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
+                hodnoty, které musí mít dané pravidlo, aby se bralo v úvahu.
+                Tedy není-li v daném pravidle vůbec zminěná kategorie obsažena, tak pravidlo neprojde přes filtr.
+                Příklad: Chci získat všechny rody jakých může nabývat slovo pokud je podstatným jménem.
+                Nastavím filtr na: set(POS.NOUN)
+            :type valFilter: Set[MorphCategory]
+            :return: Hodnoty dané mluvnické kategorie.
+            :rtype: Set[MorphCategory]
             """
             
+            values=set()
+            
             for r in self._tagRules:
-                if M
-            
-            
-            
+                try:
+                    if all( r[f.category()]==f.lntrfValue for f in valFilter):
+                        values.add(r[morphCategory.lntrfValue])
+                except KeyError:
+                    #neobsahuje danou mluvnickou kategorii
+                    pass
+
+            return values  
             
             
         @property
@@ -245,7 +237,7 @@ class MorphoAnalyzerLibma(object):
             return s
                 
                 
-    class MAWord():
+    class MAWord(MorphoAnalyze):
         """
         Obsahuje data z morfologické analýzy slova.
         """
@@ -261,23 +253,38 @@ class MorphoAnalyzerLibma(object):
             self._groups=[]
             
         
-        def addGroup(self, group):
+        def addGroup(self, group: MorphoAnalyzerLibma.MAWordGroup):
             """
             Přidání skupiny z morfoligické analýzy.
             
             :param group: Skupina z analýzy obsahující vzor, lemma, tvary, značko-pravidla
-            :type group: MAWordGroup
+            :type group: MorphoAnalyzerLibma.MAWordGroup
             """
             self._groups.append(group)
             
-        def getAllPOS(self):
+        def getAll(self, morphCategory: MorphCategories, valFilter: Set[MorphCategory] =None) -> Set[MorphCategory]:
             """
-            Získání všech slovních druhů, kterých může slovo nabývat.
+            Vrácení všech možných hodnot dané mluvnické kategorie. Ve všech skupinách
+            získaných při analýze slova.
+            
+            :param morphCategory: Mluvnická kategorie.
+            :type morphCategory: MorphCategories
+            :param valFilter: (Volitelný) Filter, který určuje pevně stanovené 
+                hodnoty, které musí mít dané pravidlo, aby se bralo v úvahu.
+                Tedy není-li v daném pravidle vůbec zminěná kategorie obsažena, tak pravidlo neprojde přes filtr.
+                Příklad: Chci získat všechny rody jakých může nabývat slovo pokud je podstatným jménem.
+                Nastavím filtr na: set(POS.NOUN)
+            :type valFilter: Set[MorphCategory]
+            :return: Hodnoty dané mluvnické kategorie.
+            :rtype: Set[MorphCategory]
             """
             
-            return {  for g in self._groups }
+            values=set()
             
-            
+            for g in self._groups:
+                values |= g.getAll(morphCategory, valFilter)
+
+            return values
             
         @property
         def word(self):
@@ -396,9 +403,6 @@ class MorphoAnalyzerLibma(object):
         
         return self._wordDatabase[word]
 
-    def 
-        
-        
         
         
         

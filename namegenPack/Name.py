@@ -13,7 +13,24 @@ from namegenPack import Errors
 from .morpho.Morphodita import Morphodita
 from namegenPack import Grammar
 import logging
+from namegenPack.morpho.MorphoAnalyzer import MorphoAnalyze, MorphoAnalyzer
 
+class WordTypeMark(Enum):
+    """
+    Značka druhu slova ve jméně.
+    """
+    GIVEN_NAME="G"                  #Křestní jméno. Příklad: Petra
+    SURNAME="S"                     #Příjmení. Příklad: Novák
+    LOCATION="L"                    #Lokace. Příklad: Brno
+    ROMAN_NUMBER="R"                #Římská číslice. Příklad: IV
+    PREPOSITION="7"                 #Předložka.
+    DEGREE_TITLE="T"                #Titul. Příklad: prof.
+    INITIAL_ABBREVIATION="I"        #Iniciálová zkratka. Příklad H. ve jméně John H. White
+    UNKNOWN="U"                     #Neznámé
+
+    def __str__(self):
+        return self.value
+    
 
 class Word(object):
     """
@@ -55,152 +72,50 @@ class Word(object):
         """
         pass
     
+    ma=None
     
-    class WordTypeMark(Enum):
-        """
-        Značka druhu slova ve jméně.
-        """
-        GIVEN_NAME=0                #Křestní jméno. Příklad: Petra
-        SURNAME=1                   #Příjmení. Příklad: Novák
-        LOCATION=2                  #Lokace. Příklad: Brno
-        ROMAN_NUMBER=4              #Římská číslice. Příklad: IV
-        PREPOSITION=5               #Předložka.
-        DEGREE_TITLE=6              #Titul. Příklad: prof.
-        INITIAL_ABBREVIATION=7      #Iniciálová zkratka. Příklad H. ve jméně John H. White
-        UNKNOWN=8                   #Neznámé
-        
-        @classmethod
-        def createFrom(cls, s):
-            """
-            Převede z textové reprezentace.
-            
-            :param s: Textová reprezentace druhu.
-            :type s: String
-            :raise KeyError: Při neznámém druhu jména.
-            """
-
-            return {"G":cls.GIVEN_NAME, "S": cls.SURNAME, "L":cls.LOCATION,
-                    "R":cls.ROMAN_NUMBER, "7":cls.PREPOSITION, "T":cls.DEGREE_TITLE,
-                    "I":cls.INITIAL_ABBREVIATION, "U":cls.UNKNOWN }[s]
-        
-        def __str__(self):
-            return {self.GIVEN_NAME:"G", self.SURNAME:"S", self.LOCATION:"L",
-                    self.ROMAN_NUMBER:"R", self.PREPOSITION:"7", self.DEGREE_TITLE:"T",
-                    self.INITIAL_ABBREVIATION:"I", self.UNKNOWN:"U"}[self]
-    
-    morphoDita=None
-
-    def __init__(self, w, lemma=None, info=None, infoLemm=None):
+    def __init__(self, w):
         """
         Kontruktor slova.
         
         :param w: Řetězcová reprezentace slova.
         :type w: String
-        :param lemma: Základní tvar slova.
-        :type lemma: String
-        :param info: Informace o slově ve formátu, který lze získat z self.info
-        :type info: Dict
-        :param infoLemm:Informace o zakladním tvaru slova ve formátu, který lze získat z self.info
-        :type infoLemm:Dict
         """
- 
         self._w=w
-        self._lemma=lemma    #použije se jako cache v případě zavolání getteru pro lemma
-        self._info=info
-        self._infoLemm=infoLemm
         
-            
-    
     @classmethod
-    def initMorphoDita(cls, taggerPath, dictPath):
+    def setMorphoAnalyzer(cls, ma:MorphoAnalyzer):
         """
-        Inicializace morphodity.
+        Přiřazení morfologického analyzátoru.
         
-        :param taggerPath: Cesta k souboru pro tagger.
-        :type taggerPath: String
-        :param dictPath: Casta k dictionary pro morphoditu.
-        :type dictPath: String
+        :param ma: Morfologický analyzátor, který se bude používat k získávání informací o slově.
+        :type ma: MorphoAnalyzer
         """
-        cls.morphoDita=Morphodita.Morphodita(taggerPath, dictPath)
         
- 
+        cls.ma=ma
+        
     
     @property
-    def info(self):
+    def info(self) -> MorphoAnalyze:
         """
-        Vrací informace o slově.
+        Vrací informace o slově. V podobě morfologické analýzy.
         
-        :returns: dict -- s informacemi o daném slově.
-            pos - slovní druh
-            g - rod
-            n - číslo
-            c - pád
-            e - negace
-            d - stupeň
-            p - osoba
-        :rtype: dict
+        :returns: Morfologická analýza slova.
+        :rtype: MorphoAnalyze
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
-        if self._info=={}:
-            #již v minulosti se nezadařilo
+        if self.ma is None:
+            #nemohu provést morfologickou analýzu bez analyzátoru
             raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
                                                        Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self._w)
-        if __class__.morphoDita is not None and self._info is None:
-            #získání mluvnických kategorií
-            self._info=__class__.morphoDita.getWordInfo(self._w)
-            if self._info=={} or "pos" not in self._info:   #slovní druh je nutný
-                raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
+        
+        #získání analýzy
+        a=self.ma.analyze(self._w)
+        if a is None:
+            raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
                                                        Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self._w)
                 
-        return self._info
-    
-    @property
-    def infoLemma(self):
-        """
-        Vrací informace o lemmatu slova.
-        
-        :raise WordCouldntGetInfoException: Problém při analýze slova.
-        """
-        if self._infoLemm=={}:
-            #již v minulosti se nezadařilo
-            raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
-                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self._w)
-            
-        if __class__.morphoDita is not None and self._infoLemm is None:
-            #získání mluvnických kategorií
-            self._infoLemm=__class__.morphoDita.getWordInfo(self.lemma)
-            if self._infoLemm=={} or "pos" not in self._infoLemm:   #slovní druh je nutný
-                raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
-                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self.lemma)
-        return self._infoLemm  
-    
-    @property
-    def lemma(self):
-        """
-        Vrací lemma daného slova.
-        """
-        if self._lemma is None:
-            self._lemma=__class__.morphoDita.lemmatize(self._w)
-            
-        return self._lemma  
-    
-    def lemmaAndInfo(self):
-        """
-        Vrací lemma a info ke slovu.
-        
-        :return: (lemma, info)
-        """
-        if self._info=={}:
-            #již v minulosti se nezadařilo
-            raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
-                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self._w)
-        if self._lemma is None or self._info is None:
-            self._lemma, self._info =__class__.morphoDita.lemmaAndInfo(self._w)
-            if self._info=={} or "pos" not in self._info:   #slovní druh je nutný
-                raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
-                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self._w)
-        
-        return (self._lemma, self._info)
+        return a
     
     
     def morphs(self, tagWildcard):
@@ -230,7 +145,7 @@ class Word(object):
         return tmp
     
     def __repr__(self):
-        return self._w+" lemma: "+str(self._lemma)+" info: "+str(self._info)
+        return self._w
     
     def __str__(self):
         return self._w
@@ -247,9 +162,7 @@ class Name(object):
     """
     Reprezentace celého jména osoby či lokace.
     """
-    
-    
-    
+
     
     class NameCouldntCreateException(Errors.ExceptionMessageCode):
         """
@@ -262,24 +175,12 @@ class Name(object):
         """
         Přípustné druhy jmen.
         """
-        MALE=0
-        FEMALE=1
-        LOCATION=2
-        
-        @classmethod
-        def createFrom(cls, s):
-            """
-            Převede z textové reprezentace.
-            
-            :param s: Textová reprezentace druhu.
-            :type s: String
-            :raise KeyError: Při neznámém druhu jména.
-            """
-
-            return {"M":cls.MALE, "F": cls.FEMALE, "L":cls.LOCATION}[s]
+        MALE="M"
+        FEMALE="F"
+        LOCATION="L"
         
         def __str__(self):
-            return {self.MALE:"M", self.FEMALE:"F" , self.LOCATION:"L"}[self]
+            return self.value
 
     def __init__(self, name, nType):
         """
@@ -297,22 +198,14 @@ class Name(object):
             #typ je určen nemusí se dělat odhad, pouze pokud se jedná o typ určující jméno osoby, tak může být dále případně změněn.
             try:
                 #nejprve převedeme a validujeme druh jména
-                self._type=self.Type.createFrom(nType)
+                self._type=self.Type(nType)
             except KeyError:
                 raise self.NameCouldntCreateException(Errors.ErrorMessenger.CODE_INVALID_INPUT_FILE_UNKNOWN_NAME_TYPE,
                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_INVALID_INPUT_FILE_UNKNOWN_NAME_TYPE)+"\n\t"+name+"\t"+nType)
                     
         #rozdělíme jméno na jednotlivá slova a oddělovače
         words, self._separators = self._findWords(name)
-        self._words=[]
-        
-        #získáme info o slovech a jejich lemmata
-        #TODO: pravdepodobne bude odstraneno pri predelavani na libma
-        infoLemm=Word.morphoDita.getMultipleWordsLemmaAndInfo(" ".join(words))
-        
-        
-        for w, (lemm, i) in zip(words,infoLemm):
-            self._words.append(Word(w, info=i, lemma=lemm))
+        self._words=[Word(w) for w in words]
         
         #zpochybnění typu
         self._guessType()
@@ -404,25 +297,25 @@ class Name(object):
             if token.type==Grammar.Token.Type.N or token.type==Grammar.Token.Type.A:
                 #podstatné nebo přídavné jméno
                 if self._type==self.Type.LOCATION:
-                    marks.append(Word.WordTypeMark.LOCATION)
+                    marks.append(WordTypeMark.LOCATION)
                 else:
-                    marks.append(Word.WordTypeMark.GIVEN_NAME)
+                    marks.append(WordTypeMark.GIVEN_NAME)
                     #uchováváme se poslední pozici křestního jména, jelikož poslední se stane příjmením
                     lastGivenName=len(marks)-1
             elif token.type==Grammar.Token.Type.INITIAL_ABBREVIATION:
-                marks.append(Word.WordTypeMark.INITIAL_ABBREVIATION)
+                marks.append(WordTypeMark.INITIAL_ABBREVIATION)
             elif token.type==Grammar.Token.Type.ROMAN_NUMBER:
-                marks.append(Word.WordTypeMark.ROMAN_NUMBER)
+                marks.append(WordTypeMark.ROMAN_NUMBER)
             elif token.type==Grammar.Token.Type.DEGREE_TITLE:
-                marks.append(Word.WordTypeMark.DEGREE_TITLE)
+                marks.append(WordTypeMark.DEGREE_TITLE)
             elif token.type==Grammar.Token.Type.R:
-                marks.append(Word.WordTypeMark.PREPOSITION)
+                marks.append(WordTypeMark.PREPOSITION)
             else:
-                marks.append(Word.WordTypeMark.UNKNOWN)
+                marks.append(WordTypeMark.UNKNOWN)
         
-        if lastGivenName is not None and marks.count(Word.WordTypeMark.GIVEN_NAME)>1:   #máme více jak jedno křestní
+        if lastGivenName is not None and marks.count(WordTypeMark.GIVEN_NAME)>1:   #máme více jak jedno křestní
             #poslední křestní se stane příjmením
-            marks[lastGivenName]=Word.WordTypeMark.SURNAME
+            marks[lastGivenName]=WordTypeMark.SURNAME
         
         return marks
         
