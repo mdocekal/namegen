@@ -14,6 +14,9 @@ from .morpho.Morphodita import Morphodita
 from namegenPack import Grammar
 import logging
 from namegenPack.morpho.MorphoAnalyzer import MorphoAnalyze, MorphoAnalyzer
+from namegenPack.morpho import MorphCategories
+from typing import List
+
 
 class WordTypeMark(Enum):
     """
@@ -245,27 +248,44 @@ class Name(object):
             #Příjmení jak se zdá může být i přídavné jméno (`Internetová jazyková příručka <http://prirucka.ujc.cas.cz/?id=320#nadpis3>`_.)
             
             for token in reversed(tokens):
-                if token.type==Grammar.Token.Type.N or token.type==Grammar.Token.Type.A:
-                    if token.word[-3:] == "ová":
-                        #muž s přijmení končícím na ová, zřejmě není
-                        #změníme typ pokud není ženský
-                        changeTo=self.Type.FEMALE
-                    break
+                if token.type==Grammar.Token.Type.ANALYZE:
+                    #získáme možné mluvnické kategorie
+                    analyze=token.type.info()
+                    posCat=analyze.getAll(MorphCategories.POS)
+                    if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
+                        if token.word[-3:] == "ová":
+                            #muž s přijmení končícím na ová, zřejmě není
+                            #změníme typ pokud není ženský
+                            changeTo=self.Type.FEMALE
+                        break
                 
             if changeTo is None:
                 #příjmení nekončí na ová
                 #zjistíme jakého rodu je první podstatné nebo přídavné jméno (křestní jméno)
                 for token in tokens:
-                    if token.type==Grammar.Token.Type.N or token.type==Grammar.Token.Type.A:
-                        if token.word.info["g"]=="F":
-                            #asi se jedná o ženské jméno
-                            changeTo=self.Type.FEMALE
-        
-                        elif token.word.info["g"]=="M":
-                            #asi se jedná o mužské jméno
-                            changeTo=self.Type.MALE
-
-                    break
+                    if token.type==Grammar.Token.Type.ANALYZE:
+                        #získáme možné mluvnické kategorie
+                        analyze=token.type.info()
+                        posCat=analyze.getAll(MorphCategories.POS)
+                        
+                        if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
+                            #získáme možné rody
+                            posGenders=analyze.getAll(MorphCategories.Gender)
+                            if MorphCategories.Gender.FEMINE in posGenders and MorphCategories.Gender.MASCULINE_ANIMATE in posGenders and \
+                                MorphCategories.Gender.MASCULINE_INANIMATE in posGenders:
+                                #bohužel může být jak mužský, tak ženský
+                                break
+                            
+                            if MorphCategories.Gender.FEMINE in posGenders:
+                                #asi se jedná o ženské jméno
+                                changeTo=self.Type.FEMALE
+            
+                            elif MorphCategories.Gender.MASCULINE_ANIMATE in posGenders and \
+                                MorphCategories.Gender.MASCULINE_INANIMATE in posGenders:
+                                #asi se jedná o mužské jméno
+                                changeTo=self.Type.MALE
+    
+                            break
             if changeTo is not None:
                 if self._type is None:
                     logging.info("Pro "+str(self)+" přiřazuji "+str(changeTo)+".")
@@ -382,10 +402,22 @@ class Name(object):
             words.append(actWord)
         
         return (words, separators)
+    
+    def genMorphs(self, analyzedTokens:List(Grammar.AnalyzedToken)):
+        """
+        Na základě odpovídajících analyzovaných tokenů slovům ve jméně vygeneruje tvary jména.
+        
+        :param analyzedTokens: Analyzované tokeny, získané ze syntaktické analýzy tohoto jména.
+        :type analyzedTokens: List(Grammar.AnalyzedToken)
+        """
+        
+        
+        
 
     def genMorphs(self, morphMask=None):
         """
         Na základě masky vygeneruje tvary jména.
+        
         :param morphMask: Určuje, která slova se mají ohýbat.
             Jedná se o list, který pro každé slovo ve jméně má příznak
             True ohnout nebo False neohnout.
@@ -393,8 +425,8 @@ class Name(object):
                     [True, False, False]
                     Bude se měnit pouze Jana.
         :type morphMask: [bool]
-        :return:  
-        :rtype: 
+        :return:  Vygenerované tvary.
+        :rtype: list(str)
         :raise Word.WordNoMorphsException: Pokud se nepodaří získat tvary o nějakého slova.
         :raise WordCouldntGetInfoException: Vyjímka symbolizující, že se nepovedlo získat mluvnické kategorie ke slovu.
         """

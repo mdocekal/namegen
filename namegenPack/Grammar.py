@@ -1,7 +1,7 @@
 """
 Created on 17. 6. 2018
 
-Modul pro práci s LL gramatikou.
+Modul pro práci s gramatikou.
 
 :author:     Martin Dočekal
 :contact:    xdocek09@stud.fit.vubtr.cz
@@ -13,11 +13,231 @@ from typing import Set
 from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
     MorphCategories, POS
 from enum import Enum
+from builtins import isinstance
+from pandas.core.computation.ops import Term
 
+
+class Terminal(object):
+    """
+    Reprezentace parametrizovaného terminálu.
+    """
+    
+    class Type(Enum):
+        """
+        Druh terminálu.
+        """
+        EOF= 0 #konec vstupu
+        
+        N= "1"    #podstatné jméno
+        A= "2"    #přídavné jméno
+        P= "3"    #zájméno
+        C= "4"    #číslovka
+        V= "5"    #sloveso
+        D= "6"    #příslovce
+        R= "7"    #předložka
+        J= "8"    #spojka
+        T= "9"    #částice
+        I= "10"   #citoslovce
+
+        DEGREE_TITLE= "t"   #titul
+        ROMAN_NUMBER= "r"   #římská číslice
+        INITIAL_ABBREVIATION= "a"    #Iniciálová zkratka.
+        X= "x"    #neznámé
+        
+        @property
+        def isPOSType(self):
+            """
+            Určuje zda-li se jedná o typ terminálu odpovídajícím slovnímu druhu.
+            
+            :return: True odpovídá slovnímu druhu. False jinak.
+            :rtype: bool
+            """
+            use=set([self.N, self.A,self.P,self.C,self.V,self.D,self.R,self.J,self.T, self.I])
+            
+            return self in use
+            
+        @property
+        def toPOS(self):
+            """
+            Provede konverzi do POS.
+            """
+            if self.isPOSType:
+                #lze převést pouze určité typy terminálu
+                #a to pouze typy terminálu, které vyjadřují slovní druhy
+                return {
+                    self.N: POS.NOUN,           #podstatné jméno
+                    self.A: POS.ADJECTIVE,      #přídavné jméno
+                    self.P: POS.PRONOUN,        #zájméno
+                    self.C: POS.NUMERAL,        #číslovka
+                    self.V: POS.VERB,           #sloveso
+                    self.D: POS.ADVERB,         #příslovce
+                    self.R: POS.PREPOSITION,    #předložka
+                    self.J: POS.CONJUNCTION,    #spojka
+                    self.T: POS.PARTICLE,       #částice
+                    self.I: POS.INTERJECTION    #citoslovce
+                    }[self]
+                
+            return None
+    
+    class Attribute(object):
+        """
+        Terminálový atributy.
+        """
+        
+        
+        class Type(Enum):
+            """
+            Druh atributu.
+            """
+            GENDER="g"  #rod slova musí být takový    (filtrovací atribut)
+            NUMBER="n"  #mluvnická kategorie číslo. Číslo slova musí být takové. (filtrovací atribut)
+            TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
+            #Pokud přidáte nový je třeba upravit Attribute.createFrom
+
+            @property
+            def isFiltering(self):
+                """
+                Určuje zda-li daný typ je filtrovacím (klade dodatečné restrikce).
+                
+                :return: True filtrovací. False jinak.
+                :rtype: bool
+                """
+                fil=set([self.GENDER, self.NUMBER])
+                
+                return self in fil
+        
+        def __init__(self, attrType, val):
+            """
+            Vytvoří atribut neterminálu.
+            
+            :param attrType: Druh attributu.
+            :type attrType: self.Type
+            :param val: Hodnota atributu.
+            :raise InvalidGrammarException: Při nevalidní hodnotě atributu.
+            """
+            
+            self._type=attrType
+            if self.type.isFiltering() and isinstance(val, MorphCategory):
+                #u filtrovacích atributů musí být hodnota typu MorphCategory
+                raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
+            self._val=val
+            
+        @classmethod
+        def createFrom(cls, s):
+            """
+            Vytvoří atribut z řetězce.
+            
+            :param s: Řetezec reprezentující atribut a jeho hodnotu
+                Příklad: "g=M"
+            :type s: str
+            :raise InvalidGrammarException: Při nevalidní hodnotě atributu.
+            """
+            
+            aT, aV= s.strip().split("=")
+            try:
+                t=cls.Type(aT)
+            except ValueError:
+                raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
+            v=None
+            
+            #vytvoříme hodnotu atributu
+            if cls.Type.GENDER==t:
+                v=Gender.fromLntrf(aV)
+            elif cls.Type.NUMBER==t:
+                v=Number.fromLntrf(aV)
+            else:
+                v=WordTypeMark(aV)
+            
+            return cls.Attribute(t,v)
+        
+        @property
+        def type(self):
+            return self._type
+        
+        @property
+        def value(self):
+            return self._val
+        
+        def __str__(self):
+            return str(self._type.value)+"="+str(self._val.value)
+                        
+        def __hash__(self):
+            return hash((self._type, self._val))
+        
+        def __eq__(self, other):
+            if self.__class__ is other.__class__:
+                return self._type==other._type and self._val==other._val
+            
+            return False
+        
+    
+    def __init__(self, terminalType, attr=set()):
+        """
+        Vytvoření terminálu.
+        
+        :param terminalType: Druh terminálu.
+        :type terminalType: Type
+        :param attr: Attributy terminálu. Určují dodatečné podmínky/informace na vstupní slovo.
+        :type attr: Attribute
+        """
+        
+        self._type=terminalType
+        self._attributes=frozenset(attr)
+        
+    @property
+    def _fillteringAttr(self):
+        """
+        Získání všech attributů, které kladou dodatečné podmínky (např. rod musí být mužský).
+        Nevybírá informační atributy.
+        
+        :return: Filtrovací atributy, které má tento terminál.
+        :rtype: Set[Attribute]
+        """
+    
+        return set(a for a in self._attributes if a.isFiltering)
+    
+    def tokenMatch(self, t):
+        """
+        Určuje zda daný token odpovídá tomuto terminálu.
+        
+        :param t: Token pro kontrolu.
+        :type t: Token
+        :return: Vrací True, pokud odpovídá. Jinak false.
+        :rtype: bool
+        """
+        
+        if t.type!=Token.type.ANALYZE:
+            #jedná se o jednoduchý token bez nutnosti morfologické analýzy
+            return t.type.value==self._type.value   #V tomto případě požívá terminála  token stejné hodnoty u typů
+        else:
+            if not self._type.isPOSType:
+                #jedná se o typ terminálu nepoužívající analyzátor, ale token je jiného druhu.
+                return False
+            
+            pos=t.word.info.getAll(MorphCategories.POS, set( a.value for a in self._fillteringAttr))  
+            #máme všechny možné slovní druhy, které prošly atributovým filtrem 
+       
+            return self._type.toPOS() in pos
+
+    def __str__(self):
+        s=self._type.value
+        if self._attributes:
+            s+="{"+", ".join( str(a) for a in self._attributes )+"}"
+        return s
+    
+    def __hash__(self):
+        return hash((self._type,self._attributes))
+        
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return self._type==other._type and self._attributes==other._attributes
+        
+        return False
+        
+        
 class Token(object):
     """
     Token, který je získán při lexikální analýze.
-    Je schopen generovat terminály, které odpovídají vstupnímu slovu, které reprezentuje.
     """
     
     class Type(Enum):
@@ -44,7 +264,7 @@ class Token(object):
             
             return False
     
-    def __init__(self, word: Word, tokenType: Token.Type):
+    def __init__(self, word: Word, tokenType):
         """
         Vytvoření tokenu.
         
@@ -58,12 +278,23 @@ class Token(object):
         
     @property
     def word(self):
+        """
+        Slovo ze vstupu, které má přiřazeno tento token.
+        """
+        
         return self._word;
     
     @property
     def type(self):
+        """
+        Druh tokenu.
+        
+        :rtype: Type 
+        """
         return self._type
     
+    '''
+    TODO: DELETE
     @property
     def terminals(self):
         """
@@ -83,9 +314,73 @@ class Token(object):
         
         
         return self._type.terminalRepr
+    '''
     
+class AnalyzedToken(object):
+    """
+    Jedná se o analyzovaný token, který vzniká při syntaktické analýze.
+    Přidává k danému tokenu informace získané analýzou. Informace jako je například zda se má
+    dané slovo ohýbat, či nikoliv.
+    """
     
-
+    def __init__(self, token:Token, morph:bool=None, matchingTerminal:Terminal=None):
+        """
+        Pro běžný token vyrobí jaho analyzovanou variantu.
+        
+        :param token: Pro kterého budujeme analýzu.
+        :type token: Token
+        :param morph:Příznak zda se slovo, jenž je reprezentováno tímto tokenem, má ohýbat. True ohýbat. False neohýbat.
+        :type morph: bool
+        :param matchingTerminal: Získaný terminál při analýze, který odpovídal tokenu.
+        :type matchingTerminal: Terminal
+        """
+        
+        self._token=token
+        self._morph=morph    #příznak zda-li se má dané slovo ohýbat
+        self._matchingTerminal=matchingTerminal #Příslušný terminál odpovídající token (získaný při analýze).
+        
+    @property
+    def morph(self):
+        """
+        Příznak zda se slovo, jenž je reprezentováno tímto tokenem, má ohýbat.
+        
+        :return: None neznáme. True ohýbat. False neohýbat.
+        :rtype: bool
+        """
+        return self._morph
+        
+    @morph.setter
+    def morph(self, val:bool):
+        """
+        Určení zda-li se má slovo, jenž je reprezentováno tímto tokenem, ohýbat.
+        
+        :param val: True ohýbat. False neohýbat.
+        :type val: bool
+        """
+        self._morph=val
+    
+    @property
+    def matchingTerminal(self):
+        """
+        Získaný terminál při analýze, který odpovídal tokenu.
+        
+        :return: Odpovídající terminál z gramatiky.
+        :rtype: Terminal
+        """
+        
+        return self._matchingTerminal
+    
+    @matchingTerminal.setter
+    def matchingTerminal(self, t:Terminal):
+        """
+        Přiřazení terminálu.
+        
+        :param t: Odpovídající terminál.
+        :type t: Terminal
+        """
+        
+        self._matchingTerminal=t
+    
 class Lex(object):
     """
     Lexikální analyzátor pro jména.
@@ -163,7 +458,7 @@ class Rule(object):
         self._leftSide=self._parseSymbol(self._leftSide)
         if isinstance(self._leftSide, Terminal) or self._leftSide==Grammar.EMPTY_STR:
             #terminál nebo prázdný řetězec
-            #ovšem v LL gramatice může být na levé straně pouze neterminál
+            #ovšem v naší gramatice může být na levé straně pouze neterminál
             raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE,
                                           Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+fromString)
         
@@ -181,6 +476,7 @@ class Rule(object):
                     # terminál
                     terminals.add(self.rightSide[i])
                 else:
+                    #neterminál nebo prázdný řetězec
                     if self.rightSide[i]!=Grammar.EMPTY_STR:
                         #neterminál
                         nonterminals.add(self.rightSide[i])
@@ -260,7 +556,7 @@ class Rule(object):
     def rightSide(self):
         """
         Pravá strana pravidla.
-        :return: Terminály a neterminály (epsilon) na právé straně prvidla.
+        :return: Terminály a neterminály (epsilon) na právé straně pravidla.
         :rtype: list
         """
         return self._rightSide
@@ -272,6 +568,15 @@ class Rule(object):
     
     def __repr(self):
         return str(self)
+    
+    def __hash__(self):
+            return hash((self._leftSide, tuple(self._val)))
+        
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return self._leftSide==other._leftSide and self._rightSide==other._rightSide
+            
+        return False
 
 
 class Symbol(object):
@@ -302,8 +607,10 @@ class Symbol(object):
             """
             return self._isTerm
         
+        
 class SyntaxTree(object):
     """
+    TODO:DELETE
     Syntaktický strom.
     """
     
@@ -337,221 +644,10 @@ class SyntaxTree(object):
         
         
     
-class Terminal(object):
-    """
-    Reprezentace parametrizovaného terminálu.
-    """
-    
-    class Type(Enum):
-        """
-        Druh terminálu.
-        """
-        EOF= 0 #konec vstupu
-        
-        N= "1"    #podstatné jméno
-        A= "2"    #přídavné jméno
-        P= "3"    #zájméno
-        C= "4"    #číslovka
-        V= "5"    #sloveso
-        D= "6"    #příslovce
-        R= "7"    #předložka
-        J= "8"    #spojka
-        T= "9"    #částice
-        I= "10"   #citoslovce
 
-        DEGREE_TITLE= "t"   #titul
-        ROMAN_NUMBER= "r"   #římská číslice
-        INITIAL_ABBREVIATION= "a"    #Iniciálová zkratka.
-        X= "x"    #neznámé
-        
-        @property
-        def isPOSType(self):
-            """
-            Určuje zda-li se jedná o typ terminálu odpovídajícím slovnímu druhu.
-            
-            :return: True odpovídá slovnímu druhu. False jinak.
-            :rtype: bool
-            """
-            use=set([self.N, self.A,self.P,self.C,self.V,self.D,self.R,self.J,self.T, self.I])
-            
-            return self in use
-            
-        @property
-        def toPOS(self):
-            """
-            Provede konverzi do POS.
-            """
-            if self.isPOSType:
-                #lze převést pouze určité typy terminálu
-                #a to pouzy typy terminálu, které vyjadřují slovní druhy
-                return {
-                    self.N: POS.NOUN,           #podstatné jméno
-                    self.A: POS.ADJECTIVE,      #přídavné jméno
-                    self.P: POS.PRONOUN,        #zájméno
-                    self.C: POS.NUMERAL,        #číslovka
-                    self.V: POS.VERB,           #sloveso
-                    self.D: POS.ADVERB,         #příslovce
-                    self.R: POS.PREPOSITION,    #předložka
-                    self.J: POS.CONJUNCTION,    #spojka
-                    self.T: POS.PARTICLE,       #částice
-                    self.I: POS.INTERJECTION    #citoslovce
-                    }[self]
-                
-            return None
-    
-    class Attribute(object):
-        """
-        Terminálový atributy.
-        """
-        
-        class Type(Enum):
-            """
-            Druh atributu.
-            """
-            GENDER="g"  #rod slova musí být takový    (filtrovací atribut)
-            NUMBER="n"  #mluvnická kategorie číslo. Číslo slova musí být takové. (filtrovací atribut)
-            TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
-            #Pokud přidáte nový je třeba upravit Attribute.createFrom
-
-            @property
-            def isFiltering(self):
-                """
-                Určuje zda-li daný typ je filtrovacím (klade dodatečné restrikce).
-                
-                :return: True filtrovací. False jinak.
-                :rtype: bool
-                """
-                fil=set([self.GENDER, self.NUMBER])
-                
-                return self in fil
-        
-        def __init__(self, attrType:Terminal.Attribute.Type, val):
-            """
-            Vytvoří atribut neterminálu.
-            
-            :param attrType: Druh attributu.
-            :type attrType: self.Type
-            :param val: Hodnota atributu.
-            :raise InvalidGrammarException: Při nevalidní hodnotě atributu.
-            """
-            
-            self._type=attrType
-            if self.type.isFiltering() and isinstance(val, MorphCategory):
-                #u filtrovacích atributů musí být hodnota typu MorphCategory
-                raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
-            self._val=val
-            
-        @classmethod
-        def createFrom(cls, s):
-            """
-            Vytvoří atribut z řetězce.
-            
-            :param s: Řetezec reprezentující atribut a jeho hodnotu
-                Příklad: "g=M"
-            :type s: str
-            """
-            
-            aT, aV= s.strip().split("=")
-            
-            t=cls.Type(aT)
-            v=None
-            
-            #vytvoříme hodnotu atributu
-            if cls.Type.GENDER==t:
-                v=Gender.fromLntrf(aV)
-            elif cls.Type.NUMBER==t:
-                v=Number.fromLntrf(aV)
-            else:
-                v=WordTypeMark(aV)
-            
-            return cls.Attribute(t,v)
-        
-        @property
-        def type(self):
-            return self._type
-        
-        @property
-        def value(self):
-            return self._val
-        
-        def __str__(self):
-            return str(self._type.value)+"="+str(self._val.value)
-                        
-        def __hash__(self):
-            return hash((self._type, self._val))
-        
-        def __eq__(self, other):
-            if self.__class__ is other.__class__:
-                return self._type==other._type and self._val==other._val
-            
-            return False
-        
-    
-    def __init__(self, terminalType:self.Type, attr: Set[self.Attribute]=set()):
-        """
-        Vytvoření terminálu.
-        
-        :param terminalType: Druh terminálu.
-        :type terminalType: Type
-        :param attr: Attributy terminálu. Určují dodatečné podmínky/informace na vstupní slovo.
-        :type attr: Attribute
-        """
-        
-        self._type=terminalType
-        self._attributes=frozenset(attr)
-        
-    @property
-    def _fillteringAttr(self):
-        """
-        Získání všech attributů, které kladou dodatečné podmínky (např. rod musí být mužský).
-        Nevybírá informační atributy.
-        
-        :return: Filtrovací atributy, které má tento terminál.
-        :rtype: Set[Attribute]
-        """
-    
-        return set(a for a in self._attributes if a.isFiltering)
-    
-    def tokenMatch(self, t: Token):
-        """
-        Určuje zda daný token odpovídá tomuto terminálu.
-        
-        :param t: Token pro kontrolu.
-        :type t: Token
-        :return: Vrací True, pokud odpovídá. Jinak false.
-        :rtype: bool
-        """
-        
-        if t.type!=Token.type.ANALYZE:
-            #jedná se o jednoduchý token bez nutnosti morfologické analýzy
-            return t.type.value==self._type.value   #V tomto případě požívá terminála  token stejné hodnoty u typů
-        else:
-            if not self._type.isPOSType:
-                #jedná se o typ terminálu nepoužívající analyzátor, ale token je jiného druhu.
-                return False
-            
-            pos=t.word.info.getAll(MorphCategories.POS, set( a.value for a in self._fillteringAttr))  
-            #máme všechny možné slovní druhy, které prošly atributovým filtrem 
-       
-            return self._type.toPOS() in pos
-
-    def __str__(self):
-        s=self._type.value
-        if self._attributes:
-            s+="{"+", ".join( str(a) for a in self._attributes )+"}"
-        return s
-    def __hash__(self):
-        return hash((self._type,))
-        
-    def __eq__(self, other):
-        if self.__class__ is other.__class__:
-            return self._type==other._type and self._attributes==other._attributes
-        
-        return False
-        
 class Grammar(object):
     """
-    Používání a načtení LL gramatiky ze souboru.
+    Používání a načtení gramatiky ze souboru.
     Provádí sémantickou analýzu
     """
     EMPTY_STR="ε"   #Prázdný řetězec.
@@ -560,11 +656,6 @@ class Grammar(object):
     #se nemají ohýbat.
     NON_GEN_MORPH_SIGN="!"   
     
-    class UnknownTerminal(Errors.ExceptionMessageCode):
-        """
-        Neznámý token, který se nenachází v množině terminálů.
-        """
-        pass
     
     class NotInLanguage(Errors.ExceptionMessageCode):
         """
@@ -572,6 +663,31 @@ class Grammar(object):
         """
         pass
     
+    class ParsingTableSymbolRow(dict):
+        """
+        Reprezentuje řádek parsovací tabulky, který odpovídá symbolu.
+        Chová se jako dict() s tím rozdílem, že
+        pokud je namísto běžného SymbolRow[Terminal] použito SymbolRow[Token], tak pro daný symbol na zásobníku
+        vybere všechna pravidla (vrací množinu pravidel), která je možné aplikovat pro daný token (jeden token může odpovídat více terminálům).
+    
+        Vkládané klíče musí být Terminály.
+        
+        """
+        
+        def __getitem__(self, key):
+            if isinstance(key, Token):
+                #Nutné zjistit všechny terminály, které odpovídají danému tokenu.
+                res=set()
+                for k in self.keys():
+                    if k.tokenMatch(key):
+                        #daný terminál odpovídá tokenu, přidejme pravidla
+                        res|=dict.__getitem__(self, k)
+                return res
+            else:
+                #běžný výběr
+                return dict.__getitem__(self, key)
+            
+
 
     def __init__(self, filePath):
         """
@@ -651,11 +767,11 @@ class Grammar(object):
         Provede syntaktickou analýzu pro dané tokeny.
         Poslední token předpokládá EOF. Pokud jej neobsahuje, tak jej sám přidá na konec tokens.
         
+        
         :param tokens: Tokeny pro zpracování.
         :type tokens: list
-        :return: List pravidel určující levou derivaci.
-        :rtype: list
-        :raise UnknownTerminal: Pokud se objeví terminál, který není v gramatice.
+        :return: Dvojici s listem listu pravidel určujících všechny možné derivace a list listů analyzovaných tokenů.
+        :rtype: (list(list(Rule)), list(list(AnalyzedToken)))
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
         """
         if tokens[-1].type!=Token.Type.EOF:
@@ -665,44 +781,136 @@ class Grammar(object):
         stack=[Symbol(Terminal.Type.EOF, True), Symbol(self._startS, False)]
         position=0
         
+        #provedeme samotnou analýzou a vrátíme výsledek
+        return self.crawling(stack, tokens, position, True)
+        
+    
+    def crawling(self, stack, tokens, position, morph=True):
+        """
+        Provádí analýzu zda-li posloupnost daných tokenů patří do jazyka definovaného gramatikou.
+        Vrací posloupnost použitých pravidel. Nezastaví se na první vhodné posloupnosti pravidel, ale hledá všechny možné.
+        
+        Tato metoda slouží především pro možnost implementace zpětného navracení při selhání, či hledání další vhodné posloupnosti
+        pravidel.
+        
+        :param stack: Aktuální obsah zásobníku. (modifukuje jej)
+        :type stack: list(Symbol)
+        :param tokens: posloupnost tokenů na vstupu
+        :type tokens: list(Token)
+        :param position: Index aktuálního tokenu. Definuje část vstupní posloupnosti tokenů, kterou budeme procházet.
+            Od předaného indexu do konce.
+        :type position: integer
+        :param morph: Flag, který určuje zda-li se nacházíme v části stromu, kde se slova mají ohýbat, či ne.
+            Jedná se o zohlednění příznaku self.NON_GEN_MORPH_SIGN z gramatiky.
+        :type morph: bool
+        :return: Dvojici s listem listu pravidel určujících všechny možné derivace a list listů analyzovaných tokenů.
+        :rtype: (list(list(Rule)), list(list(AnalyzedToken)))
+        :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
+        """
         rules=[]    #aplikovaná pravidla
+        aTokens=[]  #analyzované tokeny
         
         while(len(stack)>0):
             s=stack.pop()
-            token=tokens[position].terminal
+            token=tokens[position]
+            
             
             if s.isTerm:
                 #terminál na zásobníku
-                if s.val==token:
+                if s.val.tokenMatch(token):
                     #stejný token můžeme se přesunout
+                    #token odpovídá terminálu na zásobníku
                     position+=1
+                    
+                    #ještě vytvoříme analyzovaný token
+                    aTokens.append(AnalyzedToken(token, morph, s))# s je odpovídající terminál
                     
                 else:
                     #chyba rozdílný terminál na vstupu a zásobníku
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
                                                 s.val, token, ", ".join([str(r) for r in rules])))
-                    
             else:
                 #neterminál na zásobníku
                 
-                #vybereme pravidlo
-                rule=self._table[s.val][token]
-                if rule is None:
+                if morph:
+                    #zatím jsme mohli ohýbat, ale to se může nyní změnit
+                    morph=s!=self.NON_GEN_MORPH_SIGN  #příznak toho, že v tomto stromu na tomto místě se mají/nemají ohýbat slova
+                
+                #vybereme všechna možná pravidla pro daný token na vstupu a symbol na zásobníku
+                actRules=self._table[s.val][token]  #díky použité třídě ParsingTableSymbolRow si můžeme dovolit použít přímo token
+                if not actRules:
                     #v gramatice neexistuje vhodné pravidlo
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
                                                 s.val, token, ", ".join([str(r) for r in rules])))
-                
-                #provedeme derivaci, vložíme pravidlo na zásobník
-                for rulePart in reversed(rule.rightSide):
-                    if rulePart!=self.EMPTY_STR:#prázdný symbol nemá smysl dávat na zásobník
-                        stack.append(Symbol(rulePart, rulePart in self._terminals or rulePart==self.EMPTY_STR))
                     
-                rules.append(rule)
-
-        #příjmáme
-        return rules
+                if len(actRules)==1:
+                    #pouze jedno aplikovatelné pravidlo
+                    #není nutné rekurzivní volání, stačí jen provést derivaci a vložit pravidlo na zásobník
+                    
+                    r=next(iter(s))
+                    self.putRuleOnStack(r, stack)
+                    #zaznamenáme aplikování pravidla
+                    rules.append(r)
+                else:
+                    #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
+                    newRules=[]
+                    newATokens=[]
+                    
+                    for r in actRules:
+                        try:
+                            #prvně aplikujeme pravidlo
+                            newStack=stack.copy()
+                            self.putRuleOnStack(r, newStack)
+                            
+                            #zkusíme zda-li s tímto pravidlem uspějeme
+                            resRules, resATokens=self.crawling(newStack, tokens, position, morph)
+                            
+                            
+                            if resRules and resATokens:
+                                #zaznamenáme aplikováná pravidla a analyzované tokeny
+                                #může obsahovat i více různých derivací
+                                for x in resRules:
+                                    #musíme předřadit aktuální pravidlo a pravidla předešlá
+                                    newRules.append(rules+[r]+x)
+                                    
+                                for x in resATokens:
+                                    #musíme předřadit předešlé analyzované tokeny
+                                    newATokens.append(aTokens+x)
+                                    
+                        except self.NotInLanguage:
+                            #tato větev nikam nevede, takže ji prostě přeskočíme
+                            pass
+                
+                    if len(newRules) == 0:
+                        #v gramatice neexistuje vhodné pravidlo
+                        raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
+                                                 Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
+                                                    s.val, token, ", ".join([str(r) for r in rules])))
+                        
+                    #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit
+                    return (newRules,newATokens)
+        
+        
+        #Již jsme vyčerpali všechny možnosti. Příjmáme naši část vstupní pousloupnosti a končíme.
+        #Zde se dostaneme pouze pokud jsme po cestě měli možnost aplikovat pouze jen jedno pravidlo.
+        return ([rules], [aTokens])
+     
+    def putRuleOnStack(self, rule:Rule, stack):
+        """
+        Vloží pravou stranu pravidla na zásobník.
+        
+        :param rule: Pravidlo pro vložení.
+        :type rule: Rule
+        :param stack: Zásobník pro manipulaci. Obsahuje výsledek.
+        :type stack:list
+        """
+        
+        for rulePart in reversed(rule.rightSide):
+            if rulePart!=self.EMPTY_STR: #prázdný symbol nemá smysl dávat na zásobník
+                stack.append(Symbol(rulePart, rulePart in self._terminals or rulePart==self.EMPTY_STR))
+                
     
     @classmethod
     def getMorphMask(cls, rules, morph=True):
@@ -767,27 +975,17 @@ class Grammar(object):
             print(i,l)
             
         """
-            
-        inputSymbols=self._terminals
 
         #inicializace tabulky
-        self._table={ n:{t:None for t in inputSymbols} for n in self._nonterminals}
+        self._table={ n:self.ParsingTableSymbolRow({t:set() for t in self._terminals}) for n in self._nonterminals}
         
         #zjištění pravidla pro daný terminál na vstupu a neterminál na zásobníku
         for r in self._rules:
-            for t in inputSymbols:
+            for t in self._terminals:
                 if t in self._predict[r]:
                     #t může být nejlevěji derivován
-                    if self._table[r.leftSide][t] is not None:
-                        #nejednoznačnost, našli jsme více jak jedno vhodné pravidlo
-                        raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_AMBIGUITY,
-                                                      Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_AMBIGUITY)+"\n\t"+str(self._table[r.leftSide][t])\
-                                                      +" predict"+str(self._predict[self._table[r.leftSide][t]])+"\t"+str(r)+" predict"+str(self._predict[r]))
-                        
-                    self._table[r.leftSide][t]=r
-                    
-                    
-        
+                    self._table[r.leftSide][t].add(r)
+
         #Jen pro testovani self.printParsingTable()
                   
     '''

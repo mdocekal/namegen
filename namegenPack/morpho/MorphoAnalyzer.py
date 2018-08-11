@@ -14,23 +14,6 @@ from namegenPack.morpho.MorphCategories import MorphCategory, MorphCategories
     
 from typing import Set
 
-
-class MorphoAnalyzer(ABC):
-    """
-    Interface morfologického analyzátoru.
-    """
-    
-    @abstractmethod
-    def analyze(self, word:str) -> MorphoAnalyze:
-        """
-        Získání morfologické analýzy slova.
-        
-        :param word: slovo pro analýzu
-        :type word: str
-        :return: Analýza slova. None při neúspěchu.
-        :rtype: MorphoAnalyze 
-        """
-        pass
     
 class MorphoAnalyze(ABC):
     """
@@ -61,6 +44,24 @@ class MorphoAnalyze(ABC):
         :rtype: Set[MorphCategory]
         """
         pass
+    
+class MorphoAnalyzer(ABC):
+    """
+    Interface morfologického analyzátoru.
+    """
+    
+    @abstractmethod
+    def analyze(self, word:str) -> MorphoAnalyze:
+        """
+        Získání morfologické analýzy slova.
+        
+        :param word: slovo pro analýzu
+        :type word: str
+        :return: Analýza slova. None při neúspěchu.
+        :rtype: MorphoAnalyze 
+        """
+        pass
+
     
 
 class MorphoAnalyzerException(ExceptionMessageCode):
@@ -253,7 +254,7 @@ class MorphoAnalyzerLibma(object):
             self._groups=[]
             
         
-        def addGroup(self, group: MorphoAnalyzerLibma.MAWordGroup):
+        def addGroup(self, group):
             """
             Přidání skupiny z morfoligické analýzy.
             

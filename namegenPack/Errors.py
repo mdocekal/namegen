@@ -42,18 +42,16 @@ class ErrorMessenger(object):
     CODE_GRAMMAR_NO_START_SYMBOL=9
     CODE_GRAMMAR_NO_RULES=10
     CODE_GRAMMAR_INVALID_FILE=11
-    CODE_GRAMMAR_AMBIGUITY=12
-    CODE_GRAMMAR_START_SYMBOL=13
-    CODE_GRAMMAR_SETS_TERM_NONTERM_NON_DIS=14
-    CODE_INVALID_NAME=15
-    CODE_WORD_NO_MORPHS_GENERATED=16
-    CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR=17
-    CODE_WORD_MISSING_MORF_FOR_CASE=18
-    CODE_GRAMMAR_UNKNOWN_TERMINAL=19
-    CODE_GRAMMAR_NOT_IN_LANGUAGE=20
-    CODE_MA_FAILURE=21
-    CODE_MORPH_ENUM_INVALID_CATEGORY=22
-    CODE_MORPH_ENUM_INVALID_VALUE=23
+    CODE_GRAMMAR_START_SYMBOL=12
+    CODE_GRAMMAR_SETS_TERM_NONTERM_NON_DIS=13
+    CODE_INVALID_NAME=14
+    CODE_WORD_NO_MORPHS_GENERATED=15
+    CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR=16
+    CODE_WORD_MISSING_MORF_FOR_CASE=17
+    CODE_GRAMMAR_NOT_IN_LANGUAGE=18
+    CODE_MA_FAILURE=19
+    CODE_MORPH_ENUM_INVALID_CATEGORY=20
+    CODE_MORPH_ENUM_INVALID_VALUE=21
     
     
     CODE_UNKNOWN_ERROR=100
@@ -73,14 +71,12 @@ class ErrorMessenger(object):
             CODE_GRAMMAR_NO_START_SYMBOL:"Není uveden startovací symbol.",
             CODE_GRAMMAR_NO_RULES:"Nejsou uvedena pravidla.",
             CODE_GRAMMAR_INVALID_FILE:"Nevalidní soubor s gramatikou.",
-            CODE_GRAMMAR_AMBIGUITY:"Nejednoznačnost v gramatice.",
             CODE_GRAMMAR_START_SYMBOL:"Startovací symbol není v množině neterminálů.",
             CODE_GRAMMAR_SETS_TERM_NONTERM_NON_DIS:"Množina terminálů a neterminálů má neprázdný průnik.",
             CODE_INVALID_NAME:"Nevalidní jméno.",
             CODE_WORD_NO_MORPHS_GENERATED:"Pro slovo se nepodařilo vygenerovat tvary.",
             CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR:"Název není v jazyce generovaným poskytnutou gramatikou.",
             CODE_WORD_MISSING_MORF_FOR_CASE:"Nepovedlo se vygenerovat tvar pro pád.",
-            CODE_GRAMMAR_UNKNOWN_TERMINAL:"Neznámý terminál.",
             CODE_GRAMMAR_NOT_IN_LANGUAGE:"Selhání na příslušnosti do jazyka při: {} na zásobníku a {} na vstupu. Použitá pravidla: {}",
             CODE_MA_FAILURE:"Morfologický analyzátor selhal.",
             CODE_MORPH_ENUM_INVALID_CATEGORY:"Neznámá morfologická kategorie: {}",

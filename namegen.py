@@ -116,16 +116,20 @@ def main():
                 try:
                     
                     #Vybrání a zpracování gramatiky na základě druhu jména.
-                    if name.type==Name.Type.LOCATION:
-                        rules=grammarLocations.analyse(Lex.getTokens(name))
-                    elif name.type==Name.Type.MALE:
-                        rules=grammarMale.analyse(Lex.getTokens(name))
-                    else:
-                        rules=grammarFemale.analyse(Lex.getTokens(name))
-  
-                    morphs=name.genMorphs(Grammar.Grammar.getMorphMask(rules))
+                    #získáme aplikovatelná pravidla, ale hlavně analyzované tokeny, které mají v sobě informaci,
+                    #zda-li se má dané slovo ohýbat, či nikoliv a další
                     
-                    print(str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs)), file=outF)
+                    #rules a aTokens může obsahovat více než jednu možnou derivaci
+                    if name.type==Name.Type.LOCATION:
+                        _, aTokens=grammarLocations.analyse(Lex.getTokens(name))
+                    elif name.type==Name.Type.MALE:
+                        _, aTokens=grammarMale.analyse(Lex.getTokens(name))
+                    else:
+                        _, aTokens=grammarFemale.analyse(Lex.getTokens(name))
+  
+                    for aT in aTokens:
+                        morphs=name.genMorphs([t.morph for t in aT])
+                        print(str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs)), file=outF)
                         
                 except (Word.WordException) as e:
                     print(str(name)+"\t"+e.message, file=sys.stderr)
@@ -145,9 +149,7 @@ def main():
                     errorsGrammerCnt+=1
                     print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR)+\
                               "\t"+str(name)+"\t"+str(name.type)+"\t"+e.message, file=sys.stderr)
-                except Grammar.Grammar.UnknownTerminal as e:
-                    errorsGrammerCnt+=1
-                    print(str(name)+"\t"+e.message, file=sys.stderr)
+
                 except Errors.ExceptionMessageCode as e:
                     #chyba při zpracování slova
                     errorsOthersCnt+=1
