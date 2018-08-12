@@ -120,6 +120,24 @@ class Word(object):
                 
         return a
     
+    def morphs(self, analyzedToken: Grammar.AnalyzedToken):
+        """
+        Vygeneruje tvary slova s ohledem na výsledky ze syntaktické analýzy tohoto slova, které
+        jsou uložené v analyzedToken.
+        
+        :param analyzedToken: Token uchovávající výsledky syntaktické analýzy.
+        :type analyzedToken: Grammar.AnalyzedToken
+        """
+        if analyzedToken.morph:
+            #analýza řekla, že se má ohýbat
+            #nejprve zjistíme zda-li jsme z analýzy dostali dalši informace o tvarech
+            #v podobě filtrú, kterě pouzijeme pro získáni tvarů
+            filters=set(a.value for a in analyzedToken.matchingTerminal.fillteringAttr)
+            
+            
+        else:
+            #neohýbáme, prostě jen vrátíme slovo
+            return self._w
     
     def morphs(self, tagWildcard):
         """
@@ -417,7 +435,7 @@ class Name(object):
             if aToken.morph:
                 #vybereme filtrovací atributy přislušného terminálu
                 #abychom mohli vybrat naše požadované tvary.
-                fA=aToken.matchingTerminal._fillteringAttr
+                fA=aToken.matchingTerminal.fillteringAttr
                 
                 
                 

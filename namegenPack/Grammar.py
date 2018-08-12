@@ -106,13 +106,14 @@ class Terminal(object):
                 
                 return self in fil
         
-        def __init__(self, attrType, val):
+        def __init__(self, attrType, val:MorphCategory):
             """
             Vytvoří atribut neterminálu.
             
             :param attrType: Druh attributu.
             :type attrType: self.Type
             :param val: Hodnota atributu.
+            :type val: MorphCategory
             :raise InvalidGrammarException: Při nevalidní hodnotě atributu.
             """
             
@@ -156,6 +157,10 @@ class Terminal(object):
         
         @property
         def value(self):
+            """
+            :return: Hodnota attributu.
+            :rtype: MorphCategory
+            """
             return self._val
         
         def __str__(self):
@@ -185,7 +190,7 @@ class Terminal(object):
         self._attributes=frozenset(attr)
         
     @property
-    def _fillteringAttr(self):
+    def fillteringAttr(self):
         """
         Získání všech attributů, které kladou dodatečné podmínky (např. rod musí být mužský).
         Nevybírá informační atributy.
@@ -214,7 +219,7 @@ class Terminal(object):
                 #jedná se o typ terminálu nepoužívající analyzátor, ale token je jiného druhu.
                 return False
             
-            pos=t.word.info.getAll(MorphCategories.POS, set( a.value for a in self._fillteringAttr))  
+            pos=t.word.info.getAll(MorphCategories.POS, set( a.value for a in self.fillteringAttr))  
             #máme všechny možné slovní druhy, které prošly atributovým filtrem 
        
             return self._type.toPOS() in pos
