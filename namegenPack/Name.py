@@ -16,6 +16,8 @@ import logging
 from namegenPack.morpho.MorphoAnalyzer import MorphoAnalyze, MorphoAnalyzer
 from namegenPack.morpho import MorphCategories
 from typing import List
+from namegenPack.morpho.MorphCategories import StylisticFlag, Case
+from namegenPack.Grammar import Terminal
 
 
 class WordTypeMark(Enum):
@@ -127,43 +129,46 @@ class Word(object):
         
         :param analyzedToken: Token uchovávající výsledky syntaktické analýzy.
         :type analyzedToken: Grammar.AnalyzedToken
+        :return: Pokud se nemá ohýbat, tak pouze slovo. Jinak vrací možné tvary i s jejich pravidly.
+                Set[Tuple[MARule,str]]    str je tvar
+        :rtype: str | Set[Tuple[MARule,str]]
+        :raise WordNoMorphsException: pokud se nepodaří získat tvary.
         """
         if analyzedToken.morph:
             #analýza řekla, že se má ohýbat
             #nejprve zjistíme zda-li jsme z analýzy dostali dalši informace o tvarech
-            #v podobě filtrú, kterě pouzijeme pro získáni tvarů
+            #v podobě filtrú, kterě použijeme pro získáni tvarů
             filters=set(a.value for a in analyzedToken.matchingTerminal.fillteringAttr)
             
-            
-        else:
-            #neohýbáme, prostě jen vrátíme slovo
-            return self._w
-    
-    def morphs(self, tagWildcard):
-        """
-        Vygeneruje tvary pro lemma tohoto slova.
-        
-        :param tagWildcard: Maska pro filtrování tvarů.
-        :type tagWildcard: String
-        :return: Tvary daného slova ve dvojici s informací o slově. 
-        :rtype: list dvojic
-        :raise WordNoMorphsException: pokud se nepodaří získat tvary.
-        """
+            if analyzedToken.matchingTerminal.type.isPOSType():
+                #pro práci s morfologickou analýzou musí byt POS type
+                filters.add(analyzedToken.matchingTerminal.type.toPOS)    #vložíme požadovaný tvar do filtru
+                
+                #pro to abychom vybrali správné tvary, tak se pokusíme získat další filtry na
+                #základě morfologické analýzy
+                #Například pokud víme, že máme přídavné jméno rodu středního v jednotném čísle
+                #a morf. analýza nám řekne, že přídavné jméno je prvního stupně, tak tuto informaci zařadíme
+                #k filtrům pro výběr tvarů
+                
+                for _, morphCategoryValues in self.info.getAll(filters):
+                    if len(morphCategoryValues):
+                        #daná kategorie má pouze jednu možnou hodnotu použijeme ji jako filtr
+                        filters.add(next(iter(morphCategoryValues)))
+                
+                #na základě filtrů získáme všechny možné tvary
+                #nechceme hovorové tvary ->StylisticFlag.COLLOQUIALLY
+                
+                tmp=self.info.getMorphs(filters, set(StylisticFlag.COLLOQUIALLY))
+                if tmp is None or len(tmp)<1:
+                    raise self.WordNoMorphsException(self, Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED,
+                        Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED)+"\t"+self._w)
+                return tmp
+                
 
-        tmp=__class__.morphoDita.genMorphs(self.lemma, tagWildcard)
-        
-        if tmp is None or len(tmp)<1:
-            raise self.WordNoMorphsException(self, Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED,
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED)+"\t"+self.lemma)
-        
-        #morphodita převede velká písmena
-        #je nutné je zpět zase vrátit
-        #vracíme velká písmena na začátku
-        for x in range(len(tmp)):
-            if self._w[0].isupper():
-                tmp[x]=(tmp[x][0][0].upper()+tmp[x][0][1:], tmp[x][1])
-        
-        return tmp
+            #pokud neni POS type nemůžeme ohýbat
+            
+        #neohýbáme, prostě jen vrátíme slovo
+        return self._w
     
     def __repr__(self):
         return self._w
@@ -269,7 +274,7 @@ class Name(object):
                 if token.type==Grammar.Token.Type.ANALYZE:
                     #získáme možné mluvnické kategorie
                     analyze=token.type.info()
-                    posCat=analyze.getAll(MorphCategories.POS)
+                    posCat=analyze.getAllForCategory(MorphCategories.POS)
                     if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
                         if token.word[-3:] == "ová":
                             #muž s přijmení končícím na ová, zřejmě není
@@ -284,11 +289,11 @@ class Name(object):
                     if token.type==Grammar.Token.Type.ANALYZE:
                         #získáme možné mluvnické kategorie
                         analyze=token.type.info()
-                        posCat=analyze.getAll(MorphCategories.POS)
+                        posCat=analyze.getAllForCategory(MorphCategories.POS)
                         
                         if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
                             #získáme možné rody
-                            posGenders=analyze.getAll(MorphCategories.Gender)
+                            posGenders=analyze.getAllForCategory(MorphCategories.Gender)
                             if MorphCategories.Gender.FEMINE in posGenders and MorphCategories.Gender.MASCULINE_ANIMATE in posGenders and \
                                 MorphCategories.Gender.MASCULINE_INANIMATE in posGenders:
                                 #bohužel může být jak mužský, tak ženský
@@ -427,105 +432,45 @@ class Name(object):
         
         :param analyzedTokens: Analyzované tokeny, získané ze syntaktické analýzy tohoto jména.
         :type analyzedTokens: List(Grammar.AnalyzedToken)
+        :return:  Vygenerované tvary.
+        :rtype: list(str)
+        :raise Word.WordNoMorphsException: Pokud se nepodaří získat tvary u nějakého slova.
+        :raise WordCouldntGetInfoException: Vyjímka symbolizující, že se nepovedlo získat mluvnické kategorie ke slovu.
         """
         
         #získáme tvary jednotlivých slov
         genMorphsForWords=[]
         for word, aToken in enumerate(zip(self._words, analyzedTokens)):
-            if aToken.morph:
-                #vybereme filtrovací atributy přislušného terminálu
-                #abychom mohli vybrat naše požadované tvary.
-                fA=aToken.matchingTerminal.fillteringAttr
-                
-                
-                
-            else:
-                genMorphsForWords.append(None)
+            genMorphsForWords.append(word.morphs(aToken))
         
-        
-        
+        #z tvarů slov poskládáme tvary jména
+        #Set[Tuple[MARule,str]]
+        morphs=[]
         
 
-    def genMorphs(self, morphMask=None):
-        """
-        Na základě masky vygeneruje tvary jména.
-        
-        :param morphMask: Určuje, která slova se mají ohýbat.
-            Jedná se o list, který pro každé slovo ve jméně má příznak
-            True ohnout nebo False neohnout.
-            Příklad: Jana z Arku
-                    [True, False, False]
-                    Bude se měnit pouze Jana.
-        :type morphMask: [bool]
-        :return:  Vygenerované tvary.
-        :rtype: list(str)
-        :raise Word.WordNoMorphsException: Pokud se nepodaří získat tvary o nějakého slova.
-        :raise WordCouldntGetInfoException: Vyjímka symbolizující, že se nepovedlo získat mluvnické kategorie ke slovu.
-        """
-        
-        if morphMask is None:
-            morphMask=[True for _ in self._words]
-        
-        wildcards=[]    #použíté wildcards, hlavně pro případ zobrazení chyby
-        
-        #získáme tvary jednotlivých slov
-        genMorphsForWords=[]
-        for wPos, (w, m) in enumerate(zip(self._words, morphMask)):
-            if m:
-                #vygeneruj všechny tvary s rozlišným pádem
-                wildcard=w.info.copy()
-                del wildcard["c"]       #klíče jsou uvedeny v Morphodita.morphCategories
-                
-                if w.info["pos"]=="A":
-                    #přídavné jméno přebírá číslo a rod od prvního dalšího podstatného jméno
-                    for nextW in self._words[wPos+1:]:
-                        if nextW.info["pos"]=="N":  #klíče jsou uvedeny v Morphodita.morphCategories
-                            wildcard["n"]=nextW.info["n"]
-                            wildcard["g"]=nextW.info["g"]
-                            break
-                    
-                wildcard=Morphodita.Morphodita.wordInfoToWildcard(wildcard)
-                wildcards.append(wildcard)
-                
-                #vložime tvary a seřadíme dle pádů
-                #řazení možná není nutné, ale je zde pro jistotu
-                genMorphsForWords.append(sorted(w.morphs(wildcard), key=lambda pair: pair[1]["c"]))
-                
-                """
-                COULD BE DELETED
-                print(w, wildcard)
-                for x,y in genMorphsForWords[-1]:
-                    print("\t",x,Morphodita.Morphodita.wordInfoToWildcard(y))
-                    """
-            else:
-                wildcards.append(None)
-                #nechceme u tohoto slova generovat tvary
-                genMorphsForWords.append(None)
-             
-        #z tvarů slov poskládáme tvary jména
-        morphs=[]
-        for c in ["1", "2", "3", "4", "5", "6", "7"]:#pády
+        for c in [Case.NOMINATIVE, Case.GENITIVE, Case.DATIVE, Case.ACCUSATIVE, Case.VOCATIVE, Case.LOCATIVE, Case.INSTRUMENTAL]:#pády
             morph=""
-            
             sepIndex=0
-            for i, (w, m) in enumerate(zip(self._words, morphMask)):
-                if m:
+            for i, (word, aToken) in enumerate(zip(self._words, analyzedTokens)):
+                if aToken.morph and isinstance(genMorphsForWords[i], set):
                     #ohýbáme
                     notMatch=True
-                    for wordMorph, wordInfo in genMorphsForWords[i]:
-                        if wordInfo["c"]==c:
-                            morph+=wordMorph+"["+Morphodita.Morphodita.transInfoToLNTRF(wordInfo)+"]"
+                    for maRule, wordMorph in genMorphsForWords[i]:
+                        #najdeme tvar slova pro daný pád
+                        #TODO: více tvarů pro daný pád
+                        if maRule[MorphCategories.Case]==c:
+                            morph+=wordMorph+"["+maRule.lntrf+"]#"+aToken.matchingTerminal.getAttribute(Terminal.Attribute.Type.TYPE)
                             notMatch=False
                             break
                         
                     if notMatch:
                         #nepovedlo se získat některý pád
                         
-                        raise Word.WordMissingCaseException(w, Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE,\
-                                    Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+c+"\t"+wildcards[i]+"\t"+str(w))
+                        raise Word.WordMissingCaseException(word, Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE,\
+                                    Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+c.value+"\t"+str(word))
                 else:
                     #neohýbáme
-                    morph+=str(w)
+                    morph+=str(word)+"#"+aToken.matchingTerminal.getAttribute(Terminal.Attribute.Type.TYPE)
                 
                 #přidání oddělovače slov
                 if sepIndex < len(self._separators):
@@ -535,6 +480,7 @@ class Name(object):
             morphs.append(morph)
             
         return morphs
+            
         
     @property
     def type(self):

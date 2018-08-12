@@ -4,7 +4,8 @@ Created on 28. 7. 2018
 Tento modul obsahuje výčet morfologických kategorií a jejich hodnot.
 Také obsahuje metody pro převod mezi formáty (lntrf).
 
-@author: windionleaf
+:author:     Martin Dočekal
+:contact:    xdocek09@stud.fit.vubtr.cz
 """
 
 from enum import Enum
@@ -45,70 +46,6 @@ class MorphCategoryInvalidValueException(MorphCategoryException):
         """
         self.code = Errors.ErrorMessenger.CODE_MORPH_ENUM_INVALID_VALUE
         self.message = Errors.ErrorMessenger.getMessage(self.code).format(category, value)
-
-class MorphCategories(Enum):
-    """
-    Morfologické kategorie.
-    """
-    POS=0
-    """slovní druh"""
-    
-    GENDER=1
-    """rod"""
-    
-    NUMBER=2
-    """číslo"""
-    
-    CASE=3
-    """pád"""
-    
-    NEGATION=4
-    """negace"""
-    
-    DEGREE_OF_COMPARISON=5
-    """stupeň"""
-    
-    PERSON=6
-    """osoba"""
-    
-    @classmethod
-    def _mappingLntrf(cls):
-        """
-        Mapování pro lntrf konverzi.
-        """
-        return{
-            cls.POS:"k",
-            cls.GENDER:"g",
-            cls.NUMBER:"n",
-            cls.CASE:"c",
-            cls.NEGATION:"e",
-            cls.DEGREE_OF_COMPARISON:"d",
-            cls.PERSON:"p"
-            }
-
-    @property
-    def lntrf(self):
-        """
-        V lntrf formátu.
-        """
-        return self._mappingLntrf()[self]
-        
-    @classmethod    
-    def fromLntrf(cls, val):
-        """
-        Vytvoří z lntrf formátu.
-
-        :param val: Vstupní hodnota v lntrf formátu.
-        :type val: str
-        :return: Odpovídající mluvnickou kategorii.
-        :rtype: MorphCategories
-        :raise MorphCategoryInvalidException: On invalid value.
-        """
-        try:
-            return {v: k for k, v in cls._mappingLntrf().items()}[val]
-        except KeyError:
-            raise MorphCategoryInvalidException(val)
-        
 
 class MorphCategory(Enum):
     """
@@ -166,6 +103,101 @@ class MorphCategory(Enum):
             return {v: k for k, v in cls._mappingLntrf().items()}[val]
         except KeyError:
             raise MorphCategoryInvalidValueException(cls.category().lntrf, val)
+        
+class MorphCategories(Enum):
+    """
+    Morfologické kategorie.
+    """
+    
+    POS=0
+    """slovní druh"""
+    
+    GENDER=1
+    """rod"""
+    
+    NUMBER=2
+    """číslo"""
+    
+    CASE=3
+    """pád"""
+    
+    NEGATION=4
+    """negace"""
+    
+    DEGREE_OF_COMPARISON=5
+    """stupeň"""
+    
+    PERSON=6
+    """osoba"""
+    
+    STYLISTIC_FLAG=7
+    """stylistický příznak"""
+    
+    
+    @classmethod
+    def _mappingLntrf(cls):
+        """
+        Mapování pro lntrf konverzi.
+        """
+        return{
+            cls.POS:"k",
+            cls.GENDER:"g",
+            cls.NUMBER:"n",
+            cls.CASE:"c",
+            cls.NEGATION:"e",
+            cls.DEGREE_OF_COMPARISON:"d",
+            cls.PERSON:"p",
+            cls.STYLISTIC_FLAG:"w"
+            }
+
+    @property
+    def lntrf(self):
+        """
+        V lntrf formátu.
+        """
+        return self._mappingLntrf()[self]
+        
+    @classmethod    
+    def fromLntrf(cls, val):
+        """
+        Vytvoří z lntrf formátu.
+
+        :param val: Vstupní hodnota v lntrf formátu.
+        :type val: str
+        :return: Odpovídající mluvnickou kategorii.
+        :rtype: MorphCategories
+        :raise MorphCategoryInvalidException: On invalid value.
+        """
+        try:
+            return {v: k for k, v in cls._mappingLntrf().items()}[val]
+        except KeyError:
+            raise MorphCategoryInvalidException(val)
+        
+    def createCategoryFromLntrf(self, val) -> MorphCategory:
+        """
+        Vytvoří MorphCategory z předané validní hodnoty aktuální morfologické kategorie.
+        Tedy pokud je MorphCategories typu POS, pak očekává lntrf hodnoty pro POS.
+        Příklad:
+        1 -> POS.NOUN
+        
+        :param val: Lntrf hodnota, ze které bude vytvořeno MorphCategory.
+        :type val: str
+        :return: Odpovídající mluvnickou kategorii.
+        :rtype: MorphCategory
+        :raise MorphCategoryInvalidValueException: On invalid value.
+        """
+        
+        return {
+            self.POS: POS.fromLntrf(val),
+            self.GENDER: Gender.fromLntrf(val),
+            self.NUMBER: Number.fromLntrf(val),
+            self.CASE: Case.fromLntrf(val),
+            self.NEGATION: Negation.fromLntrf(val),
+            self.DEGREE_OF_COMPARISON: DegreeOfComparison.fromLntrf(val),
+            self.PERSON: Person.fromLntrf(val),
+            self.STYLISTIC_FLAG:
+            }[self.value]
+
     
 class POS(MorphCategory):
     """
@@ -343,4 +375,37 @@ class Person(MorphCategory):
         return MorphCategories.PERSON
 
 
-            
+class StylisticFlag(MorphCategory):
+    """
+    Stylistický příznak.
+    """
+    ARCHAISM="A"
+    """archaismus"""
+    
+    POETIC="B"
+    """básnicky"""
+    
+    ONLY_IN_CORPUSCLES="C"
+    """pouze v korpusech"""
+    
+    EXPRESSIVELY="E"
+    """expresivně"""
+    
+    COLLOQUIALLY="H"
+    """hovorově"""
+    
+    BOOK="K"
+    """knižně"""
+    
+    REGIONALLY="O"
+    """oblastně"""
+    
+    RATHER="R"
+    """řidčeji"""
+    
+    OBSOLETE="Z"
+    """zastarale"""
+
+    @staticmethod
+    def _category():
+        return MorphCategories.STYLISTIC_FLAG

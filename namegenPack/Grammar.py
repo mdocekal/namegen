@@ -106,14 +106,13 @@ class Terminal(object):
                 
                 return self in fil
         
-        def __init__(self, attrType, val:MorphCategory):
+        def __init__(self, attrType, val):
             """
             Vytvoří atribut neterminálu.
             
             :param attrType: Druh attributu.
             :type attrType: self.Type
             :param val: Hodnota atributu.
-            :type val: MorphCategory
             :raise InvalidGrammarException: Při nevalidní hodnotě atributu.
             """
             
@@ -159,7 +158,6 @@ class Terminal(object):
         def value(self):
             """
             :return: Hodnota attributu.
-            :rtype: MorphCategory
             """
             return self._val
         
@@ -179,15 +177,51 @@ class Terminal(object):
     def __init__(self, terminalType, attr=set()):
         """
         Vytvoření terminálu.
+        Pokud není předán atribut s typem slova ve jméně, tak je automaticky přidán
+        attribut s hodnotou WordTypeMark.UNKNOWN
         
         :param terminalType: Druh terminálu.
         :type terminalType: Type
         :param attr: Attributy terminálu. Určují dodatečné podmínky/informace na vstupní slovo.
+                Musí vždy obsahovat atribut daného druhu pouze jedenkrát. Jinak může způsobit nedefinované chování
+                u nějakých metod.
         :type attr: Attribute
         """
         
         self._type=terminalType
+        
+        
+        #zjistíme, zda-li byl předán word type mark
+        if not any(a.type==self.Attribute.Type.TYPE for a in attr):
+            #nebyl, přidáme neznámý
+            attr=attr|set(self.Attribute(self.Attribute.Type.TYPE, WordTypeMark.UNKNOWN))
+        
         self._attributes=frozenset(attr)
+        
+    def getAttribute(self, t):
+        """
+        Vrací atribut daného druhu.
+        
+        :param t: druh attributu
+        :type t: self.Attribute.Type
+        :return: Atribut daného druhu a None, pokud takový atribut nemá.
+        :rtype: self.Attribute | None
+        """
+        
+        for a in self._attributes:
+            if a.type==t:
+                return a
+        
+        return None
+    
+    @property
+    def type(self):
+        """
+        Druh terminálu.
+        
+        :rtype: self.Type
+        """
+        return self._type
         
     @property
     def fillteringAttr(self):
@@ -219,7 +253,7 @@ class Terminal(object):
                 #jedná se o typ terminálu nepoužívající analyzátor, ale token je jiného druhu.
                 return False
             
-            pos=t.word.info.getAll(MorphCategories.POS, set( a.value for a in self.fillteringAttr))  
+            pos=t.word.info.getAllForCategory(MorphCategories.POS, set( a.value for a in self.fillteringAttr))  
             #máme všechny možné slovní druhy, které prošly atributovým filtrem 
        
             return self._type.toPOS() in pos
