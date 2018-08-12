@@ -136,6 +136,35 @@ class MorphoAnalyzerLibma(object):
             """
             self._morphs.append((self._convTagRule(tagRule), morph))
             
+        def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set()):
+            """
+            Získání tvarů.
+            
+            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
+                hodnoty, které musí mít dané pravidlo tvaro, aby se bral v úvahu daný tvar.
+                Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
+                Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
+                nastavím filtr na: set(POS.NOUN)
+            :type valFilter: Set[MorphCategory]
+            :param notValFilter: Stejné jako valFilter s tím rozdílem, že dané hodnoty nesmí pravidlo tvaru obsahovat.
+            :type notValFilter:Set[MorphCategory]
+            :return: Množinu dvojic (pravidlo, tvar).
+            :rtype: Set[(dict(),str)]
+            """
+            
+            morphs=set()
+            
+            for r, m in self._morphs:
+                try:
+                    if all( r[f.category()]==f.lntrfValue for f in valFilter) \
+                        and all( f.category() not in r or r[f.category()]!=f.lntrfValue for f in notValFilter):
+                        morphs.add(m)
+                except KeyError:
+                    #neobsahuje danou mluvnickou kategorii
+                    pass
+
+            return morphs  
+            
         @staticmethod
         def _convTagRule(tagRule):
             """
@@ -160,7 +189,7 @@ class MorphoAnalyzerLibma(object):
             
             self._tagRules.append(self._convTagRule(tagRule))
             
-        def getAll(self, morphCategory: MorphCategories, valFilter: Set[MorphCategory] =None) -> Set[MorphCategory]:
+        def getAll(self, morphCategory: MorphCategories, valFilter: Set[MorphCategory] =set()) -> Set[MorphCategory]:
             """
             Vrácení všech možných hodnot dané mluvnické kategorie.
             
@@ -263,7 +292,7 @@ class MorphoAnalyzerLibma(object):
             """
             self._groups.append(group)
             
-        def getAll(self, morphCategory: MorphCategories, valFilter: Set[MorphCategory] =None) -> Set[MorphCategory]:
+        def getAll(self, morphCategory: MorphCategories, valFilter: Set[MorphCategory] =set()) -> Set[MorphCategory]:
             """
             Vrácení všech možných hodnot dané mluvnické kategorie. Ve všech skupinách
             získaných při analýze slova.
@@ -286,6 +315,16 @@ class MorphoAnalyzerLibma(object):
                 values |= g.getAll(morphCategory, valFilter)
 
             return values
+        
+        @property
+        def groups(self):
+            """
+            Skupiny z morfoligické analýzy.
+            
+            :rtype: List(MAWordGroup)
+            """
+            
+            return self._groups
             
         @property
         def word(self):

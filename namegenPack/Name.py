@@ -411,6 +411,20 @@ class Name(object):
         :type analyzedTokens: List(Grammar.AnalyzedToken)
         """
         
+        #získáme tvary jednotlivých slov
+        genMorphsForWords=[]
+        for word, aToken in enumerate(zip(self._words, analyzedTokens)):
+            if aToken.morph:
+                #vybereme filtrovací atributy přislušného terminálu
+                #abychom mohli vybrat naše požadované tvary.
+                fA=aToken.matchingTerminal._fillteringAttr
+                
+                
+                
+            else:
+                genMorphsForWords.append(None)
+        
+        
         
         
 
