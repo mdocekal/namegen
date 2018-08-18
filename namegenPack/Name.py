@@ -10,180 +10,16 @@ from enum import Enum
 import sys
 
 from namegenPack import Errors
-from .morpho.Morphodita import Morphodita
-from namegenPack import Grammar
 import logging
-from namegenPack.morpho.MorphoAnalyzer import MorphoAnalyze, MorphoAnalyzer
+
 from namegenPack.morpho import MorphCategories
+from namegenPack.morpho.MorphCategories import Case
+
 from typing import List
-from namegenPack.morpho.MorphCategories import StylisticFlag, Case
-from namegenPack.Grammar import Terminal
+import namegenPack.Grammar
 
+from namegenPack.Word import Word, WordTypeMark
 
-class WordTypeMark(Enum):
-    """
-    Značka druhu slova ve jméně.
-    """
-    GIVEN_NAME="G"                  #Křestní jméno. Příklad: Petra
-    SURNAME="S"                     #Příjmení. Příklad: Novák
-    LOCATION="L"                    #Lokace. Příklad: Brno
-    ROMAN_NUMBER="R"                #Římská číslice. Příklad: IV
-    PREPOSITION="7"                 #Předložka.
-    DEGREE_TITLE="T"                #Titul. Příklad: prof.
-    INITIAL_ABBREVIATION="I"        #Iniciálová zkratka. Příklad H. ve jméně John H. White
-    UNKNOWN="U"                     #Neznámé
-
-    def __str__(self):
-        return self.value
-    
-
-class Word(object):
-    """
-    Reprezentace slova.
-    """
-    
-    class WordException(Errors.ExceptionMessageCode):
-        """
-        Vyjímka se zprávou a kódem a slovem, který ji vyvolal.
-        """
-        def __init__(self, word, code, message=None):
-            """
-            Konstruktor pro vyjímku se zprávou a kódem.
-            
-            :param word: Pro toto slovo se generuje tato vyjímka
-            :type word: Word
-            :param code: Kód chyby. Pokud je uveden pouze kód, pak se zpráva automaticky na základě něj doplní.
-            :param message: zpráva popisující chybu
-            """
-            self.word=word
-            
-            super().__init__(code, message)
-    
-    class WordCouldntGetInfoException(WordException):
-        """
-        Vyjímka symbolizující, že se nepovedlo získat mluvnické kategorie ke slovu.
-        """
-        pass
-    
-    class WordNoMorphsException(WordException):
-        """
-        Vyjímka symbolizující, že se nepovedlo získat ani jeden tvar slova.
-        """
-        pass
-    
-    class WordMissingCaseException(WordException):
-        """
-        Vyjímka symbolizující, že se nepovedlo získat některý pád.
-        """
-        pass
-    
-    ma=None
-    
-    def __init__(self, w):
-        """
-        Kontruktor slova.
-        
-        :param w: Řetězcová reprezentace slova.
-        :type w: String
-        """
-        self._w=w
-        
-    @classmethod
-    def setMorphoAnalyzer(cls, ma:MorphoAnalyzer):
-        """
-        Přiřazení morfologického analyzátoru.
-        
-        :param ma: Morfologický analyzátor, který se bude používat k získávání informací o slově.
-        :type ma: MorphoAnalyzer
-        """
-        
-        cls.ma=ma
-        
-    
-    @property
-    def info(self) -> MorphoAnalyze:
-        """
-        Vrací informace o slově. V podobě morfologické analýzy.
-        
-        :returns: Morfologická analýza slova.
-        :rtype: MorphoAnalyze
-        :raise WordCouldntGetInfoException: Problém při analýze slova.
-        """
-        if self.ma is None:
-            #nemohu provést morfologickou analýzu bez analyzátoru
-            raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
-                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self._w)
-        
-        #získání analýzy
-        a=self.ma.analyze(self._w)
-        if a is None:
-            raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
-                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+self._w)
-                
-        return a
-    
-    def morphs(self, analyzedToken: Grammar.AnalyzedToken):
-        """
-        Vygeneruje tvary slova s ohledem na výsledky ze syntaktické analýzy tohoto slova, které
-        jsou uložené v analyzedToken.
-        
-        :param analyzedToken: Token uchovávající výsledky syntaktické analýzy.
-        :type analyzedToken: Grammar.AnalyzedToken
-        :return: Pokud se nemá ohýbat, tak pouze slovo. Jinak vrací možné tvary i s jejich pravidly.
-                Set[Tuple[MARule,str]]    str je tvar
-        :rtype: str | Set[Tuple[MARule,str]]
-        :raise WordNoMorphsException: pokud se nepodaří získat tvary.
-        """
-        if analyzedToken.morph:
-            #analýza řekla, že se má ohýbat
-            #nejprve zjistíme zda-li jsme z analýzy dostali dalši informace o tvarech
-            #v podobě filtrú, kterě použijeme pro získáni tvarů
-            filters=set(a.value for a in analyzedToken.matchingTerminal.fillteringAttr)
-            
-            if analyzedToken.matchingTerminal.type.isPOSType():
-                #pro práci s morfologickou analýzou musí byt POS type
-                filters.add(analyzedToken.matchingTerminal.type.toPOS)    #vložíme požadovaný tvar do filtru
-                
-                #pro to abychom vybrali správné tvary, tak se pokusíme získat další filtry na
-                #základě morfologické analýzy
-                #Například pokud víme, že máme přídavné jméno rodu středního v jednotném čísle
-                #a morf. analýza nám řekne, že přídavné jméno je prvního stupně, tak tuto informaci zařadíme
-                #k filtrům pro výběr tvarů
-                
-                for _, morphCategoryValues in self.info.getAll(filters):
-                    if len(morphCategoryValues):
-                        #daná kategorie má pouze jednu možnou hodnotu použijeme ji jako filtr
-                        filters.add(next(iter(morphCategoryValues)))
-                
-                #na základě filtrů získáme všechny možné tvary
-                #nechceme hovorové tvary ->StylisticFlag.COLLOQUIALLY
-                
-                tmp=self.info.getMorphs(filters, set(StylisticFlag.COLLOQUIALLY))
-                if tmp is None or len(tmp)<1:
-                    raise self.WordNoMorphsException(self, Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED,
-                        Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED)+"\t"+self._w)
-                return tmp
-                
-
-            #pokud neni POS type nemůžeme ohýbat
-            
-        #neohýbáme, prostě jen vrátíme slovo
-        return self._w
-    
-    def __repr__(self):
-        return self._w
-    
-    def __str__(self):
-        return self._w
-    
-    def __getitem__(self, key):
-        return self._w[key]
-    
-    def __len__(self): 
-        return len(self._w)
-
-
- 
 class Name(object):
     """
     Reprezentace celého jména osoby či lokace.
@@ -263,7 +99,7 @@ class Name(object):
             #lokace -> ponecháváme
             return
         try:
-            tokens=Grammar.Lex.getTokens(self)
+            tokens=namegenPack.Grammar.Lex.getTokens(self)
 
             #zkusíme zpochybnit typ jména
             changeTo=None
@@ -271,9 +107,9 @@ class Name(object):
             #Příjmení jak se zdá může být i přídavné jméno (`Internetová jazyková příručka <http://prirucka.ujc.cas.cz/?id=320#nadpis3>`_.)
             
             for token in reversed(tokens):
-                if token.type==Grammar.Token.Type.ANALYZE:
+                if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
                     #získáme možné mluvnické kategorie
-                    analyze=token.type.info()
+                    analyze=token.word.info()
                     posCat=analyze.getAllForCategory(MorphCategories.POS)
                     if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
                         if token.word[-3:] == "ová":
@@ -286,7 +122,7 @@ class Name(object):
                 #příjmení nekončí na ová
                 #zjistíme jakého rodu je první podstatné nebo přídavné jméno (křestní jméno)
                 for token in tokens:
-                    if token.type==Grammar.Token.Type.ANALYZE:
+                    if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
                         #získáme možné mluvnické kategorie
                         analyze=token.type.info()
                         posCat=analyze.getAllForCategory(MorphCategories.POS)
@@ -331,13 +167,13 @@ class Name(object):
         """
         
         #TODO: Jedna se jen o docasne reseni
-        tokens=Grammar.Lex.getTokens(self)
+        tokens=namegenPack.Grammar.Lex.getTokens(self)
         
         marks=[]
         
         lastGivenName=None
         for token in tokens:
-            if token.type==Grammar.Token.Type.N or token.type==Grammar.Token.Type.A:
+            if token.type==namegenPack.Grammar.Token.Type.N or token.type==namegenPack.Grammar.Token.Type.A:
                 #podstatné nebo přídavné jméno
                 if self._type==self.Type.LOCATION:
                     marks.append(WordTypeMark.LOCATION)
@@ -345,13 +181,13 @@ class Name(object):
                     marks.append(WordTypeMark.GIVEN_NAME)
                     #uchováváme se poslední pozici křestního jména, jelikož poslední se stane příjmením
                     lastGivenName=len(marks)-1
-            elif token.type==Grammar.Token.Type.INITIAL_ABBREVIATION:
+            elif token.type==namegenPack.Grammar.Token.Type.INITIAL_ABBREVIATION:
                 marks.append(WordTypeMark.INITIAL_ABBREVIATION)
-            elif token.type==Grammar.Token.Type.ROMAN_NUMBER:
+            elif token.type==namegenPack.Grammar.Token.Type.ROMAN_NUMBER:
                 marks.append(WordTypeMark.ROMAN_NUMBER)
-            elif token.type==Grammar.Token.Type.DEGREE_TITLE:
+            elif token.type==namegenPack.Grammar.Token.Type.DEGREE_TITLE:
                 marks.append(WordTypeMark.DEGREE_TITLE)
-            elif token.type==Grammar.Token.Type.R:
+            elif token.type==namegenPack.Grammar.Token.Type.R:
                 marks.append(WordTypeMark.PREPOSITION)
             else:
                 marks.append(WordTypeMark.UNKNOWN)
@@ -426,12 +262,12 @@ class Name(object):
         
         return (words, separators)
     
-    def genMorphs(self, analyzedTokens:List(Grammar.AnalyzedToken)):
+    def genMorphs(self, analyzedTokens:List[namegenPack.Grammar.AnalyzedToken]):
         """
-        Na základě odpovídajících analyzovaných tokenů slovům ve jméně vygeneruje tvary jména.
+        Na základě slovům odpovídajících analyzovaných tokenů ve jméně vygeneruje tvary jména.
         
         :param analyzedTokens: Analyzované tokeny, získané ze syntaktické analýzy tohoto jména.
-        :type analyzedTokens: List(Grammar.AnalyzedToken)
+        :type analyzedTokens: List[namegenPack.Grammar.AnalyzedToken]
         :return:  Vygenerované tvary.
         :rtype: list(str)
         :raise Word.WordNoMorphsException: Pokud se nepodaří získat tvary u nějakého slova.
@@ -440,8 +276,8 @@ class Name(object):
         
         #získáme tvary jednotlivých slov
         genMorphsForWords=[]
-        for word, aToken in enumerate(zip(self._words, analyzedTokens)):
-            genMorphsForWords.append(word.morphs(aToken))
+        for word, aToken in zip(self._words, analyzedTokens):
+            genMorphsForWords.append(word.morphs(aToken.morphCategories))
         
         #z tvarů slov poskládáme tvary jména
         #Set[Tuple[MARule,str]]
@@ -457,9 +293,13 @@ class Name(object):
                     notMatch=True
                     for maRule, wordMorph in genMorphsForWords[i]:
                         #najdeme tvar slova pro daný pád
-                        #TODO: více tvarů pro daný pád
-                        if maRule[MorphCategories.Case]==c:
-                            morph+=wordMorph+"["+maRule.lntrf+"]#"+aToken.matchingTerminal.getAttribute(Terminal.Attribute.Type.TYPE)
+
+                        if maRule[MorphCategories.MorphCategories.CASE]==c:
+                            if not notMatch:
+                                #můžeme mít více tvarů daného slova
+                                #toto je jeden z dalších tvarů
+                                morph += " / "
+                            morph+=wordMorph+"["+maRule.lntrf+"]#"+aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)
                             notMatch=False
                             break
                         
@@ -470,7 +310,7 @@ class Name(object):
                                     Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+c.value+"\t"+str(word))
                 else:
                     #neohýbáme
-                    morph+=str(word)+"#"+aToken.matchingTerminal.getAttribute(Terminal.Attribute.Type.TYPE)
+                    morph+=str(word)+"#"+aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)
                 
                 #přidání oddělovače slov
                 if sepIndex < len(self._separators):
@@ -533,7 +373,28 @@ class NameReader(object):
         Počet chybných nenačtených jmen
         """
         return self._errorCnt
+    
+    def allWords(self, stringRep=False):
+        """
+        Slova vyskytující se ve všech jménech.
         
+        :param stringRep: True v str reprezentaci. False jako Word objekt.
+        :type stringRep: bool
+        :return Množina všech slov ve jménech.
+        :rtype: Set[Word] | Set[str]
+        """
+        words=set()
+        if stringRep:
+            for name in self.names:
+                for w in name:
+                    words.add(str(w))
+        else:
+            for name in self.names:
+                for w in name:
+                    words.add(w)
+        
+        return words
+    
     def __iter__(self):
         """
         Iterace přes všechna jména.

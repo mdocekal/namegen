@@ -14,14 +14,125 @@ import os
 from argparse import ArgumentParser
 import traceback
 from namegenPack import Errors
-from namegenPack.ConfigManager import ConfigManager
 import logging
-from namegenPack.Grammar import Grammar, Lex
+import namegenPack.Grammar
+import namegenPack.morpho.MorphoAnalyzer
+import configparser
 
 from namegenPack.Name import *
 
 outputFile = sys.stdout
 
+
+
+class ConfigManagerInvalidException(Errors.ExceptionMessageCode):
+    """
+    Nevalidní konfigurace
+    """
+    pass
+
+class ConfigManager(object):
+    """
+    Tato třída slouží pro načítání konfigurace z konfiguračního souboru.
+    """
+
+    sectionDataFiles="DATA_FILES"
+    sectionMorphoAnalyzer="MA"
+    
+    
+    
+    
+    def __init__(self):
+        """
+        Inicializace config manažéru.
+        """
+        
+        self.configParser = configparser.ConfigParser()
+    
+        
+    def read(self, filesPaths):
+        """
+        Přečte hodnoty z konfiguračních souborů. Také je validuje a převede do jejich datových typů.
+        
+        :param filesPaths: list s cestami ke konfiguračním souborům.
+        :returns: Konfigurace.
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+        try:
+            self.configParser.read(filesPaths)
+        except configparser.ParsingError as e:
+            raise ConfigManagerInvalidException(Errors.ErrorMessenger.CODE_INVALID_CONFIG, "Nevalidní konfigurační soubor: "+str(e))
+                                       
+        
+        return self.__transformVals()
+        
+        
+    def __transformVals(self):
+        """
+        Převede hodnoty a validuje je.
+        
+        :returns: dict -- ve formátu jméno sekce jako klíč a k němu dict s hodnotami.
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+        result={}
+
+        result[self.sectionDataFiles]=self.__transformDataFiles()
+        result[self.sectionMorphoAnalyzer]=self.__transformMorphoAnalyzer()
+        
+        return result
+    
+    def __transformMorphoAnalyzer(self):
+        """
+        Převede hodnoty pro MA a validuje je.
+        
+        :returns: dict -- ve formátu jméno prametru jako klíč a k němu hodnota parametru
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+
+        result={
+            "PATH_TO":self.configParser[self.sectionMorphoAnalyzer]["PATH_TO"]
+            }
+
+        return result
+    
+    def __transformDataFiles(self):
+        """
+        Převede hodnoty pro DATA_FILES a validuje je.
+        
+        :returns: dict -- ve formátu jméno prametru jako klíč a k němu hodnota parametru
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+
+        result={
+            "TAGGER":None,
+            "DICTIONARY":None,
+            "GRAMMAR_MALE":None,
+            "GRAMMAR_FEMALE":None,
+            "GRAMMAR_LOCATIONS":None
+            }
+        self.__loadPathArguments(self.configParser[self.sectionDataFiles], result)
+
+        return result
+    
+    def __loadPathArguments(self, parConf, result):
+        """
+        Načtení argumentů obsahujícíh cesty.
+
+        :param parConf: Sekce konfiguračního souboru v němž hledáme naše hodnoty.
+        :type parConf: dict
+        :param result: Zde se budou načítat cesty. Názvy klíčů musí odpovídat názvům argumentů.
+        :type result: dict
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+        
+        for k in result.keys():
+            if parConf[k]: 
+                if parConf[k][0]!="/":
+                    result[k]=os.path.dirname(os.path.realpath(__file__))+"/"+parConf[k]
+                else:
+                    result[k]=parConf[k]
+            else:
+                raise ConfigManagerInvalidException(Errors.ErrorMessenger.CODE_INVALID_CONFIG, "Nevalidní konfigurační soubor. Chybí "+self.sectionDataFiles+" -> "+k)
 
 
 class ArgumentParserError(Exception): pass
@@ -73,29 +184,30 @@ def main():
         configManager=ConfigManager()
         configAll=configManager.read(os.path.dirname(os.path.realpath(__file__))+'/namegen_config.ini')
         
-        #inicializace morphodity (lemmatizace, info o slově)
-        Word.initMorphoDita(configAll[configManager.sectionDataFiles]["TAGGER"], configAll[configManager.sectionDataFiles]["DICTIONARY"])
         
+
         #načtení gramatik
-        
         try:
-            grammarMale=Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"])
+            grammarMale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"])
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"]+": "+e.message)
         
         try:
-            grammarFemale=Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"])
+            grammarFemale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"])
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"]+": "+e.message)
         
         try:
-            grammarLocations=Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"])
+            grammarLocations=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"])
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_PERSONS"]+": "+e.message)
 
         #načtení jmen pro zpracování
         namesR=NameReader(args.input[0])
         
+        
+        #přiřazení morfologického analyzátoru
+        Word.setMorphoAnalyzer(namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], namesR.allWords(True)))
         
         #čítače chyb
         errorsOthersCnt=0   
@@ -121,14 +233,14 @@ def main():
                     
                     #rules a aTokens může obsahovat více než jednu možnou derivaci
                     if name.type==Name.Type.LOCATION:
-                        _, aTokens=grammarLocations.analyse(Lex.getTokens(name))
+                        _, aTokens=grammarLocations.analyse(namegenPack.Grammar.Lex.getTokens(name))
                     elif name.type==Name.Type.MALE:
-                        _, aTokens=grammarMale.analyse(Lex.getTokens(name))
+                        _, aTokens=grammarMale.analyse(namegenPack.Grammar.Lex.getTokens(name))
                     else:
-                        _, aTokens=grammarFemale.analyse(Lex.getTokens(name))
-  
+                        _, aTokens=grammarFemale.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                    
                     for aT in aTokens:
-                        morphs=name.genMorphs([t.morph for t in aT])
+                        morphs=name.genMorphs(aT)
                         print(str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs)), file=outF)
                         
                 except (Word.WordException) as e:
@@ -145,7 +257,7 @@ def main():
                             errorWords.add(("", e.word))
                             pass
                         
-                except Grammar.Grammar.NotInLanguage as e:
+                except namegenPack.Grammar.Grammar.NotInLanguage as e:
                     errorsGrammerCnt+=1
                     print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR)+\
                               "\t"+str(name)+"\t"+str(name.type)+"\t"+e.message, file=sys.stderr)
@@ -173,7 +285,8 @@ def main():
             with open(args.error_words, "w") as errWFile:
                 for m, w in errorWords:#označení typu slova ve jméně(jméno, příjmení), společně se jménem
                     try:
-                        print(str(w)+"\t"+"j"+str(m)+"\t"+Morphodita.Morphodita.transInfoToLNTRF(w.info), file=errWFile)
+                        #TODO: +"\t"+ w.info. Morphodita.Morphodita.transInfoToLNTRF(w.info), file=errWFile)
+                        print(str(w)+"\t"+"j"+str(m))
                     except Word.WordException:
                         #no info
                         print(str(w), file=errWFile)

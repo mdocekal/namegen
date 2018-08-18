@@ -11,20 +11,73 @@ from abc import ABC, abstractmethod, abstractclassmethod, abstractproperty
 from subprocess import Popen, PIPE
 from ..Errors import ExceptionMessageCode, ErrorMessenger
 from namegenPack.morpho.MorphCategories import *
-    
+import collections
+
 from typing import Set, Dict, Tuple
 
-class MARule(dict):
+class MARule(collections.Mapping):
     """
     Reprezentace pravidla tvaru z morfologické analýzy.
     Pravidlo reprezentuje mluvnické kategorie, které ma dané slovo.
     """
+    def __init__(self, *args, **kwargs):
+        self._d = dict(*args, **kwargs)
+        self._hash = None
+
+    def __iter__(self):
+        return iter(self._d)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __getitem__(self, key):
+        return self._d[key]
+
+    def __hash__(self):
+        if self._hash is None:
+            self._hash = 0
+            for pair in self._d.items():
+                self._hash ^= hash(pair)
+        return self._hash
     
+    def __str__(self):
+        return str(self._d)
+    
+    def __rept__(self):
+        return repr(self._d)
+    
+    @property
     def lntrf(self):
         """
         Ve formátu lntrf.
         """
-
+        print(self)
+        print(self[MorphCategories.POS].lntrf)
+        print({
+            #podstané jméno zjistím rod, číslo, pád
+            POS.NOUN: self[MorphCategories.GENDER].lntrf \
+                +self[MorphCategories.NUMBER].lntrf \
+                +self[MorphCategories.CASE].lntrf, 
+            #přídavné jméno zjistím negaci,rod, číslo, pád, stupeň
+            POS.ADJECTIVE: 1,
+            #zájméno zjistime rod, číslo, pád
+            POS.PRONOUN: 2, 
+            #číslovka rod, číslo, pád
+            POS.NUMERAL: 3, 
+            #sloveso negace, osoba, číslo
+            POS.VERB: 4, 
+            #příslovce negace stupeň
+            POS.ADVERB: 5, 
+            #předložka pád
+            POS.PREPOSITION: 6, 
+            #spojka, nic
+            POS.CONJUNCTION: 7,
+            #částice, nic
+            POS.PARTICLE: 8,
+            #citoslovce, nic
+            POS.INTERJECTION: 9,
+            }[self[MorphCategories.POS]])
+        #TODO continue
         return self[MorphCategories.POS].lntrf+{
             #podstané jméno zjistím rod, číslo, pád
             POS.NOUN: self[MorphCategories.GENDER].lntrf \
@@ -238,11 +291,11 @@ class MorphoAnalyzerLibma(object):
             """
             
             morphs=set()
-            
+
             for r, m in self._morphs:
                 try:
-                    if all( r[f.category()]==f.lntrfValue for f in valFilter) \
-                        and all( f.category() not in r or r[f.category()]!=f.lntrfValue for f in notValFilter):
+                    if all(r[f.category()]==f for f in valFilter) \
+                        and all( f.category() not in r or r[f.category()]!=f for f in notValFilter):
 
                         #úprava velikosti počátečního písmene tvaru na základě původního slova
                         if self._word[0].isupper():
@@ -272,12 +325,18 @@ class MorphoAnalyzerLibma(object):
             #    {"k":"1","g":"F","n":"P","c":"1"}
             
             
-            res=MARule
+            res=dict()
             for i in range(0, len(tagRule)-1, 2):
-                mCategory=MorphCategories.fromLntrf(tagRule[i])
-                res[mCategory]=mCategory.createCategoryFromLntrf(tagRule[i+1])
-                
-            return res
+                try:
+                    mCategory=MorphCategories.fromLntrf(tagRule[i])
+                    res[mCategory]=mCategory.createCategoryFromLntrf(tagRule[i+1])
+                except (MorphCategoryInvalidException, MorphCategoryInvalidValueException):
+                    #neznámá kategorie, či hodnota kategorie
+                    #pravděpodobně se jedná o kategorii, která nás nezajíma
+                    #tak to vynecháme
+                    pass
+
+            return MARule(res)
             
         def addTagRule(self, tagRule):
             """
@@ -307,12 +366,12 @@ class MorphoAnalyzerLibma(object):
             for r in self._tagRules:
                 try:
                     if all( r[f.category()]==f for f in valFilter):
-                        for morphCat, morphCatVal in r:
+                        for morphCat, morphCatVal in r.items():
                             try:
                                 values[morphCat].add(morphCatVal)
                             except KeyError:
                                 #první vložení hodnoty dané kategorie
-                                values[morphCat]=set(morphCatVal)
+                                values[morphCat]={morphCatVal}
                                 
                 except KeyError:
                     #neobsahuje danou mluvnickou kategorii
@@ -457,7 +516,7 @@ class MorphoAnalyzerLibma(object):
             
             for g in self._groups:
                 
-                for morphCat, morphCatValues in g.getAll(valFilter):
+                for morphCat, morphCatValues in g.getAll(valFilter).items():
                     try:
                         values[morphCat]=values[morphCat] | morphCatValues
                     except KeyError:
@@ -558,14 +617,13 @@ class MorphoAnalyzerLibma(object):
         """
         
         #získání informací o slovech
-        
-        
+
         p = Popen([pathToMa, "-F", "-m"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        output, _ = p.communicate(str.encode(("\n".join(words))+"\n")) #vrací stdout a stderr
         
+        output, err = p.communicate(str.encode(("\n".join(words))+"\n")) #vrací stdout a stderr
         #zkontrolujeme návratový kód
         rc = p.returncode
-        
+
         if rc!=0:
             #selhání analyzátoru
             raise MorphoAnalyzerException(ErrorMessenger.CODE_MA_FAILURE)
@@ -585,7 +643,7 @@ class MorphoAnalyzerLibma(object):
         self._wordDatabase={}
         
         actWordGroup=None   #obsahuje data k aktuálně parsované skupině
-        
+
         for line in output.splitlines():
             #rozdělení řádku
             parts=line.strip().split()
@@ -610,7 +668,7 @@ class MorphoAnalyzerLibma(object):
                     #a znovu vložíme
                     self._wordDatabase[parts[1]].addGroup(actWordGroup)
                     
-                
+            
 
             elif parts[0][:3]=="<l>":
                 #lemma

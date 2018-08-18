@@ -62,7 +62,7 @@ class MorphCategory(Enum):
         return {e:str(e.value) for e in cls}
     
     @staticmethod
-    def category() -> MorphCategories:
+    def category():
         """
         Morfologická kategorie.
         
@@ -71,6 +71,7 @@ class MorphCategory(Enum):
         """
         raise NotImplementedError
 
+    @property
     def lntrf(self):
         """
         V lntrf formátu i s označením kategorie.
@@ -78,7 +79,7 @@ class MorphCategory(Enum):
         """
         return self.category().lntrf+self.lntrfValue
     
-    
+    @property
     def lntrfValue(self):
         """
         V lntrf formátu, pouze hodnota.
@@ -98,7 +99,7 @@ class MorphCategory(Enum):
         :rtype: MorphCategory
         :raise MorphCategoryInvalidValueException: On invalid value.
         """
-        
+
         try:
             return {v: k for k, v in cls._mappingLntrf().items()}[val]
         except KeyError:
@@ -186,17 +187,17 @@ class MorphCategories(Enum):
         :rtype: MorphCategory
         :raise MorphCategoryInvalidValueException: On invalid value.
         """
-        
+ 
         return {
-            self.POS: POS.fromLntrf(val),
-            self.GENDER: Gender.fromLntrf(val),
-            self.NUMBER: Number.fromLntrf(val),
-            self.CASE: Case.fromLntrf(val),
-            self.NEGATION: Negation.fromLntrf(val),
-            self.DEGREE_OF_COMPARISON: DegreeOfComparison.fromLntrf(val),
-            self.PERSON: Person.fromLntrf(val),
-            self.STYLISTIC_FLAG:
-            }[self.value]
+            self.POS: POS.fromLntrf,
+            self.GENDER: Gender.fromLntrf,
+            self.NUMBER: Number.fromLntrf,
+            self.CASE: Case.fromLntrf,
+            self.NEGATION: Negation.fromLntrf,
+            self.DEGREE_OF_COMPARISON: DegreeOfComparison.fromLntrf,
+            self.PERSON: Person.fromLntrf,
+            self.STYLISTIC_FLAG: StylisticFlag.fromLntrf
+            }[self](val)
 
     
 class POS(MorphCategory):
@@ -234,7 +235,7 @@ class POS(MorphCategory):
     """citoslovce"""
     
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.POS
         
     
@@ -260,7 +261,7 @@ class Gender(MorphCategory):
     
     
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.GENDER
 
     
@@ -282,7 +283,7 @@ class Number(MorphCategory):
     """hromadné označení členů rodiny (Novákovi)"""
     
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.NUMBER
 
             
@@ -314,7 +315,7 @@ class Case(MorphCategory):
     
     
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.CASE
 
     
@@ -330,7 +331,7 @@ class Negation(MorphCategory):
     """negace"""
    
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.NEGATION
 
     
@@ -350,7 +351,7 @@ class DegreeOfComparison(MorphCategory):
    
     
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.DEGREE_OF_COMPARISON
     
 class Person(MorphCategory):
@@ -371,7 +372,7 @@ class Person(MorphCategory):
     """první nebo druhá nebo třetí"""
 
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.PERSON
 
 
@@ -407,5 +408,5 @@ class StylisticFlag(MorphCategory):
     """zastarale"""
 
     @staticmethod
-    def _category():
+    def category():
         return MorphCategories.STYLISTIC_FLAG

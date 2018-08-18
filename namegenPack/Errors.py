@@ -52,7 +52,8 @@ class ErrorMessenger(object):
     CODE_MA_FAILURE=19
     CODE_MORPH_ENUM_INVALID_CATEGORY=20
     CODE_MORPH_ENUM_INVALID_VALUE=21
-    
+    CODE_GRAMMAR_INVALID_ARGUMENT=22
+    CODE_GRAMMAR_ARGUMENT_REPEAT=23
     
     CODE_UNKNOWN_ERROR=100
 
@@ -81,6 +82,8 @@ class ErrorMessenger(object):
             CODE_MA_FAILURE:"Morfologický analyzátor selhal.",
             CODE_MORPH_ENUM_INVALID_CATEGORY:"Neznámá morfologická kategorie: {}",
             CODE_MORPH_ENUM_INVALID_VALUE:"Neznámá hodnota pro morfologickou kategorii {}: {}",
+            CODE_GRAMMAR_INVALID_ARGUMENT:"V souboru s gramatikou je nevalidní argument: {}.",
+            CODE_GRAMMAR_ARGUMENT_REPEAT:"V souboru s gramatikou se vícekrát opakuje argument u jednoho terminálu: {}.",
             
             CODE_UNKNOWN_ERROR:"Neznámá chyba."  ,
     }
