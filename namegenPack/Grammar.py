@@ -10,7 +10,7 @@ from namegenPack import Errors
 import re
 from typing import Set
 from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
-    MorphCategories, POS, StylisticFlag
+    MorphCategories, POS, StylisticFlag, Case
 from enum import Enum
 from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
@@ -93,8 +93,9 @@ class Terminal(object):
             
             GENDER="g"  #rod slova musí být takový    (filtrovací atribut)
             NUMBER="n"  #mluvnická kategorie číslo. Číslo slova musí být takové. (filtrovací atribut)
+            CASE="c"    #pád slova musí být takový    (filtrovací atribut)
             TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
-            #Pokud přidáte nový je třeba upravit Attribute.createFrom
+            #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
 
             @property
             def isFiltering(self):
@@ -105,7 +106,7 @@ class Terminal(object):
                 :rtype: bool
                 """
                 #!POZOR filtrovací atributy musí mít value typu MorphCategory
-                fil=set([self.GENDER, self.NUMBER])
+                fil=set([self.GENDER, self.NUMBER, self.CASE])
                 
                 return self in fil
         
@@ -120,7 +121,7 @@ class Terminal(object):
             """
             
             self._type=attrType
-            if self.type.isFiltering and isinstance(val, MorphCategory):
+            if self.type.isFiltering and not isinstance(val, MorphCategory):
                 #u filtrovacích atributů musí být hodnota typu MorphCategory
                 raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
             self._val=val
@@ -151,10 +152,12 @@ class Terminal(object):
                 v=Gender.fromLntrf(aV)
             elif cls.Type.NUMBER==t:
                 v=Number.fromLntrf(aV)
+            elif cls.Type.CASE==t:
+                v=Case.fromLntrf(aV)   
             else:
                 v=WordTypeMark(aV)
             
-            return cls.Attribute(t,v)
+            return cls(t,v)
         
         @property
         def type(self):
@@ -476,14 +479,16 @@ class AnalyzedToken(object):
 
         Příklad: Analýzou jsme zjistili, že se může jednat pouze o podstatné jméno rodu mužského v jednotném čísle.
         
-        Pozor! Je zakázán výběr StylisticFlag.COLLOQUIALLY a také ignorujeme pády. Tyto dodatečné podmínky jsou přímo uzpůsobeny pro
-        použití výsledku ke generování tvarů.
+        Pozor! Je zakázán výběr StylisticFlag.COLLOQUIALLY
+        Tyto dodatečné podmínky jsou přímo uzpůsobeny pro použití výsledku ke generování tvarů.
         
         :rtype: Set[MorphCategory]
         """
         
         #nejprve vložíme filtrovací atributy
         categories=set(a.value for a in self.matchingTerminal.fillteringAttr)
+        
+        
         #můžeme získat další kategorie na základě morfologické analýzy
         if self.matchingTerminal.type.isPOSType:
             #pro práci s morfologickou analýzou musí byt POS type
@@ -493,13 +498,14 @@ class AnalyzedToken(object):
             #a morf. analýza nám řekne, že přídavné jméno může být pouze prvního stupně, tak tuto informaci zařadíme
             #k filtrům
                 
-            for category, morphCategoryValues in self._token.word.info.getAll(categories).items():
+            for _, morphCategoryValues in self._token.word.info.getAll(categories).items():
                 if len(morphCategoryValues)==1:
                     #daná kategorie má pouze jednu možnou hodnotu použijeme ji jako filtr
                     catVal=next(iter(morphCategoryValues))
-                    if catVal!=StylisticFlag.COLLOQUIALLY and category != MorphCategories.CASE:# hovorové a pády nechceme
+                    if catVal!=StylisticFlag.COLLOQUIALLY:# hovorové a pády nechceme
                         categories.add(catVal)
     
+        
         return categories
 
 class InvalidGrammarException(Errors.ExceptionMessageCode):
@@ -601,14 +607,14 @@ class Rule(object):
         attrTypes=set() #pro kontorolu opakujicich se typu
         if mGroups.group(3):
             #terminál má argumenty
-            for a in mGroups.group(3).split():
-                t=Terminal.Attribute.createFrom(a)
-                if t.type in attrTypes:
+            for a in mGroups.group(3).split(","):
+                ta=Terminal.Attribute.createFrom(a)
+                if ta.type in attrTypes:
                     #typ argumentu se opakuje
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT, \
                                                       Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT).format(a))
-                attrTypes.add(t.type)
-                attrs.add(t)
+                attrTypes.add(ta.type)
+                attrs.add(ta)
             
         return Terminal(termType, attrs)
         
@@ -819,9 +825,13 @@ class Grammar(object):
                 #Zbytek řádků představuje pravidla. Vždy jedno pravidlo na řádku.
                 self._rules=set()
                 for line in fG:
+                    line=self._procGFLine(line)
+                    if len(line)==0:
+                        #prázdné přeskočíme
+                        continue
                     #formát pravidla: Neterminál -> Terminály a neterminály
                     #přidáváme nová pravidla a zároveň tvoříme množinu terminálů a neterminálů
-                    self._rules.add(Rule(self._procGFLine(line), self._terminals, self._nonterminals))
+                    self._rules.add(Rule(line, self._terminals, self._nonterminals))
                     
                 
                 if len(self._rules) == 0:
@@ -921,64 +931,57 @@ class Grammar(object):
             else:
                 #neterminál na zásobníku
                 
-                if morph:
-                    #zatím jsme mohli ohýbat, ale to se může nyní změnit
-                    morph=s!=self.NON_GEN_MORPH_SIGN  #příznak toho, že v tomto stromu na tomto místě se mají/nemají ohýbat slova
+                
 
                 #vybereme všechna možná pravidla pro daný token na vstupu a symbol na zásobníku
+                
                 actRules=self._table[s.val][token]  #díky použité třídě ParsingTableSymbolRow si můžeme dovolit použít přímo token
                 
                 if not actRules:
                     #v gramatice neexistuje vhodné pravidlo
+                    
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
                                                 s.val, str(token), ", ".join([str(r) for r in rules])))
                 
-                if len(actRules)==1:
-                    #pouze jedno aplikovatelné pravidlo
-                    #není nutné rekurzivní volání, stačí jen provést derivaci a vložit pravidlo na zásobník
-                    
-                    r=next(iter(actRules))
-                    self.putRuleOnStack(r, stack)
-                    #zaznamenáme aplikování pravidla
-                    rules.append(r)
-                else:
-                    #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
-                    newRules=[]
-                    newATokens=[]
-                    
-                    for r in actRules:
-                        try:
-                            #prvně aplikujeme pravidlo
-                            newStack=stack.copy()
-                            self.putRuleOnStack(r, newStack)
-                            
-                            #zkusíme zda-li s tímto pravidlem uspějeme
-                            resRules, resATokens=self.crawling(newStack, tokens, position, morph)
-                            
-                            if resRules and resATokens:
-                                #zaznamenáme aplikováná pravidla a analyzované tokeny
-                                #může obsahovat i více různých derivací
-                                for x in resRules:
-                                    #musíme předřadit aktuální pravidlo a pravidla předešlá
-                                    newRules.append(rules+[r]+x)
-                                    
-                                for x in resATokens:
-                                    #musíme předřadit předešlé analyzované tokeny
-                                    newATokens.append(aTokens+x)
-                                    
-                        except self.NotInLanguage:
-                            #tato větev nikam nevede, takže ji prostě přeskočíme
-                            pass
-                
-                    if len(newRules) == 0:
-                        #v gramatice neexistuje vhodné pravidlo
-                        raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                                 Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
-                                                    s.val, str(token), ", ".join([str(r) for r in rules])))
+                #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
+                newRules=[]
+                newATokens=[]
+
+                for r in actRules:
+                    try:
+                        #prvně aplikujeme pravidlo
+                        newStack=stack.copy()
+                        self.putRuleOnStack(r, newStack)
                         
-                    #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit
-                    return (newRules,newATokens)
+                        #zkusíme zda-li s tímto pravidlem uspějeme
+                        resRules, resATokens=self.crawling(newStack, tokens, position, morph=s.val[0]!=self.NON_GEN_MORPH_SIGN)
+                        
+                        if resRules and resATokens:
+                            #zaznamenáme aplikováná pravidla a analyzované tokeny
+                            #může obsahovat i více různých derivací
+                            for x in resRules:
+                                #musíme předřadit aktuální pravidlo a pravidla předešlá
+                                newRules.append(rules+[r]+x)
+                                
+                            for x in resATokens:
+                                #musíme předřadit předešlé analyzované tokeny
+                                newATokens.append(aTokens+x)
+                                
+                    except self.NotInLanguage:
+                        #tato větev nikam nevede, takže ji prostě přeskočíme
+                        pass
+            
+                if len(newRules) == 0:
+                    #v gramatice neexistuje vhodné pravidlo
+                    
+                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
+                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
+                                                s.val, str(token), ", ".join([str(r) for r in rules])))
+                    
+                #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit
+                return (newRules,newATokens)
+                    
         
         
         #Již jsme vyčerpali všechny možnosti. Příjmáme naši část vstupní pousloupnosti a končíme.

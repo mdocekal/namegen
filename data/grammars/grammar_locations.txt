@@ -1,21 +1,93 @@
 S
-S -> 1 !LOC
-!LOC -> 1
+#Podstatné jméno následované volitelným podstatným jménem a volitelnou PREP_GROUP
+S -> 1{t=L} !LOC
+#/
+#podstatné jménem a volitelá PREP_GROUP
+!LOC -> 1{t=L}
 !LOC -> !PREP_GROUP
-!PREP_GROUP -> 7 !AFTER_PREP
+#/
+#Předložková skupina
+!PREP_GROUP -> 7{t=7} !AFTER_PREP
 !PREP_GROUP -> ε
-S -> ADJ_GROUP LOC2 !PREP_GROUP
-ADJ_GROUP -> 2 ADJ_GROUP_ENDING
-ADJ_GROUP_ENDING -> ADJ_GROUP
-ADJ_GROUP_ENDING -> ε
-LOC2 -> 1 !VOLUNTARY_NO_FLEX_N
-LOC2 -> ε
-!VOLUNTARY_NO_FLEX_N -> 1
-!VOLUNTARY_NO_FLEX_N -> ε
-S -> 4 1
-S -> 7 !AFTER_PREP
-!AFTER_PREP -> 2 !AFTER_PREP_ENDING
-!AFTER_PREP -> 1 !AFTER_PREP_ENDING
-!AFTER_PREP -> 4 !AFTER_PREP_ENDING
+!AFTER_PREP -> 2{t=L} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=L} !AFTER_PREP_ENDING
+!AFTER_PREP -> 4{t=L} !AFTER_PREP_ENDING
 !AFTER_PREP_ENDING -> !AFTER_PREP
 !AFTER_PREP_ENDING -> ε
+#/
+#Alespoň jedno přídavné jméno následované podstatným/y jménem/jmény a předložkovou skupinou
+S -> ADJ_GROUP_S_M LOC2_S_M !PREP_GROUP
+S -> ADJ_GROUP_S_I LOC2_S_I !PREP_GROUP
+S -> ADJ_GROUP_S_N LOC2_S_N !PREP_GROUP
+S -> ADJ_GROUP_S_F LOC2_S_F !PREP_GROUP
+S -> ADJ_GROUP_P_M LOC2_P_M !PREP_GROUP
+S -> ADJ_GROUP_P_I LOC2_P_I !PREP_GROUP
+S -> ADJ_GROUP_P_N LOC2_P_N !PREP_GROUP
+S -> ADJ_GROUP_P_F LOC2_P_F !PREP_GROUP
+#/
+#Skupina přídavných jmen
+ADJ_GROUP_S_M -> 2{c=1,t=L,n=S,g=M} ADJ_GROUP_ENDING_S_M
+ADJ_GROUP_ENDING_S_M -> ADJ_GROUP_S_M
+ADJ_GROUP_ENDING_S_M -> ε
+
+ADJ_GROUP_S_I -> 2{c=1,t=L,n=S,g=I} ADJ_GROUP_ENDING_S_I
+ADJ_GROUP_ENDING_S_I -> ADJ_GROUP_S_I
+ADJ_GROUP_ENDING_S_I -> ε
+
+ADJ_GROUP_S_N -> 2{c=1,t=L,n=S,g=N} ADJ_GROUP_ENDING_S_N
+ADJ_GROUP_ENDING_S_N -> ADJ_GROUP_S_N
+ADJ_GROUP_ENDING_S_N -> ε
+
+ADJ_GROUP_S_F -> 2{c=1,t=L,n=S,g=F} ADJ_GROUP_ENDING_S_F
+ADJ_GROUP_ENDING_S_F -> ADJ_GROUP_S_F
+ADJ_GROUP_ENDING_S_F -> ε
+
+ADJ_GROUP_P_M -> 2{c=1,t=L,n=P,g=M} ADJ_GROUP_ENDING_P_M
+ADJ_GROUP_ENDING_P_M -> ADJ_GROUP_P_M
+ADJ_GROUP_ENDING_P_M -> ε
+
+ADJ_GROUP_P_I -> 2{c=1,t=L,n=P,g=I} ADJ_GROUP_ENDING_P_I
+ADJ_GROUP_ENDING_P_I -> ADJ_GROUP_P_I
+ADJ_GROUP_ENDING_P_I -> ε
+
+ADJ_GROUP_P_N -> 2{c=1,t=L,n=P,g=N} ADJ_GROUP_ENDING_P_N
+ADJ_GROUP_ENDING_P_N -> ADJ_GROUP_P_N
+ADJ_GROUP_ENDING_P_N -> ε
+
+ADJ_GROUP_P_F -> 2{c=1,t=L,n=P,g=F} ADJ_GROUP_ENDING_P_F
+ADJ_GROUP_ENDING_P_F -> ADJ_GROUP_P_F
+ADJ_GROUP_ENDING_P_F -> ε
+#/
+#Podstatné jméno následováno volitelným neohebným podstatným jménem
+LOC2_S_M -> 1{c=1,t=L,n=S,g=M} !VOLUNTARY_NO_FLEX_N
+LOC2_S_M -> ε
+LOC2_S_I -> 1{c=1,t=L,n=S,g=I} !VOLUNTARY_NO_FLEX_N
+LOC2_S_I -> ε
+LOC2_S_N -> 1{c=1,t=L,n=S,g=N} !VOLUNTARY_NO_FLEX_N
+LOC2_S_N -> ε
+LOC2_S_F -> 1{c=1,t=L,n=S,g=F} !VOLUNTARY_NO_FLEX_N
+LOC2_S_F -> ε
+LOC2_P_M -> 1{c=1,t=L,n=P,g=M} !VOLUNTARY_NO_FLEX_N
+LOC2_P_M -> ε
+LOC2_P_I -> 1{c=1,t=L,n=P,g=I} !VOLUNTARY_NO_FLEX_N
+LOC2_P_I -> ε
+LOC2_P_N -> 1{c=1,t=L,n=P,g=N} !VOLUNTARY_NO_FLEX_N
+LOC2_P_N -> ε
+LOC2_P_F -> 1{c=1,t=L,n=P,g=F} !VOLUNTARY_NO_FLEX_N
+LOC2_P_F -> ε
+#/
+
+!VOLUNTARY_NO_FLEX_N -> 1
+!VOLUNTARY_NO_FLEX_N -> ε
+
+#číslovka s podstatným jménem
+S -> 4{c=1,t=L,n=S,g=M} 1{c=1,t=L,n=S,g=M}
+S -> 4{c=1,t=L,n=S,g=I} 1{c=1,t=L,n=S,g=I}
+S -> 4{c=1,t=L,n=S,g=N} 1{c=1,t=L,n=S,g=N}
+S -> 4{c=1,t=L,n=S,g=F} 1{c=1,t=L,n=S,g=F}
+S -> 4{c=1,t=L,n=P,g=M} 1{c=1,t=L,n=P,g=M}
+S -> 4{c=1,t=L,n=P,g=I} 1{c=1,t=L,n=P,g=I}
+S -> 4{c=1,t=L,n=P,g=N} 1{c=1,t=L,n=P,g=N}
+S -> 4{c=1,t=L,n=P,g=F} 1{c=1,t=L,n=P,g=F}
+#/
+S -> 7 !AFTER_PREP

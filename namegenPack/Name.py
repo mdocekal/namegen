@@ -277,9 +277,19 @@ class Name(object):
         #získáme tvary jednotlivých slov
         genMorphsForWords=[]
         for word, aToken in zip(self._words, analyzedTokens):
-            print(word, aToken.morphCategories)
-            genMorphsForWords.append(word.morphs(aToken.morphCategories))
-        
+            if aToken.morph:
+                cateWord=aToken.morphCategories    #podmínky na původní slovo
+                cateMorph=set() #podmínky přímo na tvary
+                #překopírujeme a ignorujeme pády, jelikož nemůžeme vybrat jen jeden, když chceme
+                #generovat všechny
+                for x in cateWord:
+                    if x.category() !=  MorphCategories.MorphCategories.CASE:
+                        cateMorph.add(x)
+    
+                genMorphsForWords.append(word.morphs(cateMorph, cateWord))
+            else:
+                genMorphsForWords.append(None)
+
         #z tvarů slov poskládáme tvary jména
         #Set[Tuple[MARule,str]]
         morphs=[]
@@ -299,10 +309,12 @@ class Name(object):
                                 if not notMatch:
                                     #můžeme mít více tvarů daného slova
                                     #toto je jeden z dalších tvarů
-                                    morph += " / "
-                                morph+=wordMorph+"["+maRule.lntrf+"]#"+str(aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value)
+                                    morph += "/"
+                                morph+=wordMorph+"["+maRule.lntrf+"]"
+                                wordType=aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)
+                                if wordType!=WordTypeMark.UNKNOWN:
+                                    morph+="#"+str(wordType.value)
                                 notMatch=False
-                                break
                         except KeyError:
                             #pravděpodobně nemá pád vůbec
                             pass
@@ -314,7 +326,7 @@ class Name(object):
                                     Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+str(c.value)+"\t"+str(word))
                 else:
                     #neohýbáme
-                    morph+=str(word)+"#"+aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)
+                    morph+=str(word)+"#"+str(aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value)
                 
                 #přidání oddělovače slov
                 if sepIndex < len(self._separators):

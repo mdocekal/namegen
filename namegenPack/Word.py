@@ -113,7 +113,7 @@ class Word(object):
         return a
     
     
-    def morphs(self, categories: Set[MorphCategory]):
+    def morphs(self, categories: Set[MorphCategory], wordFilter: Set[MorphCategory] =set()):
         """
         Vygeneruje tvary slova s ohledem na poskytnuté kategorie. Vybere jen tvary jenž odpovídají daným kategoriím.
         Příklad: V atributu categories jsou: podstatné jméno, rodu mužský, jednotné číslo
@@ -121,6 +121,13 @@ class Word(object):
         
         :param categories: Kategorie, které musí mít generované tvary.
         :type categories: Set[MorphCategory]
+        :param wordFilter: Podmínky na původní slovo. Jelikož analýza nám může říci několik variant, tak tímto filtrem můžeme
+            spřesnit odhad.
+            Chceme-li získat všechny tvary, které se váží na případy, kdy se předpokládá, že původní slovo mělo
+            danou morfologickou kategorii, tak použijeme tento filtr.
+                Příklad: Pokud je vložen 1. pád. Budou brány v úvahu jen tvary, které patří ke skupině tvarů vázajících se na případ
+                že původní slovo je v 1. pádu.
+        :type wordFilter: Set[MorphCategory]
         :return: Vrací možné tvary i s jejich pravidly.
                 Set[Tuple[MARule,str]]    str je tvar
         :rtype: Set[Tuple[MARule,str]]
@@ -129,7 +136,7 @@ class Word(object):
         #na základě filtrů získáme všechny možné tvary
         #nechceme hovorové tvary ->StylisticFlag.COLLOQUIALLY
                 
-        tmp=self.info.getMorphs(categories, {StylisticFlag.COLLOQUIALLY})
+        tmp=self.info.getMorphs(categories, {StylisticFlag.COLLOQUIALLY}, wordFilter)
         if tmp is None or len(tmp)<1:
             raise self.WordNoMorphsException(self, Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED,
                 Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED)+"\t"+self._w)

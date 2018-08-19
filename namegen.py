@@ -17,6 +17,7 @@ from namegenPack import Errors
 import logging
 import namegenPack.Grammar
 import namegenPack.morpho.MorphoAnalyzer
+import namegenPack.morpho.MorphCategories
 import configparser
 
 from namegenPack.Name import *
@@ -185,7 +186,7 @@ def main():
         configAll=configManager.read(os.path.dirname(os.path.realpath(__file__))+'/namegen_config.ini')
         
         
-
+        logging.info("načtení gramatik")
         #načtení gramatik
         try:
             grammarMale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"])
@@ -200,15 +201,20 @@ def main():
         try:
             grammarLocations=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"])
         except Errors.ExceptionMessageCode as e:
-            raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_PERSONS"]+": "+e.message)
-
+            raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"]+": "+e.message)
+        logging.info("\thotovo")
+        logging.info("čtení jmen")
         #načtení jmen pro zpracování
         namesR=NameReader(args.input[0])
-        
-        
+        logging.info("\thotovo")
+        logging.info("analýza slov")
         #přiřazení morfologického analyzátoru
-        Word.setMorphoAnalyzer(namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], namesR.allWords(True)))
-        
+        Word.setMorphoAnalyzer(
+            namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
+                configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 
+                namesR.allWords(True)))
+        logging.info("\thotovo")
+        logging.info("\tgenerování tvarů")
         #čítače chyb
         errorsOthersCnt=0   
         errorsGrammerCnt=0  #není v gramatice
@@ -233,15 +239,20 @@ def main():
                     
                     #rules a aTokens může obsahovat více než jednu možnou derivaci
                     if name.type==Name.Type.LOCATION:
-                        _, aTokens=grammarLocations.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                        r, aTokens=grammarLocations.analyse(namegenPack.Grammar.Lex.getTokens(name))
                     elif name.type==Name.Type.MALE:
-                        _, aTokens=grammarMale.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                        r, aTokens=grammarMale.analyse(namegenPack.Grammar.Lex.getTokens(name))
                     else:
-                        _, aTokens=grammarFemale.analyse(namegenPack.Grammar.Lex.getTokens(name))
-                    
+                        r, aTokens=grammarFemale.analyse(namegenPack.Grammar.Lex.getTokens(name))
+
+                    completedMorphs=set()    #pro odstranění dualit používáme set
                     for aT in aTokens:
                         morphs=name.genMorphs(aT)
-                        print(str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs)), file=outF)
+                        completedMorphs.add(str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs)))
+                    
+                    #vytiskneme
+                    for m in completedMorphs:
+                        print(m, file=outF)
                         
                 except (Word.WordException) as e:
                     print(str(name)+"\t"+e.message, file=sys.stderr)
@@ -271,7 +282,7 @@ def main():
                 if cnt%100==0:
                     logging.info("Projito slov: "+str(cnt))
                 
-        
+        logging.info("\thotovo")
         print("-------------------------")
         print("Celkem jmen: "+ str(namesR.errorCnt+len(namesR.names)))
         print("\tNenačtených jmen: "+ str(namesR.errorCnt))

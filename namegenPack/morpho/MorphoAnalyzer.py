@@ -153,7 +153,7 @@ class MorphoAnalyze(ABC):
         pass
     
     @abstractmethod
-    def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
+    def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set(), wordFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
         """
         Získání tvarů.
         
@@ -165,6 +165,13 @@ class MorphoAnalyze(ABC):
         :type valFilter: Set[MorphCategory]
         :param notValFilter: Stejné jako valFilter s tím rozdílem, že dané hodnoty nesmí pravidlo tvaru obsahovat.
         :type notValFilter:Set[MorphCategory]
+        :param wordFilter: Podmínky na původní slovo. Jelikož analýza nám může říci několik variant, tak tímto filtrem můžeme
+            spřesnit odhad.
+            Chceme-li získat všechny tvary, které se váží na případy, kdy se předpokládá, že původní slovo mělo
+            danou morfologickou kategorii, tak použijeme tento filtr.
+                Příklad: Pokud je vložen 1. pád. Budou brány v úvahu jen tvary, které patří ke skupině tvarů vázajících se na případ
+                že původní slovo je v 1. pádu.
+        :type wordFilter: Set[MorphCategory]
         :return: Množinu dvojic (pravidlo, tvar).
         :rtype: Set[Tuple[MARule,str]]
         """
@@ -247,12 +254,13 @@ class MorphoAnalyzerLibma(object):
             :param word: Slovo pro nějž je tato skupina vytvořena.
             :type word: str
             """
-            
+        
             self._word=word
             self._lemma=None
             self._paradigm=None
             self._tagRules=[]   #značko pravidla pro slovo
             self._morphs=[] #tvary k danému slovu ve formátu dvojic (tagRule, tvar)
+            
             
         def addMorph(self, tagRule, morph):
             """
@@ -263,14 +271,14 @@ class MorphoAnalyzerLibma(object):
             :param morph: Tvar slova.
             :type morph: str
             """
-            self._morphs.append((self._convTagRule(tagRule), morph))
+            self._morphs.append((self.convTagRule(tagRule), morph))
             
         def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
             """
             Získání tvarů.
             
             :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
-                hodnoty, které musí mít dané pravidlo tvaro, aby se bral v úvahu daný tvar.
+                hodnoty, které musí mít dané pravidlo tvaru, aby se bral v úvahu daný tvar.
                 Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
                 Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
                 nastavím filtr na: set(POS.NOUN)
@@ -301,8 +309,9 @@ class MorphoAnalyzerLibma(object):
 
             return morphs  
             
+            
         @staticmethod
-        def _convTagRule(tagRule):
+        def convTagRule(tagRule):
             """
             Převod značko pravidla ze str do MARule
             
@@ -328,6 +337,16 @@ class MorphoAnalyzerLibma(object):
                     pass
 
             return MARule(res)
+        
+        def addTagRuleConv(self, tagRule:MARule):
+            """
+            Přidání značko pravidla, které již bylo zkonvertováno pomocí convTagRule.
+            
+            :param tagRule: Značko pravidlo 
+            :type tagRule: MARule
+            """
+            
+            self._tagRules.append(tagRule)
             
         def addTagRule(self, tagRule):
             """
@@ -337,7 +356,7 @@ class MorphoAnalyzerLibma(object):
             :type tagRule: str
             """
             
-            self._tagRules.append(self._convTagRule(tagRule))
+            self._tagRules.append(self.convTagRule(tagRule))
             
         def getAll(self, valFilter: Set[MorphCategory] =set()) -> Dict[MorphCategories,Set[MorphCategory]]:
             """
@@ -414,7 +433,14 @@ class MorphoAnalyzerLibma(object):
             :type value: str
             """
             self._word = value
-                
+         
+        @property
+        def rules(self):
+            """
+            Přiřazená pravidla
+            """
+            return self._tagRules
+               
         @property
         def lemma(self):
             """
@@ -471,7 +497,7 @@ class MorphoAnalyzerLibma(object):
         
         def __init__(self, word):
             """
-            Vytvoření instance morfologícké analýzy slova.
+            Vytvoření instance morfologické analýzy slova.
             
             :param word: Slovo pro nějž je morfologická analýza vytvořena.
             :type word: str
@@ -488,6 +514,16 @@ class MorphoAnalyzerLibma(object):
             :type group: MorphoAnalyzerLibma.MAWordGroup
             """
             self._groups.append(group)
+            
+        def delGroup(self, group):
+            """
+            Smaže danou skupinu.
+            
+            :param group: Skupina, které bude smazána.
+            :type group:MorphoAnalyzerLibma.MAWordGroup
+            """
+            
+            self._groups.remove(group)
             
         def getAll(self, valFilter: Set[MorphCategory] =set()) -> Dict[MorphCategories,Set[MorphCategory]]:
             """
@@ -541,7 +577,7 @@ class MorphoAnalyzerLibma(object):
 
             return values
         
-        def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
+        def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set(), wordFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
             """
             Získání tvarů.
             
@@ -550,16 +586,25 @@ class MorphoAnalyzerLibma(object):
                 Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
                 Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
                 nastavím filtr na: set(POS.NOUN)
+                POZOR!:
             :type valFilter: Set[MorphCategory]
             :param notValFilter: Stejné jako valFilter s tím rozdílem, že dané hodnoty nesmí pravidlo tvaru obsahovat.
             :type notValFilter:Set[MorphCategory]
+            :param wordFilter: Podmínky na původní slovo. Jelikož analýza nám může říci několik variant, tak tímto filtrem můžeme
+                spřesnit odhad.
+                Chceme-li získat všechny tvary, které se váží na případy, kdy se předpokládá, že původní slovo mělo
+                danou morfologickou kategorii, tak použijeme tento filtr.
+                    Příklad: Pokud je vložen 1. pád. Budou brány v úvahu jen tvary, které patří ke skupině tvarů vázajících se na případ
+                    že původní slovo je v 1. pádu.
+            :type wordFilter: Set[MorphCategory]
             :return: Množinu dvojic (pravidlo, tvar).
             :rtype: Set[Tuple[MARule,str]]
             """
             morphs=set()
             
             for g in self._groups:
-                morphs |= g.getMorphs(valFilter, notValFilter)
+                if len(g.getAll(wordFilter)):
+                    morphs |= g.getMorphs(valFilter, notValFilter)
     
             return morphs  
             
@@ -589,7 +634,7 @@ class MorphoAnalyzerLibma(object):
             return s
             
     
-    def __init__(self, pathToMa, words):
+    def __init__(self, pathToMa, words, hint=None):
         """
         Provede vytvoření objektu Morfologického analyzátoru.
         Spustí nad všemy slovy z words morfologický analyzátor s parametry:
@@ -605,8 +650,13 @@ class MorphoAnalyzerLibma(object):
         :param words: Slova, která budou předložena analyzátoru a vysledek budou sloužit jako databáze
             pro tuto obálku. Objekt bude tedy znát nanejvýše tato slova.
         :type words: set(str)
+        :param hint: Volitelný parametr, který dává nápovědu k hodnotě morfologické kategorie slova.
+            Například pokud víme, že slovo je v prním pádu, tak použijeme tento parametr k odfiltrování dalších možností.
+            Pokud je předán set, platí nápověda pro všechny slova stejná. Pokud je předán Dict, tak pro každé slovo je jiná (klíč udává slovo pro nějž nápověda platí).
+            Pozor pokud se daná morfologická kategorie vůbec v analýze slova nevyskytuj, pak je nápověda ignorována.
+        :type hint: :Set[MorphCategory] | Dict[MorphCategory]
         """
-        
+        self._hint=hint
         #získání informací o slovech
 
         p = Popen([pathToMa, "-F", "-m"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -620,6 +670,7 @@ class MorphoAnalyzerLibma(object):
             raise MorphoAnalyzerException(ErrorMessenger.CODE_MA_FAILURE)
         
         self._parseMaOutput(output.decode())
+        
         
         
     def _parseMaOutput(self, output):
@@ -643,12 +694,17 @@ class MorphoAnalyzerLibma(object):
                 #začínáme číst novou skupinu slova
                 #<s> vstupní slovo (vzor 1)
                     
+                #byla předešlá skupina k něčemu dobrá?
+                if actWordGroup is not None and len(actWordGroup.rules)==0:
+                    #ne nebyla, tak ji odstraníme
+                    self._wordDatabase[actWordGroup.word].delGroup(actWordGroup)
+                
                 #vytvoříme skupinu
                 actWordGroup=self.MAWordGroup(parts[1])
-                
+                    
                 #nastavíme vzor
                 actWordGroup.paradigm=parts[2][1:-1]
-                
+                    
                 try:
                     #vložíme skupinu do analýzy slova
                     self._wordDatabase[parts[1]].addGroup(actWordGroup)
@@ -658,8 +714,7 @@ class MorphoAnalyzerLibma(object):
                     self._wordDatabase[parts[1]]=self.MAWord(parts[1])
                     #a znovu vložíme
                     self._wordDatabase[parts[1]].addGroup(actWordGroup)
-                    
-            
+
 
             elif parts[0][:3]=="<l>":
                 #lemma
@@ -667,20 +722,34 @@ class MorphoAnalyzerLibma(object):
                 
             elif parts[0][:3]=="<c>":
                 #značko pravidlo, které sedí pro dané slovo
-                actWordGroup.addTagRule(parts[0][3:])
+
+                if isinstance(self._hint, dict) or isinstance(self._hint, set):
+                    #aplikujeme nápovědu
+                    convRule=self.MAWordGroup.convTagRule(parts[0][3:])
+                    
+                    hint=self._hint[actWordGroup.word] if isinstance(self._hint, dict) else self._hint
+                    if all( f.category() not in convRule or convRule[f.category()]==f for f in hint):
+                        actWordGroup.addTagRuleConv(convRule)
+                else:
+                    actWordGroup.addTagRule(parts[0][3:])
                 
             elif parts[0][:3]=="<f>":
                 #Přidání tvaru slova
                 actWordGroup.addMorph((parts[0][3:])[1:-1], parts[1])
-                
+        
+        #byla předešlá skupina k něčemu dobrá?
+        if actWordGroup is not None and len(actWordGroup.rules)==0:
+            #nebyla
+            self._wordDatabase[actWordGroup.word].delGroup(actWordGroup)
+            
             
     def analyze(self, word):
         """
         Získání kompletních znalostí o slově. Slovo by mělo být 
         jedním ze slov předaných v konstruktoru.
         
-        :param word:
-        :type word:
+        :param word: slovo pro analýzu
+        :type word: str
         :return: Analýza slova. None pokud není slovo v databázi.
         :rtype: MAWord 
         """
