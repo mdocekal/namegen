@@ -51,68 +51,59 @@ class MARule(collections.Mapping):
         """
         Ve formátu lntrf.
         """
-        print(self)
-        print(self[MorphCategories.POS].lntrf)
-        print({
+        pos=self[MorphCategories.POS].lntrf
+        #pořadí pro ify je voleno dle předpokládané četnosti
+        if self[MorphCategories.POS]==POS.NOUN:
             #podstané jméno zjistím rod, číslo, pád
-            POS.NOUN: self[MorphCategories.GENDER].lntrf \
+            return pos+self[MorphCategories.GENDER].lntrf \
                 +self[MorphCategories.NUMBER].lntrf \
-                +self[MorphCategories.CASE].lntrf, 
+                +self[MorphCategories.CASE].lntrf
+                
+        if self[MorphCategories.POS]==POS.ADJECTIVE:
             #přídavné jméno zjistím negaci,rod, číslo, pád, stupeň
-            POS.ADJECTIVE: 1,
-            #zájméno zjistime rod, číslo, pád
-            POS.PRONOUN: 2, 
-            #číslovka rod, číslo, pád
-            POS.NUMERAL: 3, 
-            #sloveso negace, osoba, číslo
-            POS.VERB: 4, 
-            #příslovce negace stupeň
-            POS.ADVERB: 5, 
-            #předložka pád
-            POS.PREPOSITION: 6, 
-            #spojka, nic
-            POS.CONJUNCTION: 7,
-            #částice, nic
-            POS.PARTICLE: 8,
-            #citoslovce, nic
-            POS.INTERJECTION: 9,
-            }[self[MorphCategories.POS]])
-        #TODO continue
-        return self[MorphCategories.POS].lntrf+{
-            #podstané jméno zjistím rod, číslo, pád
-            POS.NOUN: self[MorphCategories.GENDER].lntrf \
-                +self[MorphCategories.NUMBER].lntrf \
-                +self[MorphCategories.CASE].lntrf, 
-            #přídavné jméno zjistím negaci,rod, číslo, pád, stupeň
-            POS.ADJECTIVE: self[MorphCategories.NEGATION].lntrf \
+            return pos+self[MorphCategories.NEGATION].lntrf \
                 +self[MorphCategories.GENDER].lntrf \
                 +self[MorphCategories.NUMBER].lntrf \
                 +self[MorphCategories.CASE].lntrf \
-                +self[MorphCategories.DEGREE_OF_COMPARISON].lntrf,
-            #zájméno zjistime rod, číslo, pád
-            POS.PRONOUN: self[MorphCategories.GENDER].lntrf \
-                +self[MorphCategories.NUMBER].lntrf \
-                +self[MorphCategories.CASE].lntrf, 
-            #číslovka rod, číslo, pád
-            POS.NUMERAL: self[MorphCategories.GENDER].lntrf \
-                +self[MorphCategories.NUMBER].lntrf \
-                +self[MorphCategories.CASE].lntrf, 
-            #sloveso negace, osoba, číslo
-            POS.VERB: self[MorphCategories.NEGATION].lntrf \
-                +self[MorphCategories.PERSON].lntrf \
-                +self[MorphCategories.NUMBER].lntrf, 
-            #příslovce negace stupeň
-            POS.ADVERB: self[MorphCategories.NEGATION].lntrf \
-                +self[MorphCategories.DEGREE_OF_COMPARISON].lntrf, 
+                +self[MorphCategories.DEGREE_OF_COMPARISON].lntrf
+                
+        if self[MorphCategories.POS]==POS.PREPOSITION:
             #předložka pád
-            POS.PREPOSITION: self[MorphCategories.CASE].lntrf, 
+            return pos+self[MorphCategories.CASE].lntrf
+                
+        if self[MorphCategories.POS]==POS.NUMERAL:
+            #číslovka rod, číslo, pád
+            return pos+self[MorphCategories.GENDER].lntrf \
+                +self[MorphCategories.NUMBER].lntrf \
+                +self[MorphCategories.CASE].lntrf
+                
+        if self[MorphCategories.POS]==POS.PRONOUN:
+            #zájméno zjistime rod, číslo, pád
+            return pos+self[MorphCategories.GENDER].lntrf \
+                +self[MorphCategories.NUMBER].lntrf \
+                +self[MorphCategories.CASE].lntrf
+                
+        if self[MorphCategories.POS]==POS.VERB:
+            #sloveso negace, osoba, číslo
+            return pos+self[MorphCategories.NEGATION].lntrf \
+                +self[MorphCategories.PERSON].lntrf \
+                +self[MorphCategories.NUMBER].lntrf
+                
+        if self[MorphCategories.POS]==POS.ADVERB:
+            #příslovce negace stupeň
+            return pos+self[MorphCategories.NEGATION].lntrf \
+                +self[MorphCategories.DEGREE_OF_COMPARISON].lntrf
+        
+        if self[MorphCategories.POS]==POS.CONJUNCTION:
             #spojka, nic
-            POS.CONJUNCTION: "",
+            return pos
+        
+        if self[MorphCategories.POS]==POS.PARTICLE:
             #částice, nic
-            POS.PARTICLE: "",
+            return pos
+        if self[MorphCategories.POS]==POS.INTERJECTION:
             #citoslovce, nic
-            POS.INTERJECTION: "",
-            }[self[MorphCategories.POS]]
+            return pos
 
 
 class MorphoAnalyze(ABC):

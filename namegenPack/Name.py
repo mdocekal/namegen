@@ -277,6 +277,7 @@ class Name(object):
         #získáme tvary jednotlivých slov
         genMorphsForWords=[]
         for word, aToken in zip(self._words, analyzedTokens):
+            print(word, aToken.morphCategories)
             genMorphsForWords.append(word.morphs(aToken.morphCategories))
         
         #z tvarů slov poskládáme tvary jména
@@ -293,21 +294,24 @@ class Name(object):
                     notMatch=True
                     for maRule, wordMorph in genMorphsForWords[i]:
                         #najdeme tvar slova pro daný pád
-
-                        if maRule[MorphCategories.MorphCategories.CASE]==c:
-                            if not notMatch:
-                                #můžeme mít více tvarů daného slova
-                                #toto je jeden z dalších tvarů
-                                morph += " / "
-                            morph+=wordMorph+"["+maRule.lntrf+"]#"+aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)
-                            notMatch=False
-                            break
+                        try:
+                            if maRule[MorphCategories.MorphCategories.CASE]==c:
+                                if not notMatch:
+                                    #můžeme mít více tvarů daného slova
+                                    #toto je jeden z dalších tvarů
+                                    morph += " / "
+                                morph+=wordMorph+"["+maRule.lntrf+"]#"+str(aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value)
+                                notMatch=False
+                                break
+                        except KeyError:
+                            #pravděpodobně nemá pád vůbec
+                            pass
                         
                     if notMatch:
                         #nepovedlo se získat některý pád
                         
                         raise Word.WordMissingCaseException(word, Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE,\
-                                    Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+c.value+"\t"+str(word))
+                                    Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+str(c.value)+"\t"+str(word))
                 else:
                     #neohýbáme
                     morph+=str(word)+"#"+aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)

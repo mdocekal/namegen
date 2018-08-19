@@ -476,7 +476,8 @@ class AnalyzedToken(object):
 
         Příklad: Analýzou jsme zjistili, že se může jednat pouze o podstatné jméno rodu mužského v jednotném čísle.
         
-        Pozor! Je zakázán výběr StylisticFlag.COLLOQUIALLY.
+        Pozor! Je zakázán výběr StylisticFlag.COLLOQUIALLY a také ignorujeme pády. Tyto dodatečné podmínky jsou přímo uzpůsobeny pro
+        použití výsledku ke generování tvarů.
         
         :rtype: Set[MorphCategory]
         """
@@ -492,11 +493,11 @@ class AnalyzedToken(object):
             #a morf. analýza nám řekne, že přídavné jméno může být pouze prvního stupně, tak tuto informaci zařadíme
             #k filtrům
                 
-            for _, morphCategoryValues in self._token.word.info.getAll(categories).items():
+            for category, morphCategoryValues in self._token.word.info.getAll(categories).items():
                 if len(morphCategoryValues)==1:
                     #daná kategorie má pouze jednu možnou hodnotu použijeme ji jako filtr
                     catVal=next(iter(morphCategoryValues))
-                    if catVal!=StylisticFlag.COLLOQUIALLY:# hovorové nechceme
+                    if catVal!=StylisticFlag.COLLOQUIALLY and category != MorphCategories.CASE:# hovorové a pády nechceme
                         categories.add(catVal)
     
         return categories
