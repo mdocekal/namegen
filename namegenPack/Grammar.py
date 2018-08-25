@@ -253,6 +253,7 @@ class Terminal(object):
         :type t: Token
         :return: Vrací True, pokud odpovídá. Jinak false.
         :rtype: bool
+        :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
 
         if t.type!=Token.Type.ANALYZE:
@@ -905,6 +906,7 @@ class Grammar(object):
         :return: Dvojici s listem listu pravidel určujících všechny možné derivace a list listů analyzovaných tokenů.
         :rtype: (list(list(Rule)), list(list(AnalyzedToken)))
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
+        :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
         rules=[]    #aplikovaná pravidla
         aTokens=[]  #analyzované tokeny
@@ -912,7 +914,7 @@ class Grammar(object):
         while(len(stack)>0):
             s=stack.pop()
             token=tokens[position]
-            
+
             if s.isTerm:
                 #terminál na zásobníku
                 if s.val.tokenMatch(token):
@@ -927,7 +929,7 @@ class Grammar(object):
                     #chyba rozdílný terminál na vstupu a zásobníku
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
-                                                s.val, str(token), ", ".join([str(r) for r in rules])))
+                                                s.val, str(token)))
             else:
                 #neterminál na zásobníku
                 
@@ -942,11 +944,12 @@ class Grammar(object):
                     
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
-                                                s.val, str(token), ", ".join([str(r) for r in rules])))
+                                                s.val, str(token)))
                 
                 #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
                 newRules=[]
                 newATokens=[]
+                
 
                 for r in actRules:
                     try:
@@ -968,16 +971,16 @@ class Grammar(object):
                                 #musíme předřadit předešlé analyzované tokeny
                                 newATokens.append(aTokens+x)
                                 
-                    except self.NotInLanguage:
+                    except self.NotInLanguage as e:
                         #tato větev nikam nevede, takže ji prostě přeskočíme
                         pass
             
                 if len(newRules) == 0:
                     #v gramatice neexistuje vhodné pravidlo
                     
-                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
-                                                s.val, str(token), ", ".join([str(r) for r in rules])))
+                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE_NO_RULES, \
+                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE_NO_RULES).format(\
+                                                s.val, str(token), ", ".join([str(r) for r in actRules])))
                     
                 #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit
                 return (newRules,newATokens)

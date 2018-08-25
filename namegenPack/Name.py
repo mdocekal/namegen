@@ -279,6 +279,12 @@ class Name(object):
         for word, aToken in zip(self._words, analyzedTokens):
             if aToken.morph:
                 cateWord=aToken.morphCategories    #podmínky na původní slovo
+                
+                if self.type!=self.Type.LOCATION:
+                    #pro mužská a ženská jména
+                    #přidáme podmínku, že slovo je v prvním pádu
+                    cateWord.add(Case.NOMINATIVE)
+                
                 cateMorph=set() #podmínky přímo na tvary
                 #překopírujeme a ignorujeme pády, jelikož nemůžeme vybrat jen jeden, když chceme
                 #generovat všechny

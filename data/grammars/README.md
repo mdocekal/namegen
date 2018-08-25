@@ -1,4 +1,4 @@
-# Formát gramatik
+# Formát gramatik ZASTARALé
 Zde si popíšeme formát souboru s gramatikou.
 * První řádek je množina neterminálů oddělených bílým znakem.
 * Druhý řádek je množina terminálů oddělených bílým znakem.
