@@ -49,12 +49,13 @@ class ErrorMessenger(object):
     CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR=16
     CODE_WORD_MISSING_MORF_FOR_CASE=17
     CODE_GRAMMAR_NOT_IN_LANGUAGE=18
-    CODE_GRAMMAR_NOT_IN_LANGUAGE_NO_RULES=19
-    CODE_MA_FAILURE=20
-    CODE_MORPH_ENUM_INVALID_CATEGORY=21
-    CODE_MORPH_ENUM_INVALID_VALUE=22
-    CODE_GRAMMAR_INVALID_ARGUMENT=23
-    CODE_GRAMMAR_ARGUMENT_REPEAT=24
+    CODE_MA_FAILURE=19
+    CODE_MORPH_ENUM_INVALID_CATEGORY=20
+    CODE_MORPH_ENUM_INVALID_VALUE=21
+    CODE_GRAMMAR_INVALID_ARGUMENT=22
+    CODE_GRAMMAR_ARGUMENT_REPEAT=23
+    CODE_NAME_WITHOUT_TYPE=24
+    CODE_NAME_NO_MORPHS_GENERATED=25
     
     CODE_UNKNOWN_ERROR=100
 
@@ -79,13 +80,14 @@ class ErrorMessenger(object):
             CODE_WORD_NO_MORPHS_GENERATED:"Pro slovo se nepodařilo vygenerovat tvary.",
             CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR:"Název není v jazyce generovaným poskytnutou gramatikou.",
             CODE_WORD_MISSING_MORF_FOR_CASE:"Nepovedlo se vygenerovat tvar pro pád.",
-            CODE_GRAMMAR_NOT_IN_LANGUAGE:"Selhání na příslušnosti do jazyka při: {} na zásobníku a {} na vstupu.",
-            CODE_GRAMMAR_NOT_IN_LANGUAGE_NO_RULES:"Selhání na příslušnosti do jazyka při: {} na zásobníku a {} na vstupu. Nelze použít žádné z pravidel: {}",
+            CODE_GRAMMAR_NOT_IN_LANGUAGE:"Selhání na příslušnosti do jazyka.",
             CODE_MA_FAILURE:"Morfologický analyzátor selhal.",
             CODE_MORPH_ENUM_INVALID_CATEGORY:"Neznámá morfologická kategorie: {}",
             CODE_MORPH_ENUM_INVALID_VALUE:"Neznámá hodnota pro morfologickou kategorii {}: {}",
             CODE_GRAMMAR_INVALID_ARGUMENT:"V souboru s gramatikou je nevalidní argument: {}.",
             CODE_GRAMMAR_ARGUMENT_REPEAT:"V souboru s gramatikou se vícekrát opakuje argument u jednoho terminálu: {}.",
+            CODE_NAME_WITHOUT_TYPE:"U {} se nepodařilo zjistit druh jména/názvu.",
+            CODE_NAME_NO_MORPHS_GENERATED:"Pro jméno se nepodařilo vygenerovat tvary u některých slov: {}",
             
             CODE_UNKNOWN_ERROR:"Neznámá chyba."  ,
     }

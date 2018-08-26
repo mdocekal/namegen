@@ -68,6 +68,7 @@ class Word(object):
         pass
     
     ma=None
+    """Morfologický analyzátor."""
     
     def __init__(self, w):
         """
@@ -138,6 +139,7 @@ class Word(object):
                 
         tmp=self.info.getMorphs(categories, {StylisticFlag.COLLOQUIALLY}, wordFilter)
         if tmp is None or len(tmp)<1:
+
             raise self.WordNoMorphsException(self, Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED,
                 Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_NO_MORPHS_GENERATED)+"\t"+self._w)
         return tmp

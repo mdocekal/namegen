@@ -14,6 +14,7 @@ from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
 from enum import Enum
 from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
+from numpy.distutils.fcompiler import none
 
 class Terminal(object):
     """
@@ -50,9 +51,8 @@ class Terminal(object):
             :return: True odpovídá slovnímu druhu. False jinak.
             :rtype: bool
             """
-            use=set([self.N, self.A,self.P,self.C,self.V,self.D,self.R,self.J,self.T, self.I])
-            
-            return self in use
+
+            return self in self.POSTypes
             
         def toPOS(self):
             """
@@ -62,23 +62,29 @@ class Terminal(object):
             :return: Mluvnická kategorie.
             :rtype: POS
             """
-            if self.isPOSType:
+            try:
+                return self.toPOSMap[self]
+            except KeyError:
                 #lze převést pouze určité typy terminálu
                 #a to pouze typy terminálu, které vyjadřují slovní druhy
-                return {
-                    self.N: POS.NOUN,           #podstatné jméno
-                    self.A: POS.ADJECTIVE,      #přídavné jméno
-                    self.P: POS.PRONOUN,        #zájméno
-                    self.C: POS.NUMERAL,        #číslovka
-                    self.V: POS.VERB,           #sloveso
-                    self.D: POS.ADVERB,         #příslovce
-                    self.R: POS.PREPOSITION,    #předložka
-                    self.J: POS.CONJUNCTION,    #spojka
-                    self.T: POS.PARTICLE,       #částice
-                    self.I: POS.INTERJECTION    #citoslovce
-                    }[self]
-                
-            return None
+                return None
+        
+    Type.POSTypes={Type.N, Type.A,Type.P,Type.C,Type.V,Type.D,Type.R,Type.J,Type.T, Type.I}
+    """Typy, které jsou POS"""
+    
+    Type.toPOSMap={
+                    Type.N: POS.NOUN,           #podstatné jméno
+                    Type.A: POS.ADJECTIVE,      #přídavné jméno
+                    Type.P: POS.PRONOUN,        #zájméno
+                    Type.C: POS.NUMERAL,        #číslovka
+                    Type.V: POS.VERB,           #sloveso
+                    Type.D: POS.ADVERB,         #příslovce
+                    Type.R: POS.PREPOSITION,    #předložka
+                    Type.J: POS.CONJUNCTION,    #spojka
+                    Type.T: POS.PARTICLE,       #částice
+                    Type.I: POS.INTERJECTION    #citoslovce
+                    }
+    """Zobrazení typu do POS."""
     
     class Attribute(object):
         """
@@ -96,6 +102,9 @@ class Terminal(object):
             CASE="c"    #pád slova musí být takový    (filtrovací atribut)
             TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
+            
+            
+            
 
             @property
             def isFiltering(self):
@@ -105,10 +114,11 @@ class Terminal(object):
                 :return: True filtrovací. False jinak.
                 :rtype: bool
                 """
-                #!POZOR filtrovací atributy musí mít value typu MorphCategory
-                fil=set([self.GENDER, self.NUMBER, self.CASE])
-                
-                return self in fil
+
+                return self in self.FILTERING_TYPES
+            
+        Type.FILTERING_TYPES={Type.GENDER, Type.NUMBER, Type.CASE}
+        """Filtrovací atributy. POZOR filtrovací atributy musí mít value typu MorphCategory!"""
         
         def __init__(self, attrType, val):
             """
@@ -207,6 +217,9 @@ class Terminal(object):
         
         self._attributes=frozenset(attr)
         
+        #pojďme zjistit hodnoty filtrovacích atributů
+        self._fillteringAttrVal=set(a.value for a in self._attributes if a.type.isFiltering)
+        
     def getAttribute(self, t):
         """
         Vrací atribut daného druhu.
@@ -233,17 +246,17 @@ class Terminal(object):
         return self._type
         
     @property
-    def fillteringAttr(self):
+    def fillteringAttrValues(self):
         """
-        Získání všech attributů, které kladou dodatečné podmínky (např. rod musí být mužský).
+        Získání všech hodnot attributů, které kladou dodatečné podmínky (např. rod musí být mužský).
         Všechny takové attributy mají value typu MorphCategory.
         Nevybírá informační atributy.
         
-        :return: Filtrovací atributy, které má tento terminál.
+        :return: Hodnoty filtrovacích atributů, které má tento terminál.
         :rtype: Set[Attribute]
         """
     
-        return set(a for a in self._attributes if a.type.isFiltering)
+        return self._fillteringAttrVal
     
     def tokenMatch(self, t):
         """
@@ -258,13 +271,13 @@ class Terminal(object):
 
         if t.type!=Token.Type.ANALYZE:
             #jedná se o jednoduchý token bez nutnosti morfologické analýzy
-            return t.type.value==self._type.value   #V tomto případě požívá terminála  token stejné hodnoty u typů
+            return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
         else:
             if not self._type.isPOSType:
                 #jedná se o typ terminálu nepoužívající analyzátor, ale token je jiného druhu.
                 return False
             
-            pos=t.word.info.getAllForCategory(MorphCategories.POS, set( a.value for a in self.fillteringAttr))  
+            pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues)  
             #máme všechny možné slovní druhy, které prošly atributovým filtrem 
        
             return self._type.toPOS() in pos
@@ -432,6 +445,14 @@ class AnalyzedToken(object):
         self._matchingTerminal=matchingTerminal #Příslušný terminál odpovídající token (získaný při analýze).
         
     @property
+    def token(self):
+        """
+        :param token: Pro který máme tuto analýzu.
+        :type token: Token
+        """
+        return self._token
+    
+    @property
     def morph(self):
         """
         Příznak zda se slovo, jenž je reprezentováno tímto tokenem, má ohýbat.
@@ -487,7 +508,7 @@ class AnalyzedToken(object):
         """
         
         #nejprve vložíme filtrovací atributy
-        categories=set(a.value for a in self.matchingTerminal.fillteringAttr)
+        categories=self.matchingTerminal.fillteringAttrValues.copy()
         
         
         #můžeme získat další kategorie na základě morfologické analýzy
@@ -928,12 +949,9 @@ class Grammar(object):
                 else:
                     #chyba rozdílný terminál na vstupu a zásobníku
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
-                                                s.val, str(token)))
+                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
             else:
                 #neterminál na zásobníku
-                
-                
 
                 #vybereme všechna možná pravidla pro daný token na vstupu a symbol na zásobníku
                 
@@ -943,14 +961,13 @@ class Grammar(object):
                     #v gramatice neexistuje vhodné pravidlo
                     
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE).format(\
-                                                s.val, str(token)))
+                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
                 
                 #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
                 newRules=[]
                 newATokens=[]
-                
 
+                
                 for r in actRules:
                     try:
                         #prvně aplikujeme pravidlo
@@ -971,16 +988,14 @@ class Grammar(object):
                                 #musíme předřadit předešlé analyzované tokeny
                                 newATokens.append(aTokens+x)
                                 
-                    except self.NotInLanguage as e:
+                    except self.NotInLanguage:
                         #tato větev nikam nevede, takže ji prostě přeskočíme
                         pass
             
                 if len(newRules) == 0:
                     #v gramatice neexistuje vhodné pravidlo
-                    
-                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE_NO_RULES, \
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE_NO_RULES).format(\
-                                                s.val, str(token), ", ".join([str(r) for r in actRules])))
+                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
+                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
                     
                 #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit
                 return (newRules,newATokens)

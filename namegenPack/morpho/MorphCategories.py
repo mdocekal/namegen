@@ -51,15 +51,6 @@ class MorphCategory(Enum):
     """
     Bázová třída pro morfologickou kategorii.
     """
-
-    @classmethod
-    def _mappingLntrf(cls):
-        """
-        Mapování pro konverzi. Dict
-        """
-        
-        #implicitní mapování
-        return {e:str(e.value) for e in cls}
     
     @staticmethod
     def category():
@@ -84,7 +75,7 @@ class MorphCategory(Enum):
         """
         V lntrf formátu, pouze hodnota.
         """
-        return self._mappingLntrf()[self]
+        return self._mappingLntrf[self]
     
         
     @classmethod    
@@ -101,9 +92,15 @@ class MorphCategory(Enum):
         """
 
         try:
-            return {v: k for k, v in cls._mappingLntrf().items()}[val]
+            return cls._mappingLntrfInverse[val]
         except KeyError:
             raise MorphCategoryInvalidValueException(cls.category().lntrf, val)
+        
+MorphCategory._mappingLntrf={e:str(e.value) for e in MorphCategory}
+"""Zobrazení sloužící pro konverzi s LNTRF."""
+MorphCategory._mappingLntrfInverse={v: k for k, v in MorphCategory._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
+
         
 class MorphCategories(Enum):
     """
@@ -134,29 +131,13 @@ class MorphCategories(Enum):
     STYLISTIC_FLAG=7
     """stylistický příznak"""
     
-    
-    @classmethod
-    def _mappingLntrf(cls):
-        """
-        Mapování pro lntrf konverzi.
-        """
-        return{
-            cls.POS:"k",
-            cls.GENDER:"g",
-            cls.NUMBER:"n",
-            cls.CASE:"c",
-            cls.NEGATION:"e",
-            cls.DEGREE_OF_COMPARISON:"d",
-            cls.PERSON:"p",
-            cls.STYLISTIC_FLAG:"w"
-            }
 
     @property
     def lntrf(self):
         """
         V lntrf formátu.
         """
-        return self._mappingLntrf()[self]
+        return self._lntrfMap[self]
         
     @classmethod    
     def fromLntrf(cls, val):
@@ -170,7 +151,7 @@ class MorphCategories(Enum):
         :raise MorphCategoryInvalidException: On invalid value.
         """
         try:
-            return {v: k for k, v in cls._mappingLntrf().items()}[val]
+            return cls._lntrfMapInverse[val]
         except KeyError:
             raise MorphCategoryInvalidException(val)
         
@@ -188,18 +169,24 @@ class MorphCategories(Enum):
         :raise MorphCategoryInvalidValueException: On invalid value.
         """
  
-        return {
-            self.POS: POS.fromLntrf,
-            self.GENDER: Gender.fromLntrf,
-            self.NUMBER: Number.fromLntrf,
-            self.CASE: Case.fromLntrf,
-            self.NEGATION: Negation.fromLntrf,
-            self.DEGREE_OF_COMPARISON: DegreeOfComparison.fromLntrf,
-            self.PERSON: Person.fromLntrf,
-            self.STYLISTIC_FLAG: StylisticFlag.fromLntrf
-            }[self](val)
+        return self._lntrfCatMap[self](val)
 
-    
+MorphCategories._lntrfMap={
+            MorphCategories.POS:"k",
+            MorphCategories.GENDER:"g",
+            MorphCategories.NUMBER:"n",
+            MorphCategories.CASE:"c",
+            MorphCategories.NEGATION:"e",
+            MorphCategories.DEGREE_OF_COMPARISON:"d",
+            MorphCategories.PERSON:"p",
+            MorphCategories.STYLISTIC_FLAG:"w"
+            }
+"""Zobrazení pro lntrf konverzi."""
+
+MorphCategories._lntrfMapInverse={v: k for k, v in MorphCategories._lntrfMap.items()}
+"""Inverzní zobrazení k _lntrfMap."""
+
+
 class POS(MorphCategory):
     """
     Slovní druhy.
@@ -237,8 +224,12 @@ class POS(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.POS
-        
-    
+
+POS._mappingLntrf={e:str(e.value) for e in POS}
+"""Zobrazení sloužící pro konverzi s LNTRF."""        
+POS._mappingLntrfInverse={v: k for k, v in POS._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
+
 class Gender(MorphCategory):
     """
     Rod
@@ -263,8 +254,12 @@ class Gender(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.GENDER
-
     
+Gender._mappingLntrf={e:str(e.value) for e in Gender}
+"""Zobrazení sloužící pro konverzi s LNTRF."""   
+Gender._mappingLntrfInverse={v: k for k, v in Gender._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
+
 class Number(MorphCategory):
     """
     Číslo
@@ -285,7 +280,11 @@ class Number(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.NUMBER
-
+    
+Number._mappingLntrf={e:str(e.value) for e in Number}
+"""Zobrazení sloužící pro konverzi s LNTRF."""  
+Number._mappingLntrfInverse={v: k for k, v in Number._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
             
 class Case(MorphCategory):
     """
@@ -317,8 +316,11 @@ class Case(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.CASE
-
-    
+Case._mappingLntrf={e:str(e.value) for e in Case}
+"""Zobrazení sloužící pro konverzi s LNTRF."""  
+Case._mappingLntrfInverse={v: k for k, v in Case._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
+  
 class Negation(MorphCategory):
     """
     Negace
@@ -333,8 +335,11 @@ class Negation(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.NEGATION
+Negation._mappingLntrf={e:str(e.value) for e in Negation}
+"""Zobrazení sloužící pro konverzi s LNTRF.""" 
+Negation._mappingLntrfInverse={v: k for k, v in Negation._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
 
-    
 class DegreeOfComparison(MorphCategory):
     """
     Stupeň
@@ -353,7 +358,11 @@ class DegreeOfComparison(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.DEGREE_OF_COMPARISON
-    
+DegreeOfComparison._mappingLntrf={e:str(e.value) for e in DegreeOfComparison}
+"""Zobrazení sloužící pro konverzi s LNTRF."""     
+DegreeOfComparison._mappingLntrfInverse={v: k for k, v in DegreeOfComparison._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
+
 class Person(MorphCategory):
     """
     Osoba
@@ -374,7 +383,10 @@ class Person(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.PERSON
-
+Person._mappingLntrf={e:str(e.value) for e in Person}
+"""Zobrazení sloužící pro konverzi s LNTRF."""
+Person._mappingLntrfInverse={v: k for k, v in Person._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
 
 class StylisticFlag(MorphCategory):
     """
@@ -410,3 +422,20 @@ class StylisticFlag(MorphCategory):
     @staticmethod
     def category():
         return MorphCategories.STYLISTIC_FLAG
+    
+StylisticFlag._mappingLntrf={e:str(e.value) for e in StylisticFlag}
+"""Zobrazení sloužící pro konverzi s LNTRF."""    
+StylisticFlag._mappingLntrfInverse={v: k for k, v in StylisticFlag._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""   
+
+MorphCategories._lntrfCatMap={
+            MorphCategories.POS: POS.fromLntrf,
+            MorphCategories.GENDER: Gender.fromLntrf,
+            MorphCategories.NUMBER: Number.fromLntrf,
+            MorphCategories.CASE: Case.fromLntrf,
+            MorphCategories.NEGATION: Negation.fromLntrf,
+            MorphCategories.DEGREE_OF_COMPARISON: DegreeOfComparison.fromLntrf,
+            MorphCategories.PERSON: Person.fromLntrf,
+            MorphCategories.STYLISTIC_FLAG: StylisticFlag.fromLntrf
+            }
+"""Zobrazení pro lntrf konverzi. Pro tvorbu MorphCategory z lntrf hodnoty s ohledem na aktuální použitou hodnotu z MorphCategories."""
