@@ -81,6 +81,15 @@ class Name(object):
             
         return n
     
+    def __repr__(self):
+        return str((str(self), self._type))
+    
+    def __eq__(self, other):
+        return str(self)==str(other) and self._type == other._type
+    
+    def __hash__(self):
+        return hash(str(self))^hash(self._type)
+    
     def __iter__(self):
         for w in self._words:
             yield w
@@ -92,79 +101,77 @@ class Name(object):
         Přepíše typ jména pokud si myslí, že je jiný.
         Pokud není typ jména uveden odhadne jej, ovšem pevně předpokládá, že se jedná o jméno osoby.
         (Dle zadání má být automaticky předpokládána osoba, kde se může stát, že typ není uveden.)
+        
+        :raise Word.WordCouldntGetInfoException:Pokud se nepodařilo analyzovat nějaké slovo.
         """
         if self._type==self.Type.LOCATION:
             #lokace -> ponecháváme
             return
-        try:
-            tokens=namegenPack.Grammar.Lex.getTokens(self)
-
-            #zkusíme zpochybnit typ jména
-            changeTo=None
-            #najdeme první podstatné nebo přídavné jméno od konce (příjmení)
-            #Příjmení jak se zdá může být i přídavné jméno (`Internetová jazyková příručka <http://prirucka.ujc.cas.cz/?id=320#nadpis3>`_.)
-            
-            try:
-                for token in reversed(tokens):
-                    if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
-                        #získáme možné mluvnické kategorie
-                        analyze=token.word.info
-                        posCat=analyze.getAllForCategory(MorphCategories.MorphCategories.POS, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
-                        if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
-                            if token.word[-3:] == "ová":
-                                #muž s přijmení končícím na ová, zřejmě není
-                                #změníme typ pokud není ženský
-                                changeTo=self.Type.FEMALE
-                            break
-            except Word.WordCouldntGetInfoException:
-                #nepovedlo se získat informace o slově
-                #nevadí zkusíme dále
-                pass
         
-            
-            if changeTo is None:
-                
-                #příjmení nekončí na ová
-                #zjistíme jakého rodu je první podstatné jméno (křestní jméno)
-                for token in tokens:
-                    if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
-                        
-                        #získáme možné mluvnické kategorie
-                        analyze=token.word.info
-                        
-                        posCat=analyze.getAllForCategory(MorphCategories.MorphCategories.POS, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
+        tokens=namegenPack.Grammar.Lex.getTokens(self)
 
-                        if MorphCategories.POS.NOUN in posCat:
-                            
-                            #získáme možné rody
-                            posGenders=analyze.getAllForCategory(MorphCategories.MorphCategories.GENDER, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
-                            if MorphCategories.Gender.FEMINE in posGenders and (MorphCategories.Gender.MASCULINE_ANIMATE in posGenders or \
-                                MorphCategories.Gender.MASCULINE_INANIMATE in posGenders):
-                                #bohužel může být jak mužský, tak ženský
-                                break
-                            
-                            if MorphCategories.Gender.FEMINE in posGenders:
-                                #asi se jedná o ženské jméno
-                                changeTo=self.Type.FEMALE
-            
-                            elif MorphCategories.Gender.MASCULINE_ANIMATE in posGenders or \
-                                MorphCategories.Gender.MASCULINE_INANIMATE in posGenders:
-                                #asi se jedná o mužské jméno
-                                changeTo=self.Type.MALE
-    
-                            break
-
-                        
-            if changeTo is not None:
-                if self._type is None:
-                    logging.info("Pro "+str(self)+" přiřazuji "+str(changeTo)+".")
-                elif self._type is not changeTo:
-                    logging.info("Pro "+str(self)+" měním "+str(self._type)+" na "+str(changeTo)+".")    
-                self._type=changeTo
-
+        #zkusíme zpochybnit typ jména
+        changeTo=None
+        #najdeme první podstatné nebo přídavné jméno od konce (příjmení)
+        #Příjmení jak se zdá může být i přídavné jméno (`Internetová jazyková příručka <http://prirucka.ujc.cas.cz/?id=320#nadpis3>`_.)
+        
+        try:
+            for token in reversed(tokens):
+                if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
+                    #získáme možné mluvnické kategorie
+                    analyze=token.word.info
+                    posCat=analyze.getAllForCategory(MorphCategories.MorphCategories.POS, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
+                    if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
+                        if token.word[-3:] == "ová":
+                            #muž s přijmení končícím na ová, zřejmě není
+                            #změníme typ pokud není ženský
+                            changeTo=self.Type.FEMALE
+                        break
         except Word.WordCouldntGetInfoException:
-            #nepovedlo se získat informace o slově, tak to prostě vynecháme
+            #nepovedlo se získat informace o slově
+            #nevadí zkusíme dále
             pass
+    
+        
+        if changeTo is None:
+            
+            #příjmení nekončí na ová
+            #zjistíme jakého rodu je první podstatné jméno (křestní jméno)
+            for token in tokens:
+                if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
+                    
+                    #získáme možné mluvnické kategorie
+                    analyze=token.word.info
+                    
+                    posCat=analyze.getAllForCategory(MorphCategories.MorphCategories.POS, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
+
+                    if MorphCategories.POS.NOUN in posCat:
+                        
+                        #získáme možné rody
+                        posGenders=analyze.getAllForCategory(MorphCategories.MorphCategories.GENDER, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
+                        if MorphCategories.Gender.FEMINE in posGenders and (MorphCategories.Gender.MASCULINE_ANIMATE in posGenders or \
+                            MorphCategories.Gender.MASCULINE_INANIMATE in posGenders):
+                            #bohužel může být jak mužský, tak ženský
+                            break
+                        
+                        if MorphCategories.Gender.FEMINE in posGenders:
+                            #asi se jedná o ženské jméno
+                            changeTo=self.Type.FEMALE
+        
+                        elif MorphCategories.Gender.MASCULINE_ANIMATE in posGenders or \
+                            MorphCategories.Gender.MASCULINE_INANIMATE in posGenders:
+                            #asi se jedná o mužské jméno
+                            changeTo=self.Type.MALE
+
+                        break
+
+                    
+        if changeTo is not None:
+            if self._type is None:
+                logging.info("Pro "+str(self)+" přiřazuji "+str(changeTo)+".")
+            elif self._type is not changeTo:
+                logging.info("Pro "+str(self)+" měním "+str(self._type)+" na "+str(changeTo)+".")    
+            self._type=changeTo
         
     
         

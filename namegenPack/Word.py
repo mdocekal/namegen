@@ -20,6 +20,7 @@ class WordTypeMark(Enum):
     LOCATION="L"                    #Lokace. Příklad: Brno
     ROMAN_NUMBER="R"                #Římská číslice. Příklad: IV
     PREPOSITION="7"                 #Předložka.
+    CONJUCTION="8"                  #Spojka.
     DEGREE_TITLE="T"                #Titul. Příklad: prof.
     INITIAL_ABBREVIATION="I"        #Iniciálová zkratka. Příklad H. ve jméně John H. White
     UNKNOWN="U"                     #Neznámé

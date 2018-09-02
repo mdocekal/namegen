@@ -574,7 +574,7 @@ class Rule(object):
             
         self._rightSide=[x for x in self._rightSide.split()]
 
-        #vytvoříme ze řetězců potřebné struktury a přidáváme nalezené neterminály do množiny neterminálů
+        #vytvoříme ze řetězců potřebné struktury a přidáváme nalezené (ne)terminály do množiny (ne)terminálů
         for i, x in enumerate(self._rightSide):
             try:
                 self.rightSide[i]=self._parseSymbol(x)
@@ -692,16 +692,25 @@ class Symbol(object):
         Reprezentace symbolu na zásobníku
         """
         
-        def __init__(self, s, isTerm=True):
+        def __init__(self, s, isTerm=True, morph=True):
             """
             Vytvoření symbolu s typu t.
             :param s: Symbol
-            :param t: Druh terminál(True)/neterminál(False).
-            :type t: bool
+            :type s:
+            :param isTerm: Druh terminál(True)/neterminál(False).
+            :type isTerm: bool
+            :param morph: Příznak zda se má slovo odpovídající termínálu ohýbat.
+                V případě neterminálu tento příznak určuje zda se mají slova odpovídající všem
+                terminálů, které je možné vygenerovat z daného neterminálu ohýbat/neohýbat.
+                Alternativní definice:
+                Flag, který určuje zda-li se nacházíme v části stromu, kde se slova mají ohýbat, či ne.
+                Jedná se o zohlednění příznaku self.NON_GEN_MORPH_SIGN z gramatiky.
+            :type morph: bool
             """
             
             self._s=s
             self._isTerm=isTerm
+            self._morph=morph
             
         @property
         def val(self):
@@ -713,6 +722,13 @@ class Symbol(object):
             True jedná se o terminál. False jedná se neterminál.
             """
             return self._isTerm
+        
+        @property
+        def isMorph(self):
+            """
+            True ohýbat. False jinak.
+            """
+            return self._morph
         
         
 class SyntaxTree(object):
@@ -899,14 +915,14 @@ class Grammar(object):
             tokens.append(Token(None,Token.Type.EOF))
             
         # Přidáme na zásoník konec vstupu a počáteční symbol
-        stack=[Symbol(Terminal(Terminal.Type.EOF), True), Symbol(self._startS, False)]
+        stack=[Symbol(Terminal(Terminal.Type.EOF), True, True), Symbol(self._startS, False, self._startS[0]!=self.NON_GEN_MORPH_SIGN)]
         position=0
         
         #provedeme samotnou analýzou a vrátíme výsledek
-        return self.crawling(stack, tokens, position, True)
+        return self.crawling(stack, tokens, position)
         
     
-    def crawling(self, stack, tokens, position, morph=True):
+    def crawling(self, stack, tokens, position):
         """
         Provádí analýzu zda-li posloupnost daných tokenů patří do jazyka definovaného gramatikou.
         Vrací posloupnost použitých pravidel. Nezastaví se na první vhodné posloupnosti pravidel, ale hledá všechny možné.
@@ -921,9 +937,6 @@ class Grammar(object):
         :param position: Index aktuálního tokenu. Definuje část vstupní posloupnosti tokenů, kterou budeme procházet.
             Od předaného indexu do konce.
         :type position: integer
-        :param morph: Flag, který určuje zda-li se nacházíme v části stromu, kde se slova mají ohýbat, či ne.
-            Jedná se o zohlednění příznaku self.NON_GEN_MORPH_SIGN z gramatiky.
-        :type morph: bool
         :return: Dvojici s listem listu pravidel určujících všechny možné derivace a list listů analyzovaných tokenů.
         :rtype: (list(list(Rule)), list(list(AnalyzedToken)))
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
@@ -944,7 +957,7 @@ class Grammar(object):
                     position+=1
                     
                     #ještě vytvoříme analyzovaný token
-                    aTokens.append(AnalyzedToken(token, morph, s.val))# s je odpovídající terminál
+                    aTokens.append(AnalyzedToken(token, s.isMorph, s.val))# s je odpovídající terminál
                     
                 else:
                     #chyba rozdílný terminál na vstupu a zásobníku
@@ -970,12 +983,12 @@ class Grammar(object):
                 
                 for r in actRules:
                     try:
-                        #prvně aplikujeme pravidlo
+                        #prvně aplikujeme pravidlo na nový stack
                         newStack=stack.copy()
-                        self.putRuleOnStack(r, newStack)
+                        self.putRuleOnStack(r, newStack, s.isMorph)
                         
                         #zkusíme zda-li s tímto pravidlem uspějeme
-                        resRules, resATokens=self.crawling(newStack, tokens, position, morph=s.val[0]!=self.NON_GEN_MORPH_SIGN)
+                        resRules, resATokens=self.crawling(newStack, tokens, position)
                         
                         if resRules and resATokens:
                             #zaznamenáme aplikováná pravidla a analyzované tokeny
@@ -1006,7 +1019,7 @@ class Grammar(object):
         #Zde se dostaneme pouze pokud jsme po cestě měli možnost aplikovat pouze jen jedno pravidlo.
         return ([rules], [aTokens])
      
-    def putRuleOnStack(self, rule:Rule, stack):
+    def putRuleOnStack(self, rule:Rule, stack, morph):
         """
         Vloží pravou stranu pravidla na zásobník.
         
@@ -1014,11 +1027,18 @@ class Grammar(object):
         :type rule: Rule
         :param stack: Zásobník pro manipulaci. Obsahuje výsledek.
         :type stack:list
+        :param morph: Příznak ohýbání slov.
+        :type morph: bool
         """
         
         for rulePart in reversed(rule.rightSide):
             if rulePart!=self.EMPTY_STR: #prázdný symbol nemá smysl dávat na zásobník
-                stack.append(Symbol(rulePart, rulePart in self._terminals or rulePart==self.EMPTY_STR))
+                isTerminal=rulePart in self._terminals or rulePart==self.EMPTY_STR
+                #aby se jednalo o ohebnou část jména musíme se nacházet v ohebné částistromu (morph=true)
+                #a navíc pokud máme neterminál, tak musím zkontrolovat zda-li se nedostáváme do neohebné části
+                #rulePart.val[0]!=self.NON_GEN_MORPH_SIGN
+                shouldMorph=morph and (True if isTerminal else rulePart[0]!=self.NON_GEN_MORPH_SIGN)
+                stack.append(Symbol(rulePart, isTerminal, shouldMorph))
                 
     
     @classmethod

@@ -221,7 +221,7 @@ def main():
         errorsGrammerCnt=0  #není v gramatice
         errorsUnknownNameType=0  #není v gramatice
         errorsWordInfoCnt=0   #nemůže vygenrovat tvary, zjistit POS...
-        
+        errorsDuplicity=0   #více stejných jmen (včetně typu)
 
         errorWordsShouldSave=True if args.error_words is not None else False
         errorWords=set()    #slova ke, kterým nemůže vygenerovat tvary, zjistit POS... Jedná se o dvojice ( druhu slova ve jméně, dané slovo)
@@ -229,18 +229,29 @@ def main():
         cnt=0   #projito slov
         
         #nastaveni logování
+        duplicityCheck=set()    #zde se budou ukládat jména pro zamezení duplicit
         
-
         with open(args.output, "w") as outF:
             
             for name in namesR:
                 try:
                     #zpochybnění odhad typu jména
                     name.guessType()
-                    
+                    if name.type is None:
+                        #Nemáme informaci o druhu jména, jdeme dál.
+                        print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr)
+                        errorsUnknownNameType+=1
+                        continue
                     #Vybrání a zpracování gramatiky na základě druhu jména.
                     #získáme aplikovatelná pravidla, ale hlavně analyzované tokeny, které mají v sobě informaci,
                     #zda-li se má dané slovo ohýbat, či nikoliv a další
+                    
+                    if name in duplicityCheck:
+                        #již jsme jednou generovali
+                        errorsDuplicity+=1
+                        continue
+                    
+                    duplicityCheck.add(name)
                     
                     #rules a aTokens může obsahovat více než jednu možnou derivaci
                     if name.type==Name.Type.LOCATION:
@@ -250,10 +261,11 @@ def main():
                     elif name.type==Name.Type.FEMALE:
                         _, aTokens=grammarFemale.analyse(namegenPack.Grammar.Lex.getTokens(name))
                     else:
-                        #Nemáme informaci o druhu jména, jdeme dál.
-                        print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr)
-                        errorsUnknownNameType+=1
-                        continue
+                        #je cosi prohnilého ve stavu tohoto programu
+                        raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
+                        
+                    
+                    
 
                     completedMorphs=set()    #pro odstranění dualit používáme set
                     noMorphsWords=set()
@@ -309,6 +321,7 @@ def main():
         print("-------------------------")
         print("Celkem jmen: "+ str(namesR.errorCnt+len(namesR.names)))
         print("\tNenačtených jmen: "+ str(namesR.errorCnt))
+        print("\tDuplicitních jmen: "+ str(errorsDuplicity))
         print("\tNačtených jmen/názvů celkem: ", len(namesR.names))
         print("\t\tNeznámý druh jména: ", errorsUnknownNameType)
         print("\t\tNepokryto gramatikou: ", errorsGrammerCnt)
