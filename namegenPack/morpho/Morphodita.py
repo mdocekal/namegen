@@ -202,6 +202,25 @@ class Morphodita(object):
                 morphs.append((form.form, self.tagToWordInfo(form.tag)))
 
         return morphs
+    
+    def analyze(self, word):
+        """
+        Provede analýzu daného slova.
+        
+        :param word: Slovo pro analýzu.
+        :type word: str
+        :return info: Informace o slově.
+        :rtype info: list of dict
+        """
+        
+        self._morpho.analyze(word, self._morpho.GUESSER, self.lemmas)
+        
+        info=[]
+        for x in self.lemmas:
+            info.append(self.tagToWordInfo(x.tag))
+                
+        return info
+        
 
     def infoToPosFormat(self, info):
         """

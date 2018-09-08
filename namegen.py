@@ -158,6 +158,7 @@ class ArgumentsManager(object):
         parser = ExceptionsArgumentParser(description="namegen je program pro generování tvarů jmen osob a lokací.")
         
         parser.add_argument("-o", "--output", help="Výstupní soubor.", type=str, required=True)
+        parser.add_argument("-m", "--morphodita", help="S ma použije navíc i MorphoDiTu.", action='store_true')
         parser.add_argument("-ew", "--error-words", help="Cesta k souboru, kde budou uloženy slova, pro která se nepovedlo získat informace (tvary, slovní druh...).", type=str)
         parser.add_argument('input', nargs=1, help='Vstupní soubor se jmény.')
 
@@ -209,10 +210,21 @@ def main():
         logging.info("\thotovo")
         logging.info("analýza slov")
         #přiřazení morfologického analyzátoru
-        Word.setMorphoAnalyzer(
+        
+        if args.morphodita:
+            logging.info("\tNavíc používám MorphoDiTu.")
+            Word.setMorphoAnalyzer(
+                namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibmaMorphodita(
+                    configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 
+                    configAll[configManager.sectionDataFiles]["TAGGER"],
+                    configAll[configManager.sectionDataFiles]["DICTIONARY"],
+                    namesR.allWords(True)))
+        else:
+            Word.setMorphoAnalyzer(
             namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
                 configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 
                 namesR.allWords(True)))
+        
         logging.info("\thotovo")
         logging.info("\tgenerování tvarů")
         
@@ -323,9 +335,9 @@ def main():
         print("\tNenačtených jmen: "+ str(namesR.errorCnt))
         print("\tDuplicitních jmen: "+ str(errorsDuplicity))
         print("\tNačtených jmen/názvů celkem: ", len(namesR.names))
-        print("\t\tNeznámý druh jména: ", errorsUnknownNameType)
-        print("\t\tNepokryto gramatikou: ", errorsGrammerCnt)
-        print("\t\tNepodařilo se získat informace o slově (tvary, slovní druh...): ", errorsWordInfoCnt)
+        print("\tNeznámý druh jména: ", errorsUnknownNameType)
+        print("\tNepokryto gramatikou: ", errorsGrammerCnt)
+        print("\tNepodařilo se získat informace o slově (tvary, slovní druh...): ", errorsWordInfoCnt)
         
         
         if errorWordsShouldSave:

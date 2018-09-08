@@ -212,7 +212,7 @@ class POS(MorphCategory):
     PREPOSITION=7
     """předložka"""
     
-    PREPOSITION_M="7M"
+    PREPOSITION_M="m"
     """Speciální druh předložky, za kterou se v češtině slova ve jméně ohýbají. (da, von ...)"""
 
     CONJUNCTION=8

@@ -14,7 +14,6 @@ from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
 from enum import Enum
 from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
-from numpy.distutils.fcompiler import none
 
 class Terminal(object):
     """
@@ -34,6 +33,7 @@ class Terminal(object):
         V= "5"    #sloveso
         D= "6"    #příslovce
         R= "7"    #předložka
+        RM= "7m"    #předložka za níž se ohýbají slova
         J= "8"    #spojka
         T= "9"    #částice
         I= "10"   #citoslovce
@@ -69,7 +69,7 @@ class Terminal(object):
                 #a to pouze typy terminálu, které vyjadřují slovní druhy
                 return None
         
-    Type.POSTypes={Type.N, Type.A,Type.P,Type.C,Type.V,Type.D,Type.R,Type.J,Type.T, Type.I}
+    Type.POSTypes={Type.N, Type.A,Type.P,Type.C,Type.V,Type.D,Type.R,Type.RM,Type.J,Type.T, Type.I}
     """Typy, které jsou POS"""
     
     Type.toPOSMap={
@@ -80,6 +80,7 @@ class Terminal(object):
                     Type.V: POS.VERB,           #sloveso
                     Type.D: POS.ADVERB,         #příslovce
                     Type.R: POS.PREPOSITION,    #předložka
+                    Type.RM: POS.PREPOSITION_M,    #předložka za níž se ohýbají slova
                     Type.J: POS.CONJUNCTION,    #spojka
                     Type.T: POS.PARTICLE,       #částice
                     Type.I: POS.INTERJECTION    #citoslovce
@@ -102,9 +103,7 @@ class Terminal(object):
             CASE="c"    #pád slova musí být takový    (filtrovací atribut)
             TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
-            
-            
-            
+
 
             @property
             def isFiltering(self):
@@ -618,7 +617,6 @@ class Rule(object):
         termType=None
         try:
             termType=Terminal.Type(mGroups.group(1) )
-            
         except ValueError:
             #neterminál, nemusíme nic měnit
             #stačí původní reprezentace
@@ -972,7 +970,6 @@ class Grammar(object):
                 
                 if not actRules:
                     #v gramatice neexistuje vhodné pravidlo
-                    
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
                 
