@@ -158,16 +158,17 @@ class MorphoAnalyze(ABC):
         pass
     
     @abstractmethod
-    def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set(), wordFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
+    def getMorphs(self, valFilter: Dict[MorphCategories,Set[MorphCategory]] =dict(), notValFilter: Set[MorphCategory] =set(), wordFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
         """
         Získání tvarů.
         
         :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
-            hodnoty, které musí mít pravidlo tvaru, aby se bral v úvahu daný tvar.
-            Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
-            Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
-            nastavím filtr na: set(POS.NOUN)
-        :type valFilter: Set[MorphCategory]
+                hodnoty, které musí mít pravidlo tvaru, aby se bral v úvahu daný tvar.
+                Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
+                Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
+                nastavím filtr na: dict(MorphCategories.POS: set(POS.NOUN))
+                Chci získat všechny tvary ve středním a ženském rodě: dict(MorphCategories.GENDER: set(Gender.NEUTER, Gender.FEMINE))
+        :type valFilter: Dict[MorphCategories,Set[MorphCategory]]
         :param notValFilter: Stejné jako valFilter s tím rozdílem, že dané hodnoty nesmí pravidlo tvaru obsahovat.
         :type notValFilter:Set[MorphCategory]
         :param wordFilter: Podmínky na původní slovo. Jelikož analýza nám může říci několik variant, tak tímto filtrem můžeme
@@ -277,17 +278,18 @@ class MorphoAnalyzerLibma(object):
             :type morph: str
             """
             self._morphs.append((self.convTagRule(tagRule), morph))
-            
-        def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
+
+        def getMorphs(self, valFilter: Dict[MorphCategories,Set[MorphCategory]] =dict(), notValFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
             """
             Získání tvarů.
             
             :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
-                hodnoty, které musí mít dané pravidlo tvaru, aby se bral v úvahu daný tvar.
+                hodnoty, které musí mít pravidlo tvaru, aby se bral v úvahu daný tvar.
                 Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
                 Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
-                nastavím filtr na: set(POS.NOUN)
-            :type valFilter: Set[MorphCategory]
+                nastavím filtr na: dict(MorphCategories.POS: set(POS.NOUN))
+                Chci získat všechny tvary ve středním a ženském rodě: dict(MorphCategories.GENDER: set(Gender.NEUTER, Gender.FEMINE))
+            :type valFilter: Dict[MorphCategories,Set[MorphCategory]]
             :param notValFilter: Stejné jako valFilter s tím rozdílem, že dané hodnoty nesmí pravidlo tvaru obsahovat.
             :type notValFilter:Set[MorphCategory]
             :return: Množinu dvojic (pravidlo, tvar).
@@ -298,7 +300,7 @@ class MorphoAnalyzerLibma(object):
 
             for r, m in self._morphs:
                 try:
-                    if all(r[f.category()]==f for f in valFilter) \
+                    if all(r[c] in f for c, f in valFilter.items()) \
                         and all( f.category() not in r or r[f.category()]!=f for f in notValFilter):
 
                         #úprava velikosti počátečního písmene tvaru na základě původního slova
@@ -582,7 +584,7 @@ class MorphoAnalyzerLibma(object):
 
             return values
         
-        def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set(), wordFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
+        def getMorphs(self, valFilter: Dict[MorphCategories,Set[MorphCategory]] =dict(), notValFilter: Set[MorphCategory] =set(), wordFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
             """
             Získání tvarů.
             
@@ -590,9 +592,9 @@ class MorphoAnalyzerLibma(object):
                 hodnoty, které musí mít pravidlo tvaru, aby se bral v úvahu daný tvar.
                 Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
                 Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
-                nastavím filtr na: set(POS.NOUN)
-                POZOR!:
-            :type valFilter: Set[MorphCategory]
+                nastavím filtr na: dict(MorphCategories.POS: set(POS.NOUN))
+                Chci získat všechny tvary ve středním a ženském rodě: dict(MorphCategories.GENDER: set(Gender.NEUTER, Gender.FEMINE))
+            :type valFilter: Dict[MorphCategories,Set[MorphCategory]]
             :param notValFilter: Stejné jako valFilter s tím rozdílem, že dané hodnoty nesmí pravidlo tvaru obsahovat.
             :type notValFilter:Set[MorphCategory]
             :param wordFilter: Podmínky na původní slovo. Jelikož analýza nám může říci několik variant, tak tímto filtrem můžeme

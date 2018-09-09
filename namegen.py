@@ -243,12 +243,15 @@ def main():
         #nastaveni logování
         duplicityCheck=set()    #zde se budou ukládat jména pro zamezení duplicit
         
+        grammarsForTypeGuesser={Name.Type.FEMALE: grammarFemale,Name.Type.MALE:grammarMale}
         with open(args.output, "w") as outF:
             
             for name in namesR:
                 try:
                     #zpochybnění odhad typu jména
-                    name.guessType()
+                    #protože guess type používá také gramatky
+                    #tak si případný výsledek uložím, abychom nemuseli dělat 2x stejnou práci
+                    aTokens=name.guessType(grammarsForTypeGuesser)
                     if name.type is None:
                         #Nemáme informaci o druhu jména, jdeme dál.
                         print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr)
@@ -265,22 +268,23 @@ def main():
                     
                     duplicityCheck.add(name)
                     
-                    #rules a aTokens může obsahovat více než jednu možnou derivaci
-                    if name.type==Name.Type.LOCATION:
-                        _, aTokens=grammarLocations.analyse(namegenPack.Grammar.Lex.getTokens(name))
-                    elif name.type==Name.Type.MALE:
-                        _, aTokens=grammarMale.analyse(namegenPack.Grammar.Lex.getTokens(name))
-                    elif name.type==Name.Type.FEMALE:
-                        _, aTokens=grammarFemale.analyse(namegenPack.Grammar.Lex.getTokens(name))
-                    else:
-                        #je cosi prohnilého ve stavu tohoto programu
-                        raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
+                    
+                    if aTokens is None: #Nedostali jsme aTokeny při určování druhu slova?
                         
-                    
-                    
+                        #rules a aTokens může obsahovat více než jednu možnou derivaci
+                        if name.type==Name.Type.LOCATION:
+                            _, aTokens=grammarLocations.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                        elif name.type==Name.Type.MALE:
+                            _, aTokens=grammarMale.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                        elif name.type==Name.Type.FEMALE:
+                            _, aTokens=grammarFemale.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                        else:
+                            #je cosi prohnilého ve stavu tohoto programu
+                            raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
 
                     completedMorphs=set()    #pro odstranění dualit používáme set
                     noMorphsWords=set()
+                    missingCaseWords=set()
                     for aT in aTokens:
                         try:
                             morphs=name.genMorphs(aT)
@@ -294,15 +298,30 @@ def main():
                                 if x.token.word==e.word:
                                     noMorphsWords.add((x.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value ,e.word))
                                     break
+                        except Word.WordMissingCaseException as e:
+                            #nepodařilo se získat některý pád slova
+                            #odchytáváme již zde, jeikož pro jedno slovo může být více alternativ
+                            for x in aT:
+                                #hledáme AnalyzedToken pro naše problémové slovo, abychom mohli ke slovu
+                                #přidat i odhadnutý druh slova ve jméně (křestní, příjmení, ...)
+                                if x.token.word==e.word:
+                                    noMorphsWords.add((x.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value ,e))
+                                    break
                         
                     if len(completedMorphs)==0:
                         #chyba při generování tvarů jména
                         #nepodařilo se vygenerovat ani jeden
                         errorsWordInfoCnt+=1
-                        print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(", ".join(str(w) for _,w in noMorphsWords)), file=sys.stderr)
-                        if errorWordsShouldSave:
-                            for m, w in noMorphsWords:
-                                errorWords.add((m, w))
+                        if len(noMorphsWords)>0:
+                            print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(", ".join(str(w) for _,w in noMorphsWords)), file=sys.stderr)
+                            if errorWordsShouldSave:
+                                for m, w in noMorphsWords:
+                                    errorWords.add((m, w))
+                                    
+                        for m, e in missingCaseWords:
+                            print(e.message)
+                            if errorWordsShouldSave:
+                                errorWords.add((m, e.word))
                         
                     #vytiskneme
                     for m in completedMorphs:

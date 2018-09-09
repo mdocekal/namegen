@@ -8,7 +8,7 @@ Modul pro práci s gramatikou.
 """
 from namegenPack import Errors
 import re
-from typing import Set
+from typing import Set, Dict
 from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
     MorphCategories, POS, StylisticFlag, Case
 from enum import Enum
@@ -33,7 +33,7 @@ class Terminal(object):
         V= "5"    #sloveso
         D= "6"    #příslovce
         R= "7"    #předložka
-        RM= "7m"    #předložka za níž se ohýbají slova
+        RM= "7m"    #předložka za níž se ohýbají slova (von, da, de)
         J= "8"    #spojka
         T= "9"    #částice
         I= "10"   #citoslovce
@@ -267,19 +267,24 @@ class Terminal(object):
         :rtype: bool
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
-
-        if t.type!=Token.Type.ANALYZE:
-            #jedná se o jednoduchý token bez nutnosti morfologické analýzy
+        
+        #Zjistíme zda-li se jedná o token, který potenciálně potřebuje analyzátor (ANALYZE, ROMAN_NUMBER)
+        
+        if t.type!=Token.Type.ANALYZE and t.type!=Token.Type.ROMAN_NUMBER:
+            #Jedná se o jednoduchý token bez nutnosti morfologické analýzy.
             return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
         else:
-            if not self._type.isPOSType:
-                #jedná se o typ terminálu nepoužívající analyzátor, ale token je jiného druhu.
-                return False
-            
-            pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues)  
-            #máme všechny možné slovní druhy, které prošly atributovým filtrem 
-       
-            return self._type.toPOS() in pos
+            #Token je buď ANALYZE, nebo se jedná o římské číslo.
+            #Musíme zjistit jaký druh terminálu máme
+            if self._type.isPOSType:
+                #jedná se o typ terminálu používající analyzátor
+                pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues)  
+                #máme všechny možné slovní druhy, které prošly atributovým filtrem 
+                return self._type.toPOS() in pos
+            else:
+                #pro tento terminál se nepoužívá analyzátor
+                #musí být shoda na římské číslo
+                return t.type.value==self._type.value==Token.Type.ROMAN_NUMBER.value
 
     def __str__(self):
         s=str(self._type.value)
@@ -304,9 +309,9 @@ class Token(object):
         """
         Druh tokenu
         """
-        ANALYZE=1   #komplexní typ určený morfologickou analýzou slova
+        ANALYZE=1   #komplexní typ určený pouze morfologickou analýzou slova
         DEGREE_TITLE= Terminal.Type.DEGREE_TITLE.value   #titul
-        ROMAN_NUMBER= Terminal.Type.ROMAN_NUMBER.value   #římská číslice
+        ROMAN_NUMBER= Terminal.Type.ROMAN_NUMBER.value   #římská číslice Je třeba zohlednit i analýzu kvůli shodě s předložkou V
         INITIAL_ABBREVIATION= Terminal.Type.INITIAL_ABBREVIATION.value   #Iniciálová zkratka.
         EOF= Terminal.Type.EOF.value #konec vstupu
         X= Terminal.Type.X.value    #neznámé
@@ -356,28 +361,6 @@ class Token(object):
     def __str__(self):
         return str(self._type)+"("+str(self._word)+")"
     
-    '''
-    TODO: DELETE
-    @property
-    def terminals(self):
-        """
-        Získání všech přijatelných terminálů k danému slovu, které tento
-        token reprezentuje.
-        
-        :return: Množina všech vhodných terminálů k tomuto tokenu.
-        :rtype: Set[Terminal]
-        """
-        res=set()
-        
-        if self._type!=self.Type.ANALYZE:
-            return set(Terminal(self._type.value))
-        
-        #rozgenerujeme terminály na základě morfologické analýzy slova
-        
-        
-        
-        return self._type.terminalRepr
-    '''
     
 class Lex(object):
     """
@@ -494,7 +477,7 @@ class AnalyzedToken(object):
         self._matchingTerminal=t
     
     @property
-    def morphCategories(self) -> Set[MorphCategory]:
+    def morphCategories(self) -> Dict[MorphCategories,Set[MorphCategory]]:
         """
         Získání morfologických kategorií, které na základě analýzy má dané slovo patřící k tokenu mít.
 
@@ -503,29 +486,29 @@ class AnalyzedToken(object):
         Pozor! Je zakázán výběr StylisticFlag.COLLOQUIALLY
         Tyto dodatečné podmínky jsou přímo uzpůsobeny pro použití výsledku ke generování tvarů.
         
-        :rtype: Set[MorphCategory]
+        :rtype: Dict[MorphCategories,Set[MorphCategory]]
         """
         
         #nejprve vložíme filtrovací atributy
-        categories=self.matchingTerminal.fillteringAttrValues.copy()
+        categories={cv.category():set(cv) for cv in self.matchingTerminal.fillteringAttrValues.copy()}
         
         
         #můžeme získat další kategorie na základě morfologické analýzy
         if self.matchingTerminal.type.isPOSType:
             #pro práci s morfologickou analýzou musí byt POS type
-            categories.add(self.matchingTerminal.type.toPOS())    #vložíme požadovaný tvar do filtru
-        
+            
+            categories[MorphCategories.POS]=set(self.matchingTerminal.type.toPOS())#vložíme požadovaný slovní druh do filtru
+            
             #Například pokud víme, že máme přídavné jméno rodu středního v jednotném čísle
             #a morf. analýza nám řekne, že přídavné jméno může být pouze prvního stupně, tak tuto informaci zařadíme
             #k filtrům
                 
-            for _, morphCategoryValues in self._token.word.info.getAll(categories).items():
-                if len(morphCategoryValues)==1:
-                    #daná kategorie má pouze jednu možnou hodnotu použijeme ji jako filtr
-                    catVal=next(iter(morphCategoryValues))
-                    if catVal!=StylisticFlag.COLLOQUIALLY:# hovorové a pády nechceme
-                        categories.add(catVal)
-    
+            for category, morphCategoryValues in self._token.word.info.getAll(categories).items():
+                
+                if len(next(iter(morphCategoryValues)).__class__)>len(morphCategoryValues):
+                    #danou kategorii má cenu filtrovat jelikož analýza určila, že slovo nemá všechny
+                    #hodnoty z této kategorie.
+                    categories[category]=morphCategoryValues
         
         return categories
 
@@ -727,45 +710,7 @@ class Symbol(object):
             True ohýbat. False jinak.
             """
             return self._morph
-        
-        
-class SyntaxTree(object):
-    """
-    TODO:DELETE
-    Syntaktický strom.
-    """
     
-    
-    
-    def __init__(self, rules):
-        """
-        Vytvoření stromu
-        :param rules: (MODIFIKUJE) Očekáva list pravidel, ze kterých vytvoří strom. 
-        :type rules: list(Rule)
-        """
-        
-        actRule=rules.pop()
-        
-        self._root=actRule.leftSide
-        self._morph=self._root[0]!=self.NON_GEN_MORPH_SIGN  #příznak toho, že v tomto stromu na tomto místě se mají ohýbat slova
-
-        self.morphMask=[]  #maska určující zda-li se má ohýbat. True znamená, že ano. 
-        
-        for x in actRule.rightSide:
-            if any( x==r.leftSide for r in rules):
-                #lze rozgenerovat dál
-                childT=SyntaxTree(rules, self._morph)
-                
-                #přidáme masku od potomka
-                self.morphMask+=childT.morphMask
-                
-            else:
-                #nelze
-                self.morphMask.append(self._morph)       
-        
-        
-    
-
 class Grammar(object):
     """
     Používání a načtení gramatiky ze souboru.
@@ -940,13 +885,12 @@ class Grammar(object):
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
-        rules=[]    #aplikovaná pravidla
         aTokens=[]  #analyzované tokeny
         
         while(len(stack)>0):
             s=stack.pop()
             token=tokens[position]
-
+            
             if s.isTerm:
                 #terminál na zásobníku
                 if s.val.tokenMatch(token):
@@ -977,7 +921,6 @@ class Grammar(object):
                 newRules=[]
                 newATokens=[]
 
-                
                 for r in actRules:
                     try:
                         #prvně aplikujeme pravidlo na nový stack
@@ -992,7 +935,7 @@ class Grammar(object):
                             #může obsahovat i více různých derivací
                             for x in resRules:
                                 #musíme předřadit aktuální pravidlo a pravidla předešlá
-                                newRules.append(rules+[r]+x)
+                                newRules.append([r]+x)
                                 
                             for x in resATokens:
                                 #musíme předřadit předešlé analyzované tokeny
@@ -1013,8 +956,8 @@ class Grammar(object):
         
         
         #Již jsme vyčerpali všechny možnosti. Příjmáme naši část vstupní pousloupnosti a končíme.
-        #Zde se dostaneme pouze pokud jsme po cestě měli možnost aplikovat pouze jen jedno pravidlo.
-        return ([rules], [aTokens])
+        #Zde se dostaneme pouze pokud jsme po cestě měli možnost aplikovat pouze jen přímo terminály.
+        return ([[]], [aTokens])
      
     def putRuleOnStack(self, rule:Rule, stack, morph):
         """

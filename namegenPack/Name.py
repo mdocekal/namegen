@@ -94,7 +94,7 @@ class Name(object):
         for w in self._words:
             yield w
             
-    def guessType(self):
+    def guessType(self, grammars=None):
         """
         Provede odhad typu jména. Jedná se o jisté zpochybnění zda-li se jedná o mužské, či ženské jméno.
         Jména lokací nezpochybňujě. 
@@ -102,6 +102,13 @@ class Name(object):
         Pokud není typ jména uveden odhadne jej, ovšem pevně předpokládá, že se jedná o jméno osoby.
         (Dle zadání má být automaticky předpokládána osoba, kde se může stát, že typ není uveden.)
         
+        :param grammars: Aktivuje pokročilé určování typů jména na základě gramatik.
+            Klíč je typ jména(self.Type) a hodnota je příslušná gramatika. Pokud jméno patří právě do jednoho jazyka
+            generovaným jednou z poskytnutých gramatik, tak mu je přiřazen příslušný typ.
+        :type grammars: None, Dict[Grammar]
+        :return: Zde vrací analyzované tokeny, získané při analýze pomocí gramatiky, která generuje jazyk
+            v němž je toto jméno. Pokud je jméno ve více gramatikách nebo v žádné vrátí None.
+        :rtype aTokens: List | None
         :raise Word.WordCouldntGetInfoException:Pokud se nepodařilo analyzovat nějaké slovo.
         """
         if self._type==self.Type.LOCATION:
@@ -129,41 +136,28 @@ class Name(object):
                         break
         except Word.WordCouldntGetInfoException:
             #nepovedlo se získat informace o slově
-            #nevadí zkusíme dále
-            pass
+            #končíme
+            return
     
-        
-        if changeTo is None:
-            
+        aTokens=None
+        if changeTo is None and grammars:
             #příjmení nekončí na ová
-            #zjistíme jakého rodu je první podstatné jméno (křestní jméno)
-            for token in tokens:
-                if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
-                    
-                    #získáme možné mluvnické kategorie
-                    analyze=token.word.info
-                    
-                    posCat=analyze.getAllForCategory(MorphCategories.MorphCategories.POS, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
+            for t, g in grammars.items():
+                try:
+                    _, tmpATokens=g.analyse(tokens)
 
-                    if MorphCategories.POS.NOUN in posCat:
-                        
-                        #získáme možné rody
-                        posGenders=analyze.getAllForCategory(MorphCategories.MorphCategories.GENDER, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
-                        if MorphCategories.Gender.FEMINE in posGenders and (MorphCategories.Gender.MASCULINE_ANIMATE in posGenders or \
-                            MorphCategories.Gender.MASCULINE_INANIMATE in posGenders):
-                            #bohužel může být jak mužský, tak ženský
-                            break
-                        
-                        if MorphCategories.Gender.FEMINE in posGenders:
-                            #asi se jedná o ženské jméno
-                            changeTo=self.Type.FEMALE
-        
-                        elif MorphCategories.Gender.MASCULINE_ANIMATE in posGenders or \
-                            MorphCategories.Gender.MASCULINE_INANIMATE in posGenders:
-                            #asi se jedná o mužské jméno
-                            changeTo=self.Type.MALE
-
+                    if changeTo is None:
+                        #zatím odpovída jedna gramatika
+                        changeTo=t
+                        aTokens=tmpATokens
+                    else:
+                        #více než jedna gramatika odpovídá
+                        changeTo=None
+                        aTokens=None
                         break
+                        
+                except namegenPack.Grammar.Grammar.NotInLanguage:
+                    continue
 
                     
         if changeTo is not None:
@@ -173,7 +167,7 @@ class Name(object):
                 logging.info("Pro "+str(self)+" měním "+str(self._type)+" na "+str(changeTo)+".")    
             self._type=changeTo
         
-    
+        return aTokens
         
     @property
     def words(self):
@@ -248,6 +242,7 @@ class Name(object):
         :return:  Vygenerované tvary.
         :rtype: list(str)
         :raise Word.WordNoMorphsException: Pokud se nepodaří získat tvary u nějakého slova.
+        :raise Word.WordMissingCaseException: Pokud chybí nějaký pád.
         :raise WordCouldntGetInfoException: Vyjímka symbolizující, že se nepovedlo získat mluvnické kategorie ke slovu.
         """
         
@@ -257,13 +252,10 @@ class Name(object):
             if aToken.morph:
                 cateWord=aToken.morphCategories    #podmínky na původní slovo
 
-                cateMorph=set() #podmínky přímo na tvary
+                cateMorph=cateWord.copy() #podmínky přímo na tvary
                 #překopírujeme a ignorujeme pády, jelikož nemůžeme vybrat jen jeden, když chceme
                 #generovat všechny
-                for x in cateWord:
-                    if x.category() !=  MorphCategories.MorphCategories.CASE:
-                        cateMorph.add(x)
-    
+                cateMorph.pop(MorphCategories.MorphCategories.CASE, None)
                 genMorphsForWords.append(word.morphs(cateMorph, cateWord))
             else:
                 genMorphsForWords.append(None)
