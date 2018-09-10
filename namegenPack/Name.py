@@ -94,7 +94,7 @@ class Name(object):
         for w in self._words:
             yield w
             
-    def guessType(self, grammars=None):
+    def guessType(self, grammars=None, tokens:List[namegenPack.Grammar.Token]=None):
         """
         Provede odhad typu jména. Jedná se o jisté zpochybnění zda-li se jedná o mužské, či ženské jméno.
         Jména lokací nezpochybňujě. 
@@ -106,6 +106,9 @@ class Name(object):
             Klíč je typ jména(self.Type) a hodnota je příslušná gramatika. Pokud jméno patří právě do jednoho jazyka
             generovaným jednou z poskytnutých gramatik, tak mu je přiřazen příslušný typ.
         :type grammars: None, Dict[Grammar]
+        :param tokens: Tokeny odpovídající tomuto jménu. Tento volitelný parametr je zde zaveden pro zrychlení výpočtu, aby nebylo nutné v některých případech
+            provádět vícekrát lexikální analýzu. Pokud bude vynechán nic se neděje jen si provede lexikální analýzu sám.
+        :type tokens: List[Token]
         :return: Zde vrací analyzované tokeny, získané při analýze pomocí gramatiky, která generuje jazyk
             v němž je toto jméno. Pokud je jméno ve více gramatikách nebo v žádné vrátí None.
         :rtype aTokens: List | None
@@ -114,8 +117,8 @@ class Name(object):
         if self._type==self.Type.LOCATION:
             #lokace -> ponecháváme
             return
-        
-        tokens=namegenPack.Grammar.Lex.getTokens(self)
+        if not tokens:
+            tokens=namegenPack.Grammar.Lex.getTokens(self)
 
         #zkusíme zpochybnit typ jména
         changeTo=None
@@ -252,10 +255,13 @@ class Name(object):
             if aToken.morph:
                 cateWord=aToken.morphCategories    #podmínky na původní slovo
 
-                cateMorph=cateWord.copy() #podmínky přímo na tvary
+                cateMorph=set() #podmínky přímo na tvary
                 #překopírujeme a ignorujeme pády, jelikož nemůžeme vybrat jen jeden, když chceme
                 #generovat všechny
-                cateMorph.pop(MorphCategories.MorphCategories.CASE, None)
+                for x in cateWord:
+                    if x.category() !=  MorphCategories.MorphCategories.CASE:
+                        cateMorph.add(x)
+    
                 genMorphsForWords.append(word.morphs(cateMorph, cateWord))
             else:
                 genMorphsForWords.append(None)

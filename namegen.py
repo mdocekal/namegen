@@ -244,14 +244,36 @@ def main():
         duplicityCheck=set()    #zde se budou ukládat jména pro zamezení duplicit
         
         grammarsForTypeGuesser={Name.Type.FEMALE: grammarFemale,Name.Type.MALE:grammarMale}
+        
+        tokenTypesThatNeedsMA={namegenPack.Grammar.Token.Type.ANALYZE, namegenPack.Grammar.Token.Type.ROMAN_NUMBER}
         with open(args.output, "w") as outF:
             
             for name in namesR:
                 try:
+                    tokens=namegenPack.Grammar.Lex.getTokens(name)
+                    wNoInfo=set()
+                    for t in tokens:
+                        #zkontrolujeme zda-li máme pro všechny tokeny,které to potřebují, dostupnou analýzu.
+                        if t.type in tokenTypesThatNeedsMA:
+                            try:
+                                _=t.word.info
+                            except Word.WordCouldntGetInfoException:
+                                wNoInfo.add(t.word)
+                    if len(wNoInfo)>0:
+                        print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w) for w in wNoInfo)), file=sys.stderr)
+                        errorsWordInfoCnt+=1
+    
+                        if errorWordsShouldSave:
+                            for w in wNoInfo:
+                                errorWords.add(("", w))#zde nemáme informaci o druhu slova ve jméně, proto ""
+                        #nemá cenu pokračovat, jdeme na další
+                        continue
+                            
+                        
                     #zpochybnění odhad typu jména
                     #protože guess type používá také gramatky
                     #tak si případný výsledek uložím, abychom nemuseli dělat 2x stejnou práci
-                    aTokens=name.guessType(grammarsForTypeGuesser)
+                    aTokens=name.guessType(grammarsForTypeGuesser, tokens)
                     if name.type is None:
                         #Nemáme informaci o druhu jména, jdeme dál.
                         print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr)
@@ -273,11 +295,11 @@ def main():
                         
                         #rules a aTokens může obsahovat více než jednu možnou derivaci
                         if name.type==Name.Type.LOCATION:
-                            _, aTokens=grammarLocations.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                            _, aTokens=grammarLocations.analyse(tokens)
                         elif name.type==Name.Type.MALE:
-                            _, aTokens=grammarMale.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                            _, aTokens=grammarMale.analyse(tokens)
                         elif name.type==Name.Type.FEMALE:
-                            _, aTokens=grammarFemale.analyse(namegenPack.Grammar.Lex.getTokens(name))
+                            _, aTokens=grammarFemale.analyse(tokens)
                         else:
                             #je cosi prohnilého ve stavu tohoto programu
                             raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
@@ -296,7 +318,7 @@ def main():
                                 #hledáme AnalyzedToken pro naše problémové slovo, abychom mohli ke slovu
                                 #přidat i odhadnutý druh slova ve jméně (křestní, příjmení, ...)
                                 if x.token.word==e.word:
-                                    noMorphsWords.add((x.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value ,e.word))
+                                    noMorphsWords.add((x.matchingTerminal,e.word))
                                     break
                         except Word.WordMissingCaseException as e:
                             #nepodařilo se získat některý pád slova
@@ -305,21 +327,21 @@ def main():
                                 #hledáme AnalyzedToken pro naše problémové slovo, abychom mohli ke slovu
                                 #přidat i odhadnutý druh slova ve jméně (křestní, příjmení, ...)
                                 if x.token.word==e.word:
-                                    noMorphsWords.add((x.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value ,e))
+                                    missingCaseWords.add((x.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value ,e))
                                     break
                         
-                    if len(completedMorphs)==0:
+                    if len(noMorphsWords)>0 or len(missingCaseWords)>0:
                         #chyba při generování tvarů jména
                         #nepodařilo se vygenerovat ani jeden
                         errorsWordInfoCnt+=1
                         if len(noMorphsWords)>0:
-                            print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(", ".join(str(w) for _,w in noMorphsWords)), file=sys.stderr)
+                            print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name),", ".join(str(w)+" "+str(m) for m,w in noMorphsWords)), file=sys.stderr)
                             if errorWordsShouldSave:
                                 for m, w in noMorphsWords:
-                                    errorWords.add((m, w))
+                                    errorWords.add((m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w))
                                     
                         for m, e in missingCaseWords:
-                            print(e.message)
+                            print(str(name)+"\t"+e.message, file=sys.stderr)
                             if errorWordsShouldSave:
                                 errorWords.add((m, e.word))
                         

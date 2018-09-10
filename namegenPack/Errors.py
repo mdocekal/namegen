@@ -70,7 +70,7 @@ class ErrorMessenger(object):
             CODE_COULDNT_READ_INPUT_FILE:"Nemohu číst vstupní soubor.",
             CODE_INVALID_INPUT_FILE:"Nevalidní vstupní soubor.",
             CODE_INVALID_INPUT_FILE_UNKNOWN_NAME_TYPE:"Nevalidní vstupní soubor. Neznámý druh jména.",
-            CODE_WORD_ANALYZE:"Nepodařilo se analyzovat slovo.",
+            CODE_WORD_ANALYZE:"Nepodařilo se analyzovat slovo/a.",
             CODE_INVALID_CONFIG:"Nevalidní hodnota v konfiguračním souboru.",
             CODE_GRAMMAR_NO_START_SYMBOL:"Není uveden startovací symbol.",
             CODE_GRAMMAR_NO_RULES:"Nejsou uvedena pravidla.",
@@ -88,7 +88,7 @@ class ErrorMessenger(object):
             CODE_GRAMMAR_INVALID_ARGUMENT:"V souboru s gramatikou je nevalidní argument: {}.",
             CODE_GRAMMAR_ARGUMENT_REPEAT:"V souboru s gramatikou se vícekrát opakuje argument u jednoho terminálu: {}.",
             CODE_NAME_WITHOUT_TYPE:"U {} se nepodařilo zjistit druh jména/názvu.",
-            CODE_NAME_NO_MORPHS_GENERATED:"Pro jméno se nepodařilo vygenerovat tvary u některých slov: {}",
+            CODE_NAME_NO_MORPHS_GENERATED:"Pro jméno {} se nepodařilo vygenerovat tvary u některých slov: {}",
             
             CODE_ALL_VALUES_NOT_COVERED: "Nejsou pokryty všechny hodnoty.",
             CODE_UNKNOWN_ERROR:"Neznámá chyba."  ,

@@ -278,7 +278,8 @@ class Terminal(object):
             #Musíme zjistit jaký druh terminálu máme
             if self._type.isPOSType:
                 #jedná se o typ terminálu používající analyzátor
-                pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues)  
+                pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, {StylisticFlag.COLLOQUIALLY})  #nechceme hovorové
+                
                 #máme všechny možné slovní druhy, které prošly atributovým filtrem 
                 return self._type.toPOS() in pos
             else:
@@ -477,39 +478,42 @@ class AnalyzedToken(object):
         self._matchingTerminal=t
     
     @property
-    def morphCategories(self) -> Dict[MorphCategories,Set[MorphCategory]]:
+    def morphCategories(self) -> Set[MorphCategory]:
         """
         Získání morfologických kategorií, které na základě analýzy má dané slovo patřící k tokenu mít.
+        Vybere jen ty hodnoty, které v nějaké z kategorii zpřesňují odhad , tedy pokud analýza určí, že dané slovo
+        může mít pouze hodnoty v kategorii DegreeOfComparison 1 a 2, tak tyto hodnoty vrátí. Kdyby mohlo slovo nabývat všech
+        hodnot, tak je vůbec nevrací.
 
         Příklad: Analýzou jsme zjistili, že se může jednat pouze o podstatné jméno rodu mužského v jednotném čísle.
         
         Pozor! Je zakázán výběr StylisticFlag.COLLOQUIALLY
         Tyto dodatečné podmínky jsou přímo uzpůsobeny pro použití výsledku ke generování tvarů.
         
-        :rtype: Dict[MorphCategories,Set[MorphCategory]]
+        :rtype: Set[MorphCategory]
         """
         
         #nejprve vložíme filtrovací atributy
-        categories={cv.category():set(cv) for cv in self.matchingTerminal.fillteringAttrValues.copy()}
+        categories=self.matchingTerminal.fillteringAttrValues.copy()
         
         
         #můžeme získat další kategorie na základě morfologické analýzy
         if self.matchingTerminal.type.isPOSType:
             #pro práci s morfologickou analýzou musí byt POS type
             
-            categories[MorphCategories.POS]=set(self.matchingTerminal.type.toPOS())#vložíme požadovaný slovní druh do filtru
+            categories.add(self.matchingTerminal.type.toPOS()) #vložíme požadovaný slovní druh do filtru
             
             #Například pokud víme, že máme přídavné jméno rodu středního v jednotném čísle
             #a morf. analýza nám řekne, že přídavné jméno může být pouze prvního stupně, tak tuto informaci zařadíme
             #k filtrům
                 
-            for category, morphCategoryValues in self._token.word.info.getAll(categories).items():
+            for _, morphCategoryValues in self._token.word.info.getAll(categories, {StylisticFlag.COLLOQUIALLY}).items():# hovorové nechceme
                 
                 if len(next(iter(morphCategoryValues)).__class__)>len(morphCategoryValues):
                     #danou kategorii má cenu filtrovat jelikož analýza určila, že slovo nemá všechny
                     #hodnoty z této kategorie.
-                    categories[category]=morphCategoryValues
-        
+                    categories|=morphCategoryValues
+   
         return categories
 
 class InvalidGrammarException(Errors.ExceptionMessageCode):
