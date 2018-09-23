@@ -105,8 +105,6 @@ class ConfigManager(object):
         """
 
         result={
-            "TAGGER":None,
-            "DICTIONARY":None,
             "GRAMMAR_MALE":None,
             "GRAMMAR_FEMALE":None,
             "GRAMMAR_LOCATIONS":None
@@ -158,7 +156,6 @@ class ArgumentsManager(object):
         parser = ExceptionsArgumentParser(description="namegen je program pro generování tvarů jmen osob a lokací.")
         
         parser.add_argument("-o", "--output", help="Výstupní soubor.", type=str, required=True)
-        parser.add_argument("-m", "--morphodita", help="S ma použije navíc i MorphoDiTu.", action='store_true')
         parser.add_argument("-ew", "--error-words", help="Cesta k souboru, kde budou uloženy slova, pro která se nepovedlo získat informace (tvary, slovní druh...).", type=str)
         parser.add_argument('input', nargs=1, help='Vstupní soubor se jmény.')
 
@@ -210,17 +207,8 @@ def main():
         logging.info("\thotovo")
         logging.info("analýza slov")
         #přiřazení morfologického analyzátoru
-        
-        if args.morphodita:
-            logging.info("\tNavíc používám MorphoDiTu.")
-            Word.setMorphoAnalyzer(
-                namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibmaMorphodita(
-                    configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 
-                    configAll[configManager.sectionDataFiles]["TAGGER"],
-                    configAll[configManager.sectionDataFiles]["DICTIONARY"],
-                    namesR.allWords(True)))
-        else:
-            Word.setMorphoAnalyzer(
+
+        Word.setMorphoAnalyzer(
             namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
                 configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 
                 namesR.allWords(True)))

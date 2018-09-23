@@ -1,7 +1,7 @@
 """
 Created on 17. 6. 2018
 
-Modul pro práci s gramatikou.
+Modul pro práci s gramatikou (Bezkontextovou).
 
 :author:     Martin Dočekal
 :contact:    xdocek09@stud.fit.vubtr.cz
@@ -37,10 +37,11 @@ class Terminal(object):
         J= "8"    #spojka
         T= "9"    #částice
         I= "10"   #citoslovce
+        ABBREVIATION= "a"  #zkratka
 
         DEGREE_TITLE= "t"   #titul
         ROMAN_NUMBER= "r"   #římská číslice
-        INITIAL_ABBREVIATION= "a"    #Iniciálová zkratka.
+        INITIAL_ABBREVIATION= "ia"    #Iniciálová zkratka.
         X= "x"    #neznámé
         
         @property
@@ -69,7 +70,7 @@ class Terminal(object):
                 #a to pouze typy terminálu, které vyjadřují slovní druhy
                 return None
         
-    Type.POSTypes={Type.N, Type.A,Type.P,Type.C,Type.V,Type.D,Type.R,Type.RM,Type.J,Type.T, Type.I}
+    Type.POSTypes={Type.N, Type.A,Type.P,Type.C,Type.V,Type.D,Type.R,Type.RM,Type.J,Type.T, Type.I, Type.ABBREVIATION}
     """Typy, které jsou POS"""
     
     Type.toPOSMap={
@@ -83,7 +84,8 @@ class Terminal(object):
                     Type.RM: POS.PREPOSITION_M,    #předložka za níž se ohýbají slova
                     Type.J: POS.CONJUNCTION,    #spojka
                     Type.T: POS.PARTICLE,       #částice
-                    Type.I: POS.INTERJECTION    #citoslovce
+                    Type.I: POS.INTERJECTION,    #citoslovce
+                    Type.ABBREVIATION: POS.ABBREVIATION    #zkratka
                     }
     """Zobrazení typu do POS."""
     
@@ -387,13 +389,20 @@ class Lex(object):
                 #římská číslovka
                 token=Token(w, Token.Type.ROMAN_NUMBER)
             elif w[-1] == ".":
-                #předpokládáme titul nebo iniciálovou zkratku
-                if len(w)==2:
-                    #zkratka
-                    token=Token(w, Token.Type.INITIAL_ABBREVIATION)
+                if any(str.isdigit(c) for c in w):
+                    #obsahuje číslici
+                    #nemůže se jednat o zkratku, či titul
+                    token=Token(w, Token.Type.ANALYZE)
                 else:
-                    #titul
-                    token=Token(w, Token.Type.DEGREE_TITLE)
+                    #slovo neobsahuje číslovku
+                    #předpokládáme titul nebo iniciálovou zkratku
+                    if len(w)==2:
+                        #zkratka
+                        token=Token(w, Token.Type.INITIAL_ABBREVIATION)
+                    else:
+                        #titul
+                        token=Token(w, Token.Type.DEGREE_TITLE)
+                    
             else:
                 #ostatní
                 token=Token(w, Token.Type.ANALYZE)

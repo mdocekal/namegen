@@ -224,6 +224,9 @@ class POS(MorphCategory):
     INTERJECTION=10
     """citoslovce"""
     
+    ABBREVIATION="a"
+    """zkratka"""
+    
     @staticmethod
     def category():
         return MorphCategories.POS

@@ -14,7 +14,6 @@ from namegenPack.morpho.MorphCategories import *
 import collections
 
 from typing import Set, Dict, Tuple
-from .Morphodita import Morphodita
 
 class MARule(collections.Mapping):
     """
@@ -803,61 +802,6 @@ class MorphoAnalyzerLibma(object):
         
         return self._wordDatabase[word]
 
-        
-class MorphoAnalyzerLibmaMorphodita(MorphoAnalyzerLibma):
-    """
-    Obálka pro Morfologický analyzátor postavený na knihovně libma
-    .. _ma: http://knot.fit.vutbr.cz/wiki/index.php/Morfologický_slovník_a_morfologický_analyzátor_pro_češtinu
-    + MorphoDiTa
-    """
-        
-    def __init__(self, pathToMa, taggerPath, dictPath, words):
-        """
-        Provede vytvoření objektu Morfologického analyzátoru.
-        Spustí nad všemy slovy z words morfologický analyzátor s parametry:
-            -F vrací všechny možné tvary.
-            -m Na výstup se vypíše flektivní analýza zadaného slova.
-        Výsledek si poté načte a bude sloužit jako databáze, která bude použita pro získávání informací
-        o slovech. Tyto informace budou doplněny o informace z MorphoDiTy.
-        
-        :param pathToMa: Cesta/ příkaz pro spuštění morfologického analyzátoru.
-        :type pathToMa: str
-        :param taggerPath: Cesta k souboru pro tagger MorphoDiTy.
-        :type taggerPath: String
-        :param dictPath: Casta k dictionary pro MorphoDiTu.
-        :type dictPath: String
-        :param resultsFilePath: Cesta k souboru, kde bude uložen výsledek z morfologického analyzátoru
-        :type resultsFilePath: str
-        :param words: Slova, která budou předložena analyzátoru a vysledek budou sloužit jako databáze
-            pro tuto obálku. Objekt bude tedy znát nanejvýše tato slova.
-        :type words: set(str)
-        """
-        
-        super().__init__(pathToMa, words)   #necháme pracovat samostatně libmu
-        
-        #zkusíme přidat nějaké info z morphodity
-        morphodita=Morphodita(taggerPath, dictPath)
-        
-        for w in words:
-            info=morphodita.analyze(w)  #vi o tomto slove neco morphodita?
-            if info:
-                g=self.MAWordGroup(w)
-                g.lemma=morphodita.lemmatize(w)
-                for i in info:
-                    g.addTagRule(Morphodita.transInfoToLNTRF(i))
-                    
-                for m, i in morphodita.genMorphs(w):    #jaké tvary morphodita zná
-                    g.addMorph(Morphodita.transInfoToLNTRF(i), m)
-                #přiřadíme do databáze
-                try:
-                    self._wordDatabase[w].addGroup(g)
-                except KeyError:
-                    #slovo zatím není v databázi
-                    self._wordDatabase[w]=self.MAWord(w)
-                    self._wordDatabase[w].addGroup(g)
-            
-            
-        
             
         
     

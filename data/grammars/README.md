@@ -23,7 +23,8 @@ Terminály jsou předdefinované. Jejich seznam je následující:
 	10	- citoslovce
 	t	- titul (Slovo s tečkou na konci o délce větší než 2 [včetně tečky])
 	r	- římská číslice (od I do XXXIX)
-	a	- Iniciálová zkratka. (Slovo s tečkou na konci o délce 2 [včetně tečky])
+	a	- zkratka
+	ia	- Iniciálová zkratka. (Slovo s tečkou na konci o délce 2 [včetně tečky])
 
 Terminálům můžeme přiřazovat atributy. Uvádějí se bezprostředně za terminál do složených závorek. Uvedeme si příklad:
 
