@@ -260,12 +260,15 @@ def main():
                             except Word.WordCouldntGetInfoException:
                                 wNoInfo.add(t.word)
                     if len(wNoInfo)>0:
-                        print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w) for w in wNoInfo)), file=sys.stderr)
+                        wordsMarks=name.simpleWordsTypesGuess(tokens)
+                        print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w)+"#"+str(wordsMarks[name.words.index(w)]) for w in wNoInfo)), file=sys.stderr)
                         errorsWordInfoCnt+=1
-    
+
                         if errorWordsShouldSave:
+                            
                             for w in wNoInfo:
-                                errorWords.add(("", w))#zde nemáme informaci o druhu slova ve jméně, proto ""
+                                #přidáme informaci o druhu slova ve jméně
+                                errorWords.add((wordsMarks[name.words.index(w)], w))
                         #nemá cenu pokračovat, jdeme na další
                         continue
                             

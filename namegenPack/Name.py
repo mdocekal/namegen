@@ -20,6 +20,7 @@ import namegenPack.Grammar
 
 from namegenPack.Word import Word, WordTypeMark
 
+
 class Name(object):
     """
     Reprezentace celého jména osoby či lokace.
@@ -235,6 +236,47 @@ class Name(object):
             words.append(actWord)
         
         return (words, separators)
+    
+    
+    def simpleWordsTypesGuess(self,tokens:List[namegenPack.Grammar.Token]=None):
+        """
+        Provede zjednodušený odhad typů slov ve jméně. Bez použití morfologické analýzy.
+        
+        :param tokens: Tokeny odpovídající tomuto jménu. Tento volitelný parametr je zde zaveden pro zrychlení výpočtu, aby nebylo nutné v některých případech
+            provádět vícekrát lexikální analýzu. Pokud bude vynechán nic se neděje jen si provede lexikální analýzu sám.
+        :type tokens: List[Token]
+        :return: Typy pro slova ve jméně.
+        :rtype: List(namegenPack.Word.WordTypeMark)
+        """
+        
+        if not tokens:
+            tokens=namegenPack.Grammar.Lex.getTokens(self)
+        
+        types=[]
+
+        for token in tokens:
+            if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
+                if self._type==self.Type.LOCATION:
+                    types.append(namegenPack.Word.WordTypeMark.LOCATION)
+                else:
+                    types.append(namegenPack.Word.WordTypeMark.GIVEN_NAME)
+            elif token.type==namegenPack.Grammar.Token.Type.INITIAL_ABBREVIATION:
+                types.append(namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION)
+            elif token.type==namegenPack.Grammar.Token.Type.ROMAN_NUMBER:
+                types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
+            elif token.type==namegenPack.Grammar.Token.Type.DEGREE_TITLE:
+                types.append(namegenPack.Word.WordTypeMark.DEGREE_TITLE)
+            else:
+                types.append(namegenPack.Word.WordTypeMark.UNKNOWN)
+        
+        if types.count(namegenPack.Word.WordTypeMark.GIVEN_NAME)>1:   #máme více jak jedno křestní
+            #poslední křestní se stane příjmením
+            for i in range(len(types)-1, -1, -1):
+                if types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME:
+                    types[i]=namegenPack.Word.WordTypeMark.SURNAME
+                    break
+        
+        return types
     
     def genMorphs(self, analyzedTokens:List[namegenPack.Grammar.AnalyzedToken]):
         """
