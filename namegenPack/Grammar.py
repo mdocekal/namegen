@@ -14,6 +14,8 @@ from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
 from enum import Enum
 from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
+import itertools
+import copy
 
 class Terminal(object):
     """
@@ -52,8 +54,12 @@ class Terminal(object):
             :return: True odpovídá slovnímu druhu. False jinak.
             :rtype: bool
             """
-
-            return self in self.POSTypes
+            try:
+                return self.isPOS
+            except AttributeError:
+                #ptáme se poprvé
+                self.isPOS=self in self.POSTypes
+                return self.isPOS
             
         def toPOS(self):
             """
@@ -535,7 +541,7 @@ class Rule(object):
     
     TERMINAL_REGEX=re.compile("^(.+?)(\{(.*)\})?$") #oddělení typu a attrbutů z terminálu
     
-    def __init__(self, fromString, terminals, nonterminals):
+    def __init__(self, fromString, terminals=None, nonterminals=None):
         """
         Vytvoření pravidla z řetězce.
         formát pravidla: Neterminál -> Terminály a neterminály
@@ -564,7 +570,8 @@ class Rule(object):
                                           Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+fromString)
         
         #neterminál, vše je ok
-        nonterminals.add(self._leftSide)
+        if nonterminals is not None:
+            nonterminals.add(self._leftSide)
 
             
         self._rightSide=[x for x in self._rightSide.split()]
@@ -573,14 +580,18 @@ class Rule(object):
         for i, x in enumerate(self._rightSide):
             try:
                 self.rightSide[i]=self._parseSymbol(x)
-                if isinstance(self.rightSide[i], Terminal):
-                    # terminál
-                    terminals.add(self.rightSide[i])
-                else:
-                    #neterminál nebo prázdný řetězec
-                    if self.rightSide[i]!=Grammar.EMPTY_STR:
-                        #neterminál
-                        nonterminals.add(self.rightSide[i])
+                
+                if terminals is not None or nonterminals is not None:
+                    if isinstance(self.rightSide[i], Terminal):
+                        # terminál
+                        if terminals is not None:
+                            terminals.add(self.rightSide[i])
+                    else:
+                        #neterminál nebo prázdný řetězec
+                        if self.rightSide[i]!=Grammar.EMPTY_STR:
+                            #neterminál
+                            if nonterminals is not None:
+                                nonterminals.add(self.rightSide[i])
             except:
                 #došlo k potížím s aktuálním pravidlem
                 raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE, 
@@ -654,17 +665,41 @@ class Rule(object):
         """
         return self._leftSide
     
+    @leftSide.setter
+    def leftSide(self, value):
+        """
+        Nová levá strana pravidla.
+        
+        :param value:Nová hodnota na levé straně prvidla.
+        :type value: string
+        :return: Neterminál.
+        :rtype: str
+        """
+        self._leftSide=value
+    
     @property
     def rightSide(self):
         """
         Pravá strana pravidla.
+        
         :return: Terminály a neterminály (epsilon) na právé straně pravidla.
         :rtype: list
         """
         return self._rightSide
     
-    
+    @rightSide.setter
+    def rightSide(self, value): 
+        """
+        Nová pravá strana pravidla.
         
+        :param value: Nová pravá strana.
+        :type value: List()
+        :return: Terminály a neterminály (epsilon) na právé straně pravidla.
+        :rtype: list
+        """
+        self._rightSide=value
+    
+    
     def __str__(self):
         return self._leftSide+"->"+" ".join(str(x) for x in self._rightSide)
     
@@ -789,6 +824,10 @@ class Grammar(object):
         self._nonterminals=set()
         
         self.load(filePath)
+
+        self._removeAllUsellesSymbols()
+        #vytvoříme si tabulku pro parsování
+        self._makeTable()
         
     
     def load(self,filePath):
@@ -839,8 +878,26 @@ class Grammar(object):
             raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_COULDNT_READ_INPUT_FILE,
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_COULDNT_READ_INPUT_FILE)+"\n\t"+filePath)
             
-        #vytvoříme si tabulku pro parsování
-        self._makeTable()
+        
+    def __str__(self):
+        """
+        Converts grammar to string.
+        in format:
+        S=start_symbol
+        N={nonterminals}
+        T={terminals}
+        P={
+            rules
+        }
+        """
+        s="S="+self._startS+"\n"
+        s+="N={"+", ".join(sorted( str(n) for n in self._nonterminals))+"}\n"
+        s+="T={"+", ".join(sorted( str(t) for t in self._terminals))+"}\n"
+        s+="P={\n"
+        for r in sorted( str(r) for r in self._rules):
+            s+="\t"+str(r)+"\n"
+        s+="}"
+        return s
         
     @staticmethod
     def _procGFLine(line):
@@ -1033,12 +1090,143 @@ class Grammar(object):
 
         return morphMask
                 
+    def _simplify(self):
+        """
+        Provede zjednodušení gramatiky.
+        """
+
+        self._eliminatingEpRules()
+        self._removeUnaryRules()
+        self._removeAllUsellesSymbols()
+
+        
+    
+    def _removeAllUsellesSymbols(self):
+        """
+        Provede odstranění zbytečných symbolů.
+        
+        Neterminál je zbytečný pokud se z něj nedá proderivovat k řetězci.
+        Neterminál je také zbytečný pokud se z k němu nedá proderivovat z počátečního neterminálu.
+        """
+        
+        #které neterminály nevedou k řetězci?
+        #vytvoříme si množinu obsahující bezpečné symboly, které se určitě derivují k řetězci.
+        #Prvně vložíme terminály a epsilon. Ty se sice nederivují, ale zpřehledníme si tím práci.
+        deriveToTerminals=self._terminals.copy()
+        deriveToTerminals.add(self.EMPTY_STR)
+
+        #Nejprve vezme všechny neterminály, které přímo derivují terminály (i epsilon).
+        #Dále nás budou zajímat i pravidla, která obsahují i neterminály, o kterých víme, že vedou na řetězec.
+        change=True
+        while change:
+            #Procházíme dokud dostáváme nové symboly, které také vedou k řetězci
+            change=False
+            
+            for r in self._rules:
+                if all(x in deriveToTerminals for x in r.rightSide):
+                    if r.leftSide not in deriveToTerminals:
+                        deriveToTerminals.add(r.leftSide)
+                        change=True
+                    
+        #odstraníme všechny pravidla obsahující nepovolené neterminály a i samotné nepovolené neterminály
+        self._rules={r for r in self._rules if r.leftSide in deriveToTerminals and not any( s not in deriveToTerminals for s in r.rightSide)}
+        self._nonterminals={ n for n in self._nonterminals if n in deriveToTerminals}
+        
+        #Teď budeme odstraňovat neterminály, ke kterým se nedostaneme z počátečního symbolu.
+        #začínáme od počátečního symbolu
+        usedRules=set()
+        usedSymbols={self._startS}
+        change=True
+        while change:
+            change=False
+            for r in self._rules:
+                if r.leftSide in usedSymbols:
+                    if r not in usedRules:
+                        #přidáme pravidlo
+                        usedRules.add(r)
+                        change=True
+                        for s in r.rightSide:
+                            #přidáme symboly
+                            usedSymbols.add(s)
+                
+        #odstraníme všechny nepoužitá pravidla a symboly
+        self._rules=usedRules
+        self._nonterminals=self._nonterminals & usedSymbols
+        self._terminals=self._terminals & usedSymbols
+        
+        #musíme přidat ještě terminál s koncem souboru, protože byl zrovna odstraněn
+        self._terminals.add(Terminal(Terminal.Type.EOF))
+    
+    def _eliminatingEpRules(self):
+        """
+        Provede eliminaci epsilon pravidel.
+        """
+        
+        #vytvoříme empty množinu
+        self._makeEmptySets()
+        
+        tmpRules=set()
+        for r in self._rules:
+            if not r.rightSide==[self.EMPTY_STR]:   #pravidla A ->ε vynecháváme
+                #vytvoříme všechny kombinace z pravidla, kde můžeme vynechat 0-x neterminálu, které se derivují na empty
+                
+                #0-vynechání
+                tmpRules.add(r)
+                
+                allEmptyOnRSide={n for n in r.rightSide if self._empty[n]}
+                
+                for i in range(1, len(allEmptyOnRSide)+1):
+                    #vynecháváme 1-x symbolů
+                    for shouldRemove in itertools.combinations(allEmptyOnRSide, i):
+                        #vybraná kombinace pro odstranění
+                        newRule=copy.copy(r)
+                        #upravíme pravou stranu
+                        newRule.rightSide=[s for s in newRule.rightSide if s not in shouldRemove]
+                        if len(newRule.rightSide)>0:
+                            tmpRules.add(newRule)
+        if self._empty[self._startS]:
+            tmpRules.add(Rule("S->"+self.EMPTY_STR))
+        self._rules=tmpRules
+        
+        
+    def _removeUnaryRules(self):
+        """
+        Provede odstranění jednoduchých pravidel ve formě: A->B, kde A,B jsou neterminály.
+        POZOR!: Předpokládá gramatiku, na kterou bylo použito eliminatingEpRules.
+        """
+        
+        #zjistíme takzvané jednotkové páry (Unit pair).
+        #X,Y z N je jednotkový pár, pokud  X=>*Y
+        
+        unitPairs={r for r in self._rules if len(r.rightSide)==1 and not isinstance(r.rightSide[0], Terminal) and r.rightSide[0]!=self.EMPTY_STR}#na pravé straně je pouze 1 neterminál
+        numberOfPairs=0
+        while numberOfPairs!=len(unitPairs):
+            numberOfPairs=len(unitPairs)
+            
+            tmpUnitPair=unitPairs.copy()
+            for unitPairRule in tmpUnitPair:  #(X->Y)
+                for unitPairRuleOther in {r for r in tmpUnitPair if r.leftSide==unitPairRule.rightSide[0] }:#(Y->Z)
+                    newRule=copy.copy(unitPairRule)
+                    newRule.rightSide=unitPairRuleOther.rightSide[0]
+                    unitPairs.add(newRule)#(X->Z)
+        
+        #odstraníme jednoduchá pravidla
+        oldRules=self._rules.copy()
+        self._rules -= unitPairs
+        
+        for unitPairRule in unitPairs:  #X->A
+            for r in {oldR for oldR in oldRules if oldR.leftSide==unitPairRule.rightSide[0]}:   #A->w
+                if len(r.rightSide)>1 or (isinstance(r.rightSide[0], Terminal) or r.rightSide[0]==self.EMPTY_STR):
+                    #na levé straně není pouze neterminál
+                    
+                    newRule=copy.copy(unitPairRule)
+                    newRule.rightSide=r.rightSide
+                    self._rules.add(newRule)
+        
     def _makeTable(self):
         """
         Vytvoření parsovací tabulky.
         
-        :raise exception: 
-            InvalidGrammarException při nejednoznačnosti.
         """
         self._makeEmptySets()
         #COULD BE DELETED print("empty", self._empty)
@@ -1088,16 +1276,26 @@ class Grammar(object):
         print(pandas.DataFrame(data, ordeNon, inputSymbols))
     '''
     
-    def _makeEmptySets(self):
+    def _makeEmptySets(self, force=False):
         """
         Získání "množin" empty (v aktuální gramatice) v podobě dict s příznaky True/False,
          zda daný symbol lze derivovat na prázdný řetězec.
          
         Jedná se o Dict s příznaky: True lze derivovat na prázdný řetězec, či False nelze. 
+        
+        :param force: Pokud je True, tak vytvoří množinu empty bez ohledu na to, zda-li je už vytvořena.
+            Pokud False, tak ji nebude vytvářet, pokud již existuje.
+        :type force: Bool
         """
-
+        if not force:
+            try:
+                return self._empty
+            except AttributeError:
+                #tak nic ještě empty nemáme
+                pass
+            
         self._empty={t:False for t in self._terminals} #terminály nelze derivovat na prázdný řetězec
-        self._empty[self.EMPTY_STR]=True    #prázdný řetězec mohu triviálně derivovat na przdný řetězec
+        self._empty[self.EMPTY_STR]=True    #prázdný řetězec mohu triviálně derivovat na prázdný řetězec
         
         for N in self._nonterminals:
             #nonterminály inicializujeme na false
