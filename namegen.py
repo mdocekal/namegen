@@ -376,13 +376,7 @@ def main():
             #save words with errors into a file
             with open(args.error_words, "w") as errWFile:
                 for m, w in errorWords:#označení typu slova ve jméně(jméno, příjmení), společně se jménem
-                    try:
-                        #TODO: +"\t"+ w.info. Morphodita.Morphodita.transInfoToLNTRF(w.info), file=errWFile)
-                        print(str(w)+"\t"+"j"+str(m))
-                    except Word.WordException:
-                        #no info
-                        print(str(w), file=errWFile)
-        
+                    print(str(w)+"\t"+"j"+str(m), file=errWFile)
   
 
     except Errors.ExceptionMessageCode as e:
