@@ -110,6 +110,7 @@ class Terminal(object):
             NUMBER="n"  #mluvnická kategorie číslo. Číslo slova musí být takové. (filtrovací atribut)
             CASE="c"    #pád slova musí být takový    (filtrovací atribut)
             TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
+            MATCH_REGEX="mr"    #Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
 
 
@@ -170,7 +171,13 @@ class Terminal(object):
             elif cls.Type.NUMBER==t:
                 v=Number.fromLntrf(aV)
             elif cls.Type.CASE==t:
-                v=Case.fromLntrf(aV)   
+                v=Case.fromLntrf(aV)
+            elif cls.Type.MATCH_REGEX:
+                try:
+                    v=re.compile(aV)
+                except re.error:
+                    raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT, \
+                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT).format(s))
             else:
                 v=WordTypeMark(aV)
             

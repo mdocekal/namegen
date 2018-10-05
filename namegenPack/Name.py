@@ -13,12 +13,13 @@ from namegenPack import Errors
 import logging
 
 from namegenPack.morpho import MorphCategories
-from namegenPack.morpho.MorphCategories import Case
+from namegenPack.morpho.MorphCategories import Case, StylisticFlag, POS
 
 from typing import List
 import namegenPack.Grammar
 
 from namegenPack.Word import Word, WordTypeMark
+from reportlab.graphics.barcode.eanbc import words
 
 
 class Name(object):
@@ -253,13 +254,26 @@ class Name(object):
             tokens=namegenPack.Grammar.Lex.getTokens(self)
         
         types=[]
+        
+        #používá se u mužských/ženských jmen, kde za předložkou dáváme lokaci
+        womanManType=namegenPack.Word.WordTypeMark.GIVEN_NAME 
 
         for token in tokens:
             if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
                 if self._type==self.Type.LOCATION:
                     types.append(namegenPack.Word.WordTypeMark.LOCATION)
                 else:
-                    types.append(namegenPack.Word.WordTypeMark.GIVEN_NAME)
+                    try:
+                        #nechceme hovorové
+                        pos=token.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, {StylisticFlag.COLLOQUIALLY})  
+                        if len({POS.PREPOSITION, POS.PREPOSITION_M} & pos)>0:
+                            #jedná se o předložku
+                            types.append(namegenPack.Word.WordTypeMark.PREPOSITION)
+                            #přepneme z křestního na lokaci
+                            womanManType=namegenPack.Word.WordTypeMark.LOCATION
+                            
+                    except Word.WordCouldntGetInfoException:
+                        types.append(womanManType)
             elif token.type==namegenPack.Grammar.Token.Type.INITIAL_ABBREVIATION:
                 types.append(namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION)
             elif token.type==namegenPack.Grammar.Token.Type.ROMAN_NUMBER:
@@ -271,10 +285,16 @@ class Name(object):
         
         if types.count(namegenPack.Word.WordTypeMark.GIVEN_NAME)>1:   #máme více jak jedno křestní
             #poslední křestní se stane příjmením
+            
             for i in range(len(types)-1, -1, -1):
                 if types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME:
                     types[i]=namegenPack.Word.WordTypeMark.SURNAME
                     break
+            if self._type==self.Type.FEMALE: 
+                #+ u žen každé křestní končící na ová se stane příjmením
+                for i in range(len(types)):
+                    if types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME and self._words[i][-3:] == "ová":
+                        types[i]=namegenPack.Word.WordTypeMark.SURNAME
         
         return types
     
