@@ -257,27 +257,39 @@ class Name(object):
         
         #používá se u mužských/ženských jmen, kde za předložkou dáváme lokaci
         womanManType=namegenPack.Word.WordTypeMark.GIVEN_NAME 
-
+        
         for token in tokens:
             if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
                 if self._type==self.Type.LOCATION:
                     types.append(namegenPack.Word.WordTypeMark.LOCATION)
                 else:
                     try:
-                        #nechceme hovorové
-                        pos=token.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, {StylisticFlag.COLLOQUIALLY})  
+
+                        pos=token.word.info.getAllForCategory(MorphCategories.MorphCategories.POS)  
                         if len({POS.PREPOSITION, POS.PREPOSITION_M} & pos)>0:
                             #jedná se o předložku
                             types.append(namegenPack.Word.WordTypeMark.PREPOSITION)
                             #přepneme z křestního na lokaci
                             womanManType=namegenPack.Word.WordTypeMark.LOCATION
+                        else:
+                            types.append(womanManType)
                             
                     except Word.WordCouldntGetInfoException:
                         types.append(womanManType)
             elif token.type==namegenPack.Grammar.Token.Type.INITIAL_ABBREVIATION:
                 types.append(namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION)
             elif token.type==namegenPack.Grammar.Token.Type.ROMAN_NUMBER:
-                types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
+                if self._type!=self.Type.LOCATION:
+                    #může být i předložka v, kvůli stejné reprezentaci s římskou číslicí 5
+                    if str(token.word)=="v":
+                        #jedná se o malé v bez tečky, bereme jako předložku
+                        types.append(namegenPack.Word.WordTypeMark.PREPOSITION)
+                        #přepneme z křestního na lokaci
+                        womanManType=namegenPack.Word.WordTypeMark.LOCATION
+                    else:
+                        types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
+                else:
+                    types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
             elif token.type==namegenPack.Grammar.Token.Type.DEGREE_TITLE:
                 types.append(namegenPack.Word.WordTypeMark.DEGREE_TITLE)
             else:

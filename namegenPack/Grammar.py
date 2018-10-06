@@ -110,7 +110,7 @@ class Terminal(object):
             NUMBER="n"  #mluvnická kategorie číslo. Číslo slova musí být takové. (filtrovací atribut)
             CASE="c"    #pád slova musí být takový    (filtrovací atribut)
             TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
-            MATCH_REGEX="mr"    #Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
+            MATCH_REGEX="r"    #Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
 
 
@@ -172,9 +172,9 @@ class Terminal(object):
                 v=Number.fromLntrf(aV)
             elif cls.Type.CASE==t:
                 v=Case.fromLntrf(aV)
-            elif cls.Type.MATCH_REGEX:
+            elif cls.Type.MATCH_REGEX==t:
                 try:
-                    v=re.compile(aV)
+                    v=re.compile(aV[1:-1])  #[1:-1] odstraňujeme # ze začátku a konce
                 except re.error:
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT, \
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT).format(s))
@@ -194,8 +194,16 @@ class Terminal(object):
             """
             return self._val
         
+        @property
+        def valueRepresentation(self):
+            """
+            :return: Reprezentace hodnoty attributu.
+            """
+            return self._val if self.type!=self.Type.MATCH_REGEX else self._val.pattern
+            
+        
         def __str__(self):
-            return str(self._type.value)+"="+str(self._val.value)
+            return str(self._type.value)+"="+str(self.valueRepresentation)
                         
         def __hash__(self):
             return hash((self._type, self._val))
@@ -283,6 +291,11 @@ class Terminal(object):
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
         
+        mr=self.getAttribute(self.Attribute.Type.MATCH_REGEX)
+        if mr is not None and not mr.value.match(str(t.word)):
+            #kontrola na regex match neprošla
+            return False
+            
         #Zjistíme zda-li se jedná o token, který potenciálně potřebuje analyzátor (ANALYZE, ROMAN_NUMBER)
         
         if t.type!=Token.Type.ANALYZE and t.type!=Token.Type.ROMAN_NUMBER:
@@ -641,14 +654,58 @@ class Rule(object):
         attrTypes=set() #pro kontorolu opakujicich se typu
         if mGroups.group(3):
             #terminál má argumenty
-            for a in mGroups.group(3).split(","):
-                ta=Terminal.Attribute.createFrom(a)
+            
+            state="R"   #Read
+            attribute=""
+            
+            #Budeme číst attributy oddělené ,
+            #Pokud však narazíme na ", tak čárka nemusí být oddělovačem attributu
+             
+            for s in mGroups.group(3):
+                if state=="R" and s==",":
+                    #Read
+                    if s==",":
+                        #máme potenciální atribut
+                        ta=Terminal.Attribute.createFrom(attribute)
+                        if ta.type in attrTypes:
+                            #typ argumentu se opakuje
+                            raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT, \
+                                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT).format(attribute))
+                        attrTypes.add(ta.type)
+                        attrs.add(ta)
+                        attribute=""
+                    elif s=='"':
+                        state="Q"  #QUOTATION MARKS
+                        attribute+=s
+                    else:
+                        attribute+=s
+                elif "Q":
+                    #QUOTATION MARKS
+                    if s=='"':
+                        state="R"
+                        attribute+=s
+                    elif s=="\\":
+                        state="B" #BACKSLASH
+                        attribute+=s
+                    else:
+                        attribute+=s
+                else:
+                    #BACKSLASH
+                    state="Q"
+                    if s=='"':
+                        attribute=attribute[:-1]
+                        attribute+=s
+
+            if len(attribute)>0:
+                #máme potenciální atribut
+                ta=Terminal.Attribute.createFrom(attribute)
                 if ta.type in attrTypes:
                     #typ argumentu se opakuje
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT, \
-                                                      Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT).format(a))
+                                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT).format(attribute))
                 attrTypes.add(ta.type)
                 attrs.add(ta)
+
             
         return Terminal(termType, attrs)
         
