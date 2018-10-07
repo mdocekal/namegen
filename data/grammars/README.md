@@ -63,6 +63,11 @@ Možné atributy a jejich hodnoty:
     	T	Titul. Příklad: prof.
     	I	Iniciálová zkratka. Příklad H. ve jméně John H. White
     	U	Neznámé
+    r - Regulární výraz, který určuje podobu slova.
+    	Hodnota musí být vepsána v uvozovkách.
+    	
+    	Příklad: "^.*ová$"	
+    		Všechna slova končící na ová.
 
 
 

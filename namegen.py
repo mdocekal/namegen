@@ -156,7 +156,10 @@ class ArgumentsManager(object):
         parser = ExceptionsArgumentParser(description="namegen je program pro generování tvarů jmen osob a lokací.")
         
         parser.add_argument("-o", "--output", help="Výstupní soubor.", type=str, required=True)
-        parser.add_argument("-ew", "--error-words", help="Cesta k souboru, kde budou uloženy slova, pro která se nepovedlo získat informace (tvary, slovní druh...).", type=str)
+        parser.add_argument("-ew", "--error-words", help="Cesta k souboru, kde budou uložena slova, pro která se nepovedlo získat informace (tvary, slovní druh...). Výsledek je v lntrf formátu s tím, že provádí odhad značko-pravidel pro ženská a mužská jména.", type=str)
+        parser.add_argument("-gn", "--given-names", help="Cesta k souboru, kde budou uložena slova označená jako křestní. Výsledek je v lntrf formátu.", type=str)
+        parser.add_argument("-sn", "--surnames", help="Cesta k souboru, kde budou uložena slova označená jako příjmení. Výsledek je v lntrf formátu.", type=str)
+        parser.add_argument("-l", "--locations", help="Cesta k souboru, kde budou uložena slova označená jako lokace. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument('input', nargs=1, help='Vstupní soubor se jmény.')
 
         try:
@@ -224,9 +227,35 @@ def main():
         errorsDuplicity=0   #více stejných jmen (včetně typu)
 
         errorWordsShouldSave=True if args.error_words is not None else False
-        errorWords=set()    #slova ke, kterým nemůže vygenerovat tvary, zjistit POS... Jedná se o dvojice ( druhu slova ve jméně, dané slovo)
+        
+        #slova ke, kterým nemůže vygenerovat tvary, zjistit POS... 
+        #Jedná se o trojice ( druh názvu (mužský, ženský, lokace),druhu slova ve jméně, dané slovo)
+        errorWords=set()    
+        
+        givenNamesF,surnamesF,locationsF=None,None,None
+        
+
+        #slouží pro výpis křestních jmen, příjmení atd.
+        wordRules={}
+        writeWordsOfTypeTo={}
+        if args.given_names is not None:
+            #uživatel chce vypsat křestní jména do souboru
+            wordRules[WordTypeMark.GIVEN_NAME]={}
+            writeWordsOfTypeTo[WordTypeMark.GIVEN_NAME]=args.given_names
+            
+        if args.surnames is not None:
+            #uživatel chce příjmení jména do souboru
+            wordRules[WordTypeMark.SURNAME]={}
+            writeWordsOfTypeTo[WordTypeMark.SURNAME]=args.surnames
+            
+        if args.locations is not None:
+            #uživatel chce vypsat slova odpovídají lokacím do souboru
+            wordRules[WordTypeMark.LOCATION]={}
+            writeWordsOfTypeTo[WordTypeMark.LOCATION]=args.locations
+            
+        
          
-        cnt=0   #projito slov
+        cnt=0   #projito jmen
         
         #nastaveni logování
         duplicityCheck=set()    #zde se budou ukládat jména pro zamezení duplicit
@@ -234,6 +263,9 @@ def main():
         grammarsForTypeGuesser={Name.Type.FEMALE: grammarFemale,Name.Type.MALE:grammarMale}
         
         tokenTypesThatNeedsMA={namegenPack.Grammar.Token.Type.ANALYZE, namegenPack.Grammar.Token.Type.ROMAN_NUMBER}
+        
+        
+        
         with open(args.output, "w") as outF:
             
             for name in namesR:
@@ -255,8 +287,8 @@ def main():
                         if errorWordsShouldSave:
                             
                             for w in wNoInfo:
-                                #přidáme informaci o druhu slova ve jméně
-                                errorWords.add((wordsMarks[name.words.index(w)], w))
+                                #přidáme informaci o druhu slova ve jméně a druh jména
+                                errorWords.add((name.type, wordsMarks[name.words.index(w)], w))
                         #nemá cenu pokračovat, jdeme na další
                         continue
                             
@@ -329,23 +361,42 @@ def main():
                             print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name),", ".join(str(w)+" "+str(m) for m,w in noMorphsWords)), file=sys.stderr)
                             if errorWordsShouldSave:
                                 for m, w in noMorphsWords:
-                                    errorWords.add((m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w))
+                                    errorWords.add((name.type,m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w))
                                     
                         for m, e in missingCaseWords:
                             print(str(name)+"\t"+e.message, file=sys.stderr)
                             if errorWordsShouldSave:
-                                errorWords.add((m, e.word))
+                                errorWords.add((name.type, m, e.word))
                         
                     #vytiskneme
                     for m in completedMorphs:
                         print(m, file=outF)
+                        
+                    
+                    #zjistíme, zda-li uživatel nechce vypsat nějaké typy jmen do souborů
+    
+                    for wordType in wordRules:
+                        #chceme získat včechny slova daného druhu a k nim příslušná pravidla
+
+                        #sjednotíme všechny derivace
+                        for aT in aTokens:
+                            for w, rules in Name.getWordsOfType(wordType, aT):
+                                try:
+                                    wordRules[wordType][str(w)]=wordRules[wordType][str(w)]|rules
+                                except KeyError:
+                                    wordRules[wordType][str(w)]=rules
+  
                         
                 except (Word.WordException) as e:
                     print(str(name)+"\t"+e.message, file=sys.stderr)
                     errorsWordInfoCnt+=1
     
                     if errorWordsShouldSave:
-                        errorWords.add(("", e.word))#zde nemáme informaci o druhu slova ve jméně, proto ""
+                        wordsMarks=name.simpleWordsTypesGuess(tokens)
+                        for i, w in enumerate(name.words):
+                            if w == e.word:
+                                errorWords.add((name.type, wordsMarks[i], e.word))
+                                break
                         
                 except namegenPack.Grammar.Grammar.NotInLanguage:
                     errorsGrammerCnt+=1
@@ -359,9 +410,20 @@ def main():
                     
                 cnt+=1
                 if cnt%100==0:
-                    logging.info("Projito slov: "+str(cnt))
-                
+                    logging.info("Projito jmen/názvů: "+str(cnt))
+                    
         logging.info("\thotovo")
+        #vypíšeme druhy slov, pokud to uživatel chce
+        
+        for wordType, pathToWrite in writeWordsOfTypeTo.items():
+            logging.info("\tVýpis slov typu: "+str(wordType))
+            with open(pathToWrite, "w") as fileW:
+                for w, rules in wordRules[wordType].items():
+                    print(str(w)+"\t"+"j"+str(wordType)+"\t"+(" ".join(sorted(r.lntrf+"::" for r in rules))), file=fileW)
+            logging.info("\thotovo")
+            
+                
+        
         print("-------------------------")
         print("Celkem jmen: "+ str(namesR.errorCnt+len(namesR.names)))
         print("\tNenačtených jmen: "+ str(namesR.errorCnt))
@@ -375,7 +437,16 @@ def main():
         if errorWordsShouldSave:
             #save words with errors into a file
             with open(args.error_words, "w") as errWFile:
-                for m, w in errorWords:#označení typu slova ve jméně(jméno, příjmení), společně se jménem
+                for nT, m, w in errorWords:#druh názvu (mužský, ženský, lokace),označení typu slova ve jméně(jméno, příjmení), společně se jménem
+                    #u ženských a mužských jmen přidáme odhad lntrf značky
+                    if m in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
+                        if nT == Name.Type.FEMALE:
+                            print(str(w)+"\t"+"j"+str(m)+"\tk1gFnSc1::", file=errWFile)
+                            continue
+                        if nT == Name.Type.MALE:
+                            print(str(w)+"\t"+"j"+str(m)+"\tk1gMnSc1::", file=errWFile)
+                            continue
+                        
                     print(str(w)+"\t"+"j"+str(m), file=errWFile)
   
 

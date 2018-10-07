@@ -19,7 +19,6 @@ from typing import List
 import namegenPack.Grammar
 
 from namegenPack.Word import Word, WordTypeMark
-from reportlab.graphics.barcode.eanbc import words
 
 
 class Name(object):
@@ -386,7 +385,33 @@ class Name(object):
             morphs.append(morph)
             
         return morphs
-            
+    
+          
+    @staticmethod  
+    def getWordsOfType(wordType:WordTypeMark, analyzedTokens:List[namegenPack.Grammar.AnalyzedToken]):   
+        """
+        Na základě slovům odpovídajících analyzovaných tokenů ve jméně vybere slova daného typu.
+        
+        :param wordType: Druh slova na základě, kterého vybírá
+        :type wordType: WordTypeMark
+        :param analyzedTokens: Analyzované tokeny, získané ze syntaktické analýzy tohoto jména.
+        :type analyzedTokens: List[namegenPack.Grammar.AnalyzedToken]
+        :return: List s vybranými slovy a příslušnými značko pravidly.
+        :rtype: List[Touple[Word, Set[MARule]]]
+        """
+        selection=[]
+        for aToken in analyzedTokens:
+            if aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value==wordType:
+                
+                #získáme příslušná pravidla
+                cateFilters=aToken.morphCategories    #podmínky na původní slovo
+
+                rules={r for r, w in aToken.token.word.morphs(cateFilters, cateFilters) if str(w)==str(aToken.token.word)}
+                selection.append((aToken.token.word,{r for r in rules}))
+                
+        
+        return selection
+        
         
     @property
     def type(self):
