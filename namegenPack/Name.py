@@ -15,7 +15,7 @@ import logging
 from namegenPack.morpho import MorphCategories
 from namegenPack.morpho.MorphCategories import Case, StylisticFlag, POS
 
-from typing import List
+from typing import List, Dict
 import namegenPack.Grammar
 
 from namegenPack.Word import Word, WordTypeMark
@@ -45,7 +45,7 @@ class Name(object):
         def __str__(self):
             return self.value
 
-    def __init__(self, name, nType):
+    def __init__(self, name, nType, wordDatabase:Dict[str,Word]={}):
         """
         Konstruktor jména.
         
@@ -53,6 +53,8 @@ class Name(object):
         :type name: String
         :param nType: Druh jména.
         :type nType: Name.Type
+        :param wordDatabase: Databázee obsahující již vyskytující se slova v předcházejících jménech.
+        :type wordDatabase: Dict[str,Word]
         :raise NameCouldntCreateException: Nelze vytvořit jméno.
         """
         self._type=nType
@@ -68,7 +70,7 @@ class Name(object):
                     
         #rozdělíme jméno na jednotlivá slova a oddělovače
         words, self._separators = self._findWords(name)
-        self._words=[Word(w) for w in words]
+        self._words=[wordDatabase[w] if w in wordDatabase else Word(w) for w in words]
 
         
     def __str__(self):
@@ -434,6 +436,8 @@ class NameReader(object):
         """
         self.names=[]
         self._errorCnt=0 #počet chybných nenačtených jmen
+        
+        wordDatabase={} #zde budeme ukládat již vyskytující se slova
         with open(inputFile, "r") as rInput:
             for line in rInput:
                 line=line.strip()
@@ -452,7 +456,8 @@ class NameReader(object):
                     
                 #provedeme analýzu jména a uložíme je 
                 try:
-                    self.names.append(Name(parts[0], parts[1]))
+                    #Přidáváme wordDatabase pro ušetření paměti
+                    self.names.append(Name(parts[0], parts[1], wordDatabase))
                 except Name.NameCouldntCreateException as e:
                     #problém při vytváření jména
                     print(e.message, file=sys.stderr)

@@ -350,7 +350,7 @@ def main():
                                 #hledáme AnalyzedToken pro naše problémové slovo, abychom mohli ke slovu
                                 #přidat i odhadnutý druh slova ve jméně (křestní, příjmení, ...)
                                 if x.token.word==e.word:
-                                    missingCaseWords.add((x.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value ,e))
+                                    missingCaseWords.add((x.matchingTerminal ,e.message))
                                     break
                         
                     if len(noMorphsWords)>0 or len(missingCaseWords)>0:
@@ -363,10 +363,10 @@ def main():
                                 for m, w in noMorphsWords:
                                     errorWords.add((name.type,m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w))
                                     
-                        for m, e in missingCaseWords:
-                            print(str(name)+"\t"+e.message, file=sys.stderr)
+                        for term, msg in missingCaseWords:
+                            print(str(name)+"\t"+msg+"\t"+str(term), file=sys.stderr)
                             if errorWordsShouldSave:
-                                errorWords.add((name.type, m, e.word))
+                                errorWords.add((name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, term.word))
                         
                     #vytiskneme
                     for m in completedMorphs:

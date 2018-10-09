@@ -306,7 +306,7 @@ class Terminal(object):
             #Musíme zjistit jaký druh terminálu máme
             if self._type.isPOSType:
                 #jedná se o typ terminálu používající analyzátor
-                pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, {StylisticFlag.COLLOQUIALLY})  #nechceme hovorové
+                pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, frozenset({StylisticFlag.COLLOQUIALLY}))  #nechceme hovorové
                 
                 #máme všechny možné slovní druhy, které prošly atributovým filtrem 
                 return self._type.toPOS() in pos
@@ -850,7 +850,14 @@ class Grammar(object):
     
         Vkládané klíče musí být Terminály.
         
+        Používá cache pro rychlejší vyhodnocení.
+        
         """
+        def __init__(self,*arg,**kw):
+            super().__init__(*arg, **kw)
+            self._cache={}
+            
+        
         
         def __getitem__(self, key):
             """
@@ -862,12 +869,19 @@ class Grammar(object):
             """
             if isinstance(key, Token):
                 #Nutné zjistit všechny terminály, které odpovídají danému tokenu.
-                res=set()
-                for k in self.keys():
-                    if k.tokenMatch(key):
-                        #daný terminál odpovídá tokenu, přidejme pravidla
-                        res|=dict.__getitem__(self, k)
-                return res
+                try:
+                    #zkusíme použít cache
+                    return self._cache[str(key)]
+                except KeyError:
+                    #bohužel nelze použít cache
+                    res=set()
+                    for k in self.keys():
+                        if k.tokenMatch(key):
+                            #daný terminál odpovídá tokenu, přidejme pravidla
+                            res|=dict.__getitem__(self, k)
+                            
+                    self._cache[str(key)]=res
+                    return res
             else:
                 #běžný výběr
                 return dict.__getitem__(self, key)
