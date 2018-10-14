@@ -115,13 +115,6 @@ class MorphoAnalyze(ABC):
     Interface pro výsledky morfologické analýzy slova.
     """
     
-    @abstractproperty
-    def word(self):
-        """
-        Slovo pro nějž je tato morfologická analýza.
-        """
-        pass
-    
     @abstractmethod
     def getAll(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set()) -> Dict[MorphCategories,Set[MorphCategory]]:
         """
@@ -266,9 +259,7 @@ class MorphoAnalyzerLibma(object):
             :type word: str
             """
         
-            self._word=word
-            self._lemma=None
-            self._paradigm=None
+            self._firstBig=word[0].isupper() #příznak, že první písmenu je velké
             self._tagRules=[]   #značko pravidla pro slovo
             self._morphs=[] #tvary k danému slovu ve formátu dvojic (tagRule, tvar)
             
@@ -309,7 +300,7 @@ class MorphoAnalyzerLibma(object):
                         and all( f.category() not in r or r[f.category()]!=f for f in notValFilter):
 
                         #úprava velikosti počátečního písmene tvaru na základě původního slova
-                        if self._word[0].isupper():
+                        if self._firstBig:
                             newM=m[0].upper()+m[1:]
                         else:
                             newM=m[0].lower()+m[1:]
@@ -439,22 +430,6 @@ class MorphoAnalyzerLibma(object):
 
             return values  
             
-        @property
-        def word(self):
-            """
-            Slovo pro nějž je tato skupina vytvořena.
-            """
-            return self._word
-
-        @word.setter
-        def word(self, value):
-            """
-            Nastavení slova pro nějž je tato skupina vytvořena.
-            
-            :param value: Slovo pro nějž je tato skupina vytvořena.
-            :type value: str
-            """
-            self._word = value
          
         @property
         def rules(self):
@@ -462,46 +437,9 @@ class MorphoAnalyzerLibma(object):
             Přiřazená pravidla
             """
             return self._tagRules
-               
-        @property
-        def lemma(self):
-            """
-            Lemma slova.
-            """
-            return self._lemma
-
-        @lemma.setter
-        def lemma(self, value):
-            """
-            Nastavení nového lemma slova.
-            
-            :param value: Lemma slova.
-            :type value: str
-            """
-            self._lemma = value
-            
-        @property
-        def paradigm(self):
-            """
-            Vzor slova.
-            """
-            return self._paradigm
-
-        @paradigm.setter
-        def paradigm(self, value):
-            """
-            Nastavení nového vzoru slova.
-            
-            :param value: Vzor slova.
-            :type value: str
-            """
-            self._paradigm = value
             
         def __str__(self):
-            s="Lemma: "+self._lemma+"\n"
-            s+="Paradigm: "+self._paradigm+"\n"
-            
-            s+="Tag rules:\n"
+            s="Tag rules:\n"
             for tr in self._tagRules:
                 s+="\t"+str(tr)+"\n"
             
@@ -517,14 +455,11 @@ class MorphoAnalyzerLibma(object):
         Obsahuje data z morfologické analýzy slova.
         """
         
-        def __init__(self, word):
+        def __init__(self):
             """
             Vytvoření instance morfologické analýzy slova.
-            
-            :param word: Slovo pro nějž je morfologická analýza vytvořena.
-            :type word: str
+
             """
-            self._word=word
             self._groups=[]
             
         
@@ -646,13 +581,6 @@ class MorphoAnalyzerLibma(object):
             """
             
             return self._groups
-            
-        @property
-        def word(self):
-            """
-            Slovo pro nějž je tato morfologická analýza.
-            """
-            return self._word
         
         def __str__(self):
             s=self._word+"\n"
@@ -712,7 +640,7 @@ class MorphoAnalyzerLibma(object):
                 self._wordDatabase[w].addGroup(g)
             except KeyError:
                 #slovo zatím není v databázi
-                self._wordDatabase[w]=self.MAWord(w)
+                self._wordDatabase[w]=self.MAWord()
                 self._wordDatabase[w].addGroup(g)
 
         
@@ -745,23 +673,15 @@ class MorphoAnalyzerLibma(object):
                 #vytvoříme skupinu
                 actWordGroup=self.MAWordGroup(parts[1])
                     
-                #nastavíme vzor
-                actWordGroup.paradigm=parts[2][1:-1]
-                    
                 try:
                     #vložíme skupinu do analýzy slova
                     self._wordDatabase[parts[1]].addGroup(actWordGroup)
                 except KeyError:
                     #nové slovo
                     #vytvoříme objekt pro uložení morfologické analýzy slova
-                    self._wordDatabase[parts[1]]=self.MAWord(parts[1])
+                    self._wordDatabase[parts[1]]=self.MAWord()
                     #a znovu vložíme
                     self._wordDatabase[parts[1]].addGroup(actWordGroup)
-
-
-            elif parts[0][:3]=="<l>":
-                #lemma
-                actWordGroup.lemma=parts[0][3:]
                 
             elif parts[0][:3]=="<c>":
                 #značko pravidlo, které sedí pro dané slovo

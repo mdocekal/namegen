@@ -5,27 +5,21 @@ S
 #	Ptačí oblast Králický Sněžník
 #	Andělka a Čertovka
 #	Prameniště Kateřinského potoka
+#	Národní akademické divadlo opery a baletu
 S -> NUM_ADJ_NOUN END
 #/
 
 
 #Číslovka s volitelnou skupinou přídavných jmen vázajícíh se na první ze skupiny podstatných jmén.
 #dovolujeme i číslovky mezi (příklad: Estonská první republika)
-NUM_ADJ_NOUN -> NUM_S_M ADJ_GROUP_S_M NUM_S_M LOC2_S_M NUM_S_M !NUM_ADJ_NOUN_CONTINUE
-NUM_ADJ_NOUN -> NUM_S_I ADJ_GROUP_S_I NUM_S_I LOC2_S_I NUM_S_I !NUM_ADJ_NOUN_CONTINUE
-NUM_ADJ_NOUN -> NUM_S_N ADJ_GROUP_S_N NUM_S_N LOC2_S_N NUM_S_N !NUM_ADJ_NOUN_CONTINUE
-NUM_ADJ_NOUN -> NUM_S_F ADJ_GROUP_S_F NUM_S_F LOC2_S_F NUM_S_F !NUM_ADJ_NOUN_CONTINUE
-NUM_ADJ_NOUN -> NUM_P_M ADJ_GROUP_P_M NUM_P_M LOC2_P_M NUM_P_M !NUM_ADJ_NOUN_CONTINUE
-NUM_ADJ_NOUN -> NUM_P_I ADJ_GROUP_P_I NUM_P_I LOC2_P_I NUM_P_I !NUM_ADJ_NOUN_CONTINUE
-NUM_ADJ_NOUN -> NUM_P_N ADJ_GROUP_P_N NUM_P_N LOC2_P_N NUM_P_N !NUM_ADJ_NOUN_CONTINUE
-NUM_ADJ_NOUN -> NUM_P_F ADJ_GROUP_P_F NUM_P_F LOC2_P_F NUM_P_F !NUM_ADJ_NOUN_CONTINUE
-
-!NUM_ADJ_NOUN_CONTINUE -> 1{t=L} !NUM_ADJ_NOUN_CONTINUE
-!NUM_ADJ_NOUN_CONTINUE -> 2{t=L} !NUM_ADJ_NOUN_CONTINUE
-!NUM_ADJ_NOUN_CONTINUE -> 4{t=L} !NUM_ADJ_NOUN_CONTINUE
-!NUM_ADJ_NOUN_CONTINUE -> 1{t=L} !CONJ 1{t=L}	#Např pro: Národní akademické divadlo opery a baletu
-!NUM_ADJ_NOUN_CONTINUE -> ε
-
+NUM_ADJ_NOUN -> NUM_S_M ADJ_GROUP_S_M NUM_S_M LOC2_S_M NUM_S_M
+NUM_ADJ_NOUN -> NUM_S_I ADJ_GROUP_S_I NUM_S_I LOC2_S_I NUM_S_I
+NUM_ADJ_NOUN -> NUM_S_N ADJ_GROUP_S_N NUM_S_N LOC2_S_N NUM_S_N 
+NUM_ADJ_NOUN -> NUM_S_F ADJ_GROUP_S_F NUM_S_F LOC2_S_F NUM_S_F
+NUM_ADJ_NOUN -> NUM_P_M ADJ_GROUP_P_M NUM_P_M LOC2_P_M NUM_P_M
+NUM_ADJ_NOUN -> NUM_P_I ADJ_GROUP_P_I NUM_P_I LOC2_P_I NUM_P_I
+NUM_ADJ_NOUN -> NUM_P_N ADJ_GROUP_P_N NUM_P_N LOC2_P_N NUM_P_N
+NUM_ADJ_NOUN -> NUM_P_F ADJ_GROUP_P_F NUM_P_F LOC2_P_F NUM_P_F
 
 #Nevolitelná předložková skupina
 #Příklad: Pod Šibenicí
@@ -136,51 +130,18 @@ ADJ_GROUP_P_F -> ε
 #pokud je podsatné jméno ve druhém pádě, tak je neohebné. Pokud v 1. tak je ohebné.
 #Příklad: Rozhledna VLadimíra Menšíka
 LOC2_S_M -> 1{c=1,t=L,n=S,g=M} !VOLUNTARY_NO_FLEX_N
-LOC2_S_M -> 1{c=1,t=L,n=S,g=M} LOC2_S_M_CONTINUE
-LOC2_S_M_CONTINUE -> 1{c=1,t=L,n=S,g=M}
-LOC2_S_M_CONTINUE ->ε
-
 LOC2_S_I -> 1{c=1,t=L,n=S,g=I} !VOLUNTARY_NO_FLEX_N
-LOC2_S_I -> 1{c=1,t=L,n=S,g=I} LOC2_S_I_CONTINUE
-LOC2_S_I_CONTINUE -> 1{c=1,t=L,n=S,g=I}
-LOC2_S_I_CONTINUE -> ε
-
 LOC2_S_N -> 1{c=1,t=L,n=S,g=N} !VOLUNTARY_NO_FLEX_N
-LOC2_S_N -> 1{c=1,t=L,n=S,g=N} LOC2_S_N_CONTINUE
-LOC2_S_N_CONTINUE -> 1{c=1,t=L,n=S,g=N}
-LOC2_S_N_CONTINUE -> ε
-
 LOC2_S_F -> 1{c=1,t=L,n=S,g=F} !VOLUNTARY_NO_FLEX_N
-LOC2_S_F -> 1{c=1,t=L,n=S,g=F} LOC2_S_F_CONTINUE
-LOC2_S_F_CONTINUE -> 1{c=1,t=L,n=S,g=F}
-LOC2_S_F_CONTINUE -> ε
-
 LOC2_P_M -> 1{c=1,t=L,n=P,g=M} !VOLUNTARY_NO_FLEX_N
-LOC2_P_M -> 1{c=1,t=L,n=P,g=M} LOC2_P_M_CONTINUE
-LOC2_P_M_CONTINUE -> 1{c=1,t=L,n=P,g=M}
-LOC2_P_M_CONTINUE -> ε
-
 LOC2_P_I -> 1{c=1,t=L,n=P,g=I} !VOLUNTARY_NO_FLEX_N
-LOC2_P_I -> 1{c=1,t=L,n=P,g=I} LOC2_P_I_CONTINUE
-LOC2_P_I_CONTINUE -> 1{c=1,t=L,n=P,g=I}
-LOC2_P_I_CONTINUE -> ε
-
 LOC2_P_N -> 1{c=1,t=L,n=P,g=N} !VOLUNTARY_NO_FLEX_N
-LOC2_P_N -> 1{c=1,t=L,n=P,g=N} LOC2_P_N_CONTINUE
-LOC2_P_N_CONTINUE -> 1{c=1,t=L,n=P,g=N}
-LOC2_P_N_CONTINUE -> ε
-
 LOC2_P_F -> 1{c=1,t=L,n=P,g=F} !VOLUNTARY_NO_FLEX_N
-LOC2_P_F -> 1{c=1,t=L,n=P,g=F} LOC2_P_F_CONTINUE
-LOC2_P_F_CONTINUE -> 1{c=1,t=L,n=P,g=F}
-LOC2_P_F_CONTINUE -> ε
-
 
 !VOLUNTARY_NO_FLEX_N -> 1{c=2,t=L} !VOLUNTARY_NO_FLEX_N
+!VOLUNTARY_NO_FLEX_N -> 1{c=2,t=L} !CONJ 1{c=2,t=L} !VOLUNTARY_NO_FLEX_N
 !VOLUNTARY_NO_FLEX_N -> ε
 #/
-
-
 
 #Předložková skupina
 !PREP_GROUP_MANDATORY -> 7{t=7} !AFTER_PREP

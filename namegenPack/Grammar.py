@@ -242,6 +242,9 @@ class Terminal(object):
         #pojďme zjistit hodnoty filtrovacích atributů
         self._fillteringAttrVal=set(a.value for a in self._attributes if a.type.isFiltering)
         
+        #cache pro zrychlení tokenMatch
+        self._matchCache={}
+        
     def getAttribute(self, t):
         """
         Vrací atribut daného druhu.
@@ -291,6 +294,26 @@ class Terminal(object):
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
         
+        try:
+            return self._matchCache[t]
+        except KeyError:
+            #zatím není v cache
+            res= self.tokenMatchWithoutCache(t)
+            self._matchCache[t]=res
+            return res
+        
+        
+    def tokenMatchWithoutCache(self, t):
+        """
+        Stejně jako tokenMatch určuje zda daný token odpovídá tomuto terminálu, ale bez použití cache
+        
+        :param t: Token pro kontrolu.
+        :type t: Token
+        :return: Vrací True, pokud odpovídá. Jinak false.
+        :rtype: bool
+        :raise WordCouldntGetInfoException: Problém při analýze slova.
+        """
+        
         mr=self.getAttribute(self.Attribute.Type.MATCH_REGEX)
         if mr is not None and not mr.value.match(str(t.word)):
             #kontrola na regex match neprošla
@@ -314,6 +337,7 @@ class Terminal(object):
                 #pro tento terminál se nepoužívá analyzátor
                 #musí být shoda na římské číslo
                 return t.type.value==self._type.value==Token.Type.ROMAN_NUMBER.value
+            
 
     def __str__(self):
         s=str(self._type.value)
@@ -1075,7 +1099,7 @@ class Grammar(object):
                         newStack=stack.copy()
                         self.putRuleOnStack(r, newStack, s.isMorph)
                         
-                        #zkusíme zda-li s tímto pravidlem uspějeme
+                        #zkusíme zdali s tímto pravidlem uspějeme
                         resRules, resATokens=self.crawling(newStack, tokens, position)
                         
                         if resRules and resATokens:

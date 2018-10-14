@@ -177,8 +177,7 @@ def main():
     Vstupní bod programu.
     """
     try:
-        
-        logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+        logging.basicConfig(stream=sys.stdout,format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
         #zpracování argumentů
         args=ArgumentsManager.parseArgs()
         
@@ -231,8 +230,6 @@ def main():
         #slova ke, kterým nemůže vygenerovat tvary, zjistit POS... 
         #Jedná se o trojice ( druh názvu (mužský, ženský, lokace),druhu slova ve jméně, dané slovo)
         errorWords=set()    
-        
-        givenNamesF,surnamesF,locationsF=None,None,None
         
 
         #slouží pro výpis křestních jmen, příjmení atd.
@@ -350,7 +347,7 @@ def main():
                                 #hledáme AnalyzedToken pro naše problémové slovo, abychom mohli ke slovu
                                 #přidat i odhadnutý druh slova ve jméně (křestní, příjmení, ...)
                                 if x.token.word==e.word:
-                                    missingCaseWords.add((x.matchingTerminal ,e.message))
+                                    missingCaseWords.add((x ,e.message))
                                     break
                         
                     if len(noMorphsWords)>0 or len(missingCaseWords)>0:
@@ -363,10 +360,10 @@ def main():
                                 for m, w in noMorphsWords:
                                     errorWords.add((name.type,m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w))
                                     
-                        for term, msg in missingCaseWords:
-                            print(str(name)+"\t"+msg+"\t"+str(term), file=sys.stderr)
+                        for aTerm, msg in missingCaseWords:
+                            print(str(name)+"\t"+msg+"\t"+str(aTerm.matchingTerminal), file=sys.stderr)
                             if errorWordsShouldSave:
-                                errorWords.add((name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, term.word))
+                                errorWords.add((name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word))
                         
                     #vytiskneme
                     for m in completedMorphs:
