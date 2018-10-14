@@ -1060,8 +1060,6 @@ class Grammar(object):
         aTokens=[]  #analyzované tokeny
         rules=[]    #použitá pravidla
         
-        print("CALLED")
-        
         while(len(stack)>0):
             s=stack.pop()
             token=tokens[position]
