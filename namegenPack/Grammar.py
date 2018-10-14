@@ -1058,6 +1058,9 @@ class Grammar(object):
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
         aTokens=[]  #analyzované tokeny
+        rules=[]    #použitá pravidla
+        
+        print("CALLED")
         
         while(len(stack)>0):
             s=stack.pop()
@@ -1089,47 +1092,58 @@ class Grammar(object):
                     raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
                 
-                #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
-                newRules=[]
-                newATokens=[]
+                
 
-                for r in actRules:
-                    try:
-                        #prvně aplikujeme pravidlo na nový stack
-                        newStack=stack.copy()
-                        self.putRuleOnStack(r, newStack, s.isMorph)
-                        
-                        #zkusíme zdali s tímto pravidlem uspějeme
-                        resRules, resATokens=self.crawling(newStack, tokens, position)
-                        
-                        if resRules and resATokens:
-                            #zaznamenáme aplikováná pravidla a analyzované tokeny
-                            #může obsahovat i více různých derivací
-                            for x in resRules:
-                                #musíme předřadit aktuální pravidlo a pravidla předešlá
-                                newRules.append([r]+x)
-                                
-                            for x in resATokens:
-                                #musíme předřadit předešlé analyzované tokeny
-                                newATokens.append(aTokens+x)
-                                
-                    except self.NotInLanguage:
-                        #tato větev nikam nevede, takže ji prostě přeskočíme
-                        pass
-            
-                if len(newRules) == 0:
-                    #v gramatice neexistuje vhodné pravidlo
-                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
+                if len(actRules)==1:
+                    #jedno možné pravidlo
+                    r=next(iter(actRules))
+                    self.putRuleOnStack(r, stack, s.isMorph)
+                    rules.append(r)
                     
-                #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit
-                return (newRules,newATokens)
+                else:
+                    #více možných pravidel
+                    #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
+                    newRules=[]
+                    newATokens=[]
+                    for r in actRules:
+                        try:
+                            #prvně aplikujeme pravidlo na nový stack
+                            newStack=stack.copy()
+                            self.putRuleOnStack(r, newStack, s.isMorph)
+                            
+                            #zkusíme zdali s tímto pravidlem uspějeme
+                            resRules, resATokens=self.crawling(newStack, tokens, position)
+                            
+                            if resRules and resATokens:
+                                #zaznamenáme aplikováná pravidla a analyzované tokeny
+                                #může obsahovat i více různých derivací
+                                for x in resRules:
+                                    #musíme předřadit aktuální pravidlo a pravidla předešlá
+                                    newRules.append(rules+[r]+x)
+                                    
+                                for x in resATokens:
+                                    #musíme předřadit předešlé analyzované tokeny
+                                    newATokens.append(aTokens+x)
+                                    
+                        except self.NotInLanguage:
+                            #tato větev nikam nevede, takže ji prostě přeskočíme
+                            pass
+            
+                    if len(newRules) == 0:
+                        #v gramatice neexistuje vhodné pravidlo
+                        raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
+                                                 Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
+    
+                        
+                    #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit
+                    return (newRules,newATokens)
                     
         
         
         #Již jsme vyčerpali všechny možnosti. Příjmáme naši část vstupní pousloupnosti a končíme.
-        #Zde se dostaneme pouze pokud jsme po cestě měli možnost aplikovat pouze jen přímo terminály.
-        return ([[]], [aTokens])
+        #Zde se dostaneme pouze pokud jsme po cestě měli možnost aplikovat pouze jen přímo 
+        #terminály a nebo vždy právě jedno pravidlo.
+        return ([rules], [aTokens])
      
     def putRuleOnStack(self, rule:Rule, stack, morph):
         """
