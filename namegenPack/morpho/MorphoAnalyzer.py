@@ -14,6 +14,7 @@ from namegenPack.morpho.MorphCategories import *
 import collections
 
 from typing import Set, Dict, Tuple
+import string
 
 class MARule(collections.Mapping):
     """
@@ -49,7 +50,18 @@ class MARule(collections.Mapping):
     @property
     def lntrf(self):
         """
-        Ve formátu lntrf.
+        Ve formátu lntrf. Včetně poznámky
+        """
+        res=self.lntrfWithoutNote
+        if MorphCategories.NOTE in self:
+            return res+self[MorphCategories.NOTE].lntrf
+        
+        return res
+        
+    @property
+    def lntrfWithoutNote(self):
+        """
+        Ve formátu lntrf. Bez poznámky
         """
         pos=self[MorphCategories.POS].lntrf
         #pořadí pro ify je voleno dle předpokládané četnosti
@@ -258,11 +270,26 @@ class MorphoAnalyzerLibma(object):
             :param word: Slovo pro nějž je tato skupina vytvořena.
             :type word: str
             """
-        
-            self._firstBig=word[0].isupper() #příznak, že první písmenu je velké
+            self._word=word
             self._tagRules=[]   #značko pravidla pro slovo
             self._morphs=[] #tvary k danému slovu ve formátu dvojic (tagRule, tvar)
+        
+        @property
+        def word(self):
+            """
+            Slovo pro nějž je tato skupina vytvořena.
+            """
+            return self._word
+
+        @word.setter
+        def word(self, value):
+            """
+            Nastavení slova pro nějž je tato skupina vytvořena.
             
+            :param value: Slovo pro nějž je tato skupina vytvořena.
+            :type value: str
+            """
+            self._word = value    
             
         def addMorph(self, tagRule, morph):
             """
@@ -300,7 +327,7 @@ class MorphoAnalyzerLibma(object):
                         and all( f.category() not in r or r[f.category()]!=f for f in notValFilter):
 
                         #úprava velikosti počátečního písmene tvaru na základě původního slova
-                        if self._firstBig:
+                        if self._word[0].isupper():
                             newM=m[0].upper()+m[1:]
                         else:
                             newM=m[0].lower()+m[1:]
@@ -323,19 +350,37 @@ class MorphoAnalyzerLibma(object):
             :return: Převedené pravidlo z morfologické analýzy.
             :rtype: MARule
             """
-            #Příklad převodu: k1gFnPc1
+            #Příklad převodu: k1gFnPc1;jL
             #    
-            #    {"k":"1","g":"F","n":"P","c":"1"}
+            #    {"k":"1","g":"F","n":"P","c":"1","note":"jL"}
             
             
             res=dict()
-            for i in range(0, len(tagRule)-1, 2):
+            note=None
+            rule=tagRule.split(";")
+            
+            if len(rule)==2:
+                note=rule[1]
+                
+            rule=rule[0]
+                
+            for i in range(0, len(rule)-1, 2):
                 try:
-                    mCategory=MorphCategories.fromLntrf(tagRule[i])
-                    res[mCategory]=mCategory.createCategoryFromLntrf(tagRule[i+1])
+                    mCategory=MorphCategories.fromLntrf(rule[i])
+                    res[mCategory]=mCategory.createCategoryFromLntrf(rule[i+1])
                 except (MorphCategoryInvalidException, MorphCategoryInvalidValueException):
                     #neznámá kategorie, či hodnota kategorie
                     #pravděpodobně se jedná o kategorii, která nás nezajíma
+                    #tak to vynecháme
+                    pass
+                
+            if note is not None:
+                try:
+                    mCategory=MorphCategories.NOTE
+                    res[mCategory]=mCategory.createCategoryFromLntrf(note)
+                except (MorphCategoryInvalidValueException):
+                    #neznámá hodnota kategorie/hodnoty
+                    #pravděpodobně se jedná o kategorii/hodnoty, která nás nezajíma
                     #tak to vynecháme
                     pass
 
@@ -358,8 +403,9 @@ class MorphoAnalyzerLibma(object):
             :param tagRule: Značko pravidlo (příklad k1gFnPc1)
             :type tagRule: str
             """
-            
-            self._tagRules.append(self.convTagRule(tagRule))
+            r=self.convTagRule(tagRule)
+            if r:
+                self._tagRules.append(r)
             
         def getAll(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set()) -> Dict[MorphCategories,Set[MorphCategory]]:
             """
@@ -583,7 +629,7 @@ class MorphoAnalyzerLibma(object):
             return self._groups
         
         def __str__(self):
-            s=self._word+"\n"
+            s=""
             for g in self._groups:
                 s+=str(g)
             s+="----------"
@@ -615,7 +661,7 @@ class MorphoAnalyzerLibma(object):
         self._hint=hint
         #získání informací o slovech
 
-        p = Popen([pathToMa, "-F", "-m"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        p = Popen([pathToMa, "-F", "-m", "-n"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
         
         output, _ = p.communicate(str.encode(("\n".join(words))+"\n")) #vrací stdout a stderr
         #zkontrolujeme návratový kód
@@ -642,6 +688,32 @@ class MorphoAnalyzerLibma(object):
                 #slovo zatím není v databázi
                 self._wordDatabase[w]=self.MAWord()
                 self._wordDatabase[w].addGroup(g)
+               
+        #pro nás je a pouze spojka
+        try:
+            ma=self._wordDatabase["a"]
+
+            delGroups=[group for group in ma.groups if group.rules[0][MorphCategories.POS]!=POS.CONJUNCTION]
+
+            for g in delGroups:
+                ma.delGroup(g)
+  
+        except KeyError:
+            pass
+        
+        #vynecháváme, protože v našem případě nemůžou být písmena podstatným jménem
+        for c in string.ascii_lowercase:
+            try:
+                ma=self._wordDatabase[c]
+
+                for group in ma.groups:
+                    if group.rules[0][MorphCategories.NOTE]==Note.CHARACTER_AS_NOUN:
+                        ma.delGroup(group)
+                        break   #předpokládáme pouze jednu skupinu
+                        
+            except KeyError:
+                pass
+
 
         
     def _parseMaOutput(self, output):
@@ -685,7 +757,7 @@ class MorphoAnalyzerLibma(object):
                 
             elif parts[0][:3]=="<c>":
                 #značko pravidlo, které sedí pro dané slovo
-
+                
                 if isinstance(self._hint, dict) or isinstance(self._hint, set):
                     #aplikujeme nápovědu
                     convRule=self.MAWordGroup.convTagRule(parts[0][3:])
@@ -696,9 +768,11 @@ class MorphoAnalyzerLibma(object):
                 else:
                     actWordGroup.addTagRule(parts[0][3:])
                 
+                
             elif parts[0][:3]=="<f>":
                 #Přidání tvaru slova
                 actWordGroup.addMorph((parts[0][3:])[1:-1], parts[1])
+                
         
         #byla předešlá skupina k něčemu dobrá?
         if actWordGroup is not None and len(actWordGroup.rules)==0:

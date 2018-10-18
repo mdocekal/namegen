@@ -167,7 +167,7 @@ class ArgumentsManager(object):
             
         except ArgumentParserError as e:
             parser.print_help()
-            print("\n"+str(e), file=sys.stderr)
+            print("\n"+str(e), file=sys.stderr, flush=True)
             Errors.ErrorMessenger.echoError(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_INVALID_ARGUMENTS), Errors.ErrorMessenger.CODE_INVALID_ARGUMENTS)
 
         return parsed
@@ -278,7 +278,7 @@ def main():
                                 wNoInfo.add(t.word)
                     if len(wNoInfo)>0:
                         wordsMarks=name.simpleWordsTypesGuess(tokens)
-                        print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w)+"#"+str(wordsMarks[name.words.index(w)]) for w in wNoInfo)), file=sys.stderr)
+                        print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w)+"#"+str(wordsMarks[name.words.index(w)]) for w in wNoInfo)), file=sys.stderr, flush=True)
                         errorsWordInfoCnt+=1
 
                         if errorWordsShouldSave:
@@ -296,7 +296,7 @@ def main():
                     aTokens=name.guessType(grammarsForTypeGuesser, tokens)
                     if name.type is None:
                         #Nemáme informaci o druhu jména, jdeme dál.
-                        print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr)
+                        print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr, flush=True)
                         errorsUnknownNameType+=1
                         continue
                     #Vybrání a zpracování gramatiky na základě druhu jména.
@@ -355,13 +355,13 @@ def main():
                         #nepodařilo se vygenerovat ani jeden
                         errorsWordInfoCnt+=1
                         if len(noMorphsWords)>0:
-                            print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name),", ".join(str(w)+" "+str(m) for m,w in noMorphsWords)), file=sys.stderr)
+                            print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name),", ".join(str(w)+" "+str(m) for m,w in noMorphsWords)), file=sys.stderr, flush=True)
                             if errorWordsShouldSave:
                                 for m, w in noMorphsWords:
                                     errorWords.add((name.type,m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w))
                                     
                         for aTerm, msg in missingCaseWords:
-                            print(str(name)+"\t"+msg+"\t"+str(aTerm.matchingTerminal), file=sys.stderr)
+                            print(str(name)+"\t"+msg+"\t"+str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
                             if errorWordsShouldSave:
                                 errorWords.add((name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word))
                         
@@ -385,7 +385,7 @@ def main():
   
                         
                 except (Word.WordException) as e:
-                    print(str(name)+"\t"+e.message, file=sys.stderr)
+                    print(str(name)+"\t"+e.message, file=sys.stderr, flush=True)
                     errorsWordInfoCnt+=1
     
                     if errorWordsShouldSave:
@@ -398,12 +398,12 @@ def main():
                 except namegenPack.Grammar.Grammar.NotInLanguage:
                     errorsGrammerCnt+=1
                     print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR)+\
-                              "\t"+str(name)+"\t"+str(name.type), file=sys.stderr)
+                              "\t"+str(name)+"\t"+str(name.type), file=sys.stderr, flush=True)
 
                 except Errors.ExceptionMessageCode as e:
                     #chyba při zpracování slova
                     errorsOthersCnt+=1
-                    print(str(name)+"\t"+e.message, file=sys.stderr)
+                    print(str(name)+"\t"+e.message, file=sys.stderr, flush=True)
                     
                 cnt+=1
                 if cnt%100==0:

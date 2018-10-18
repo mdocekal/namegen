@@ -10,7 +10,7 @@ from namegenPack import Errors
 import re
 from typing import Set, Dict
 from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
-    MorphCategories, POS, StylisticFlag, Case
+    MorphCategories, POS, StylisticFlag, Case, Note
 from enum import Enum
 from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
@@ -109,6 +109,7 @@ class Terminal(object):
             GENDER="g"  #rod slova musí být takový    (filtrovací atribut)
             NUMBER="n"  #mluvnická kategorie číslo. Číslo slova musí být takové. (filtrovací atribut)
             CASE="c"    #pád slova musí být takový    (filtrovací atribut)
+            NOTE="note" #poznámka slova musí být taková    (filtrovací atribut)
             TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
             MATCH_REGEX="r"    #Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
@@ -125,7 +126,7 @@ class Terminal(object):
 
                 return self in self.FILTERING_TYPES
             
-        Type.FILTERING_TYPES={Type.GENDER, Type.NUMBER, Type.CASE}
+        Type.FILTERING_TYPES={Type.GENDER, Type.NUMBER, Type.CASE, Type.NOTE}
         """Filtrovací atributy. POZOR filtrovací atributy musí mít value typu MorphCategory!"""
         
         def __init__(self, attrType, val):
@@ -172,6 +173,8 @@ class Terminal(object):
                 v=Number.fromLntrf(aV)
             elif cls.Type.CASE==t:
                 v=Case.fromLntrf(aV)
+            elif cls.Type.NOTE==t:
+                v=Note.fromLntrf(aV)
             elif cls.Type.MATCH_REGEX==t:
                 try:
                     v=re.compile(aV[1:-1])  #[1:-1] odstraňujeme # ze začátku a konce
