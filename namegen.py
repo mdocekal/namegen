@@ -267,7 +267,15 @@ def main():
             
             for name in namesR:
                 try:
+                    if name in duplicityCheck:
+                        #již jsme jednou generovali
+                        errorsDuplicity+=1
+                        continue
+                    
+                    duplicityCheck.add(name)
+                    
                     tokens=namegenPack.Grammar.Lex.getTokens(name)
+
                     wNoInfo=set()
                     for t in tokens:
                         #zkontrolujeme zda-li máme pro všechny tokeny,které to potřebují, dostupnou analýzu.
@@ -303,12 +311,6 @@ def main():
                     #získáme aplikovatelná pravidla, ale hlavně analyzované tokeny, které mají v sobě informaci,
                     #zda-li se má dané slovo ohýbat, či nikoliv a další
                     
-                    if name in duplicityCheck:
-                        #již jsme jednou generovali
-                        errorsDuplicity+=1
-                        continue
-                    
-                    duplicityCheck.add(name)
                     
                     
                     if aTokens is None: #Nedostali jsme aTokeny při určování druhu slova?
@@ -327,6 +329,7 @@ def main():
                     completedMorphs=set()    #pro odstranění dualit používáme set
                     noMorphsWords=set()
                     missingCaseWords=set()
+
                     for aT in aTokens:
                         try:
                             morphs=name.genMorphs(aT)

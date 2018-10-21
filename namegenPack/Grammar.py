@@ -16,6 +16,7 @@ from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
 import itertools
 import copy
+from _ast import If
 
 class Terminal(object):
     """
@@ -43,6 +44,7 @@ class Terminal(object):
 
         DEGREE_TITLE= "t"   #titul
         ROMAN_NUMBER= "r"   #římská číslice
+        NUMBER="n"          #číslice (pouze z číslovek) Příklady: 12., 12
         INITIAL_ABBREVIATION= "ia"    #Iniciálová zkratka.
         X= "x"    #neznámé
         
@@ -326,7 +328,12 @@ class Terminal(object):
         
         if t.type!=Token.Type.ANALYZE and t.type!=Token.Type.ROMAN_NUMBER:
             #Jedná se o jednoduchý token bez nutnosti morfologické analýzy.
-            return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
+            if t.type==Token.Type.DEGREE_TITLE_INITIAL_ABBREVIATION:
+                #může jít jak o titul, tak o inicialovou zkratku
+                return Terminal.Type.DEGREE_TITLE==self._type or \
+                    Terminal.Type.INITIAL_ABBREVIATION==self._type
+            else:
+                return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
         else:
             #Token je buď ANALYZE, nebo se jedná o římské číslo.
             #Musíme zjistit jaký druh terminálu máme
@@ -366,12 +373,14 @@ class Token(object):
         Druh tokenu
         """
         ANALYZE=1   #komplexní typ určený pouze morfologickou analýzou slova
-        DEGREE_TITLE= Terminal.Type.DEGREE_TITLE.value   #titul
+        DEGREE_TITLE_INITIAL_ABBREVIATION=2 #titul, iniciálová zkratka
+        NUMBER=Terminal.Type.NUMBER.value          #číslice (pouze z číslovek) Příklady: 12., 12
         ROMAN_NUMBER= Terminal.Type.ROMAN_NUMBER.value   #římská číslice Je třeba zohlednit i analýzu kvůli shodě s předložkou V
+        DEGREE_TITLE= Terminal.Type.DEGREE_TITLE.value  #titul
         INITIAL_ABBREVIATION= Terminal.Type.INITIAL_ABBREVIATION.value   #Iniciálová zkratka.
         EOF= Terminal.Type.EOF.value #konec vstupu
         X= Terminal.Type.X.value    #neznámé
-        #Pokud zde budete něco měnit je třeba provést úpravy v Token.terminals.
+        #Pokud zde budete něco měnit je třeba provést úpravy v Terminal.tokenMatch.
 
         def __str__(self):
             return str(self.value)
@@ -424,6 +433,7 @@ class Lex(object):
     """
 
     ROMAN_NUMBER_REGEX=re.compile(r"^X{0,3}(IX|IV|V?I{0,3})\.?$", re.IGNORECASE)
+    NUMBER_REGEX=re.compile(r"^[0-9]+\.?$", re.IGNORECASE)
     
     @classmethod
     def getTokens(cls, name):
@@ -441,6 +451,9 @@ class Lex(object):
             if cls.ROMAN_NUMBER_REGEX.match(str(w)):
                 #římská číslovka
                 token=Token(w, Token.Type.ROMAN_NUMBER)
+            elif cls.NUMBER_REGEX.match(str(w)):
+                #číslovka z číslic, volitelně zakončená tečkou
+                token=Token(w, Token.Type.NUMBER)
             elif w[-1] == ".":
                 if any(str.isdigit(c) for c in w):
                     #obsahuje číslici
@@ -453,9 +466,12 @@ class Lex(object):
                         #zkratka
                         token=Token(w, Token.Type.INITIAL_ABBREVIATION)
                     else:
-                        #titul
-                        token=Token(w, Token.Type.DEGREE_TITLE)
-                    
+                        if str(w).count(".")>1:
+                            #titul nebo zkratka
+                            token=Token(w, Token.Type.DEGREE_TITLE_INITIAL_ABBREVIATION)
+                        else:
+                            #titul
+                            token=Token(w, Token.Type.DEGREE_TITLE)
             else:
                 #ostatní
                 token=Token(w, Token.Type.ANALYZE)

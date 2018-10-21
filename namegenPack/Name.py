@@ -214,7 +214,7 @@ class Name(object):
         #Procházíme jméno a hledáme slova s jejich oddělovači.
         #Vynacháváme oddělovače na konci a začátku.
         for c in name:
-            if (c.isspace() or c=='-'):
+            if (c.isspace() or c=='-' or c=='–' or c==','):
                 #separátor
                 
                 if len(actWord)>0:

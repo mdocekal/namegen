@@ -225,6 +225,7 @@ class MorphoAnalyzerLibma(object):
     
     """
     
+    
     class MAWordGroup():
         """
         Třída reprezentující skupinu slov k nějakému slovu.
@@ -791,11 +792,10 @@ class MorphoAnalyzerLibma(object):
         :rtype: MAWord 
         """
         
-        if word not in self._wordDatabase:
+        
+        try:
+            return self._wordDatabase[word]
+        except KeyError:
             return None
-        
-        return self._wordDatabase[word]
 
-            
-        
     
