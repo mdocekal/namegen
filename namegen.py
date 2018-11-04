@@ -275,7 +275,7 @@ def main():
                     duplicityCheck.add(name)
                     
                     tokens=namegenPack.Grammar.Lex.getTokens(name)
-
+                    
                     wNoInfo=set()
                     for t in tokens:
                         #zkontrolujeme zda-li máme pro všechny tokeny,které to potřebují, dostupnou analýzu.

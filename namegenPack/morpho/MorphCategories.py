@@ -461,6 +461,17 @@ Note._mappingLntrf={e:str(e.value) for e in Note}
 Note._mappingLntrfInverse={v: k for k, v in Note._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""   
 
+class Flag(Enum):
+    """
+    Flagy
+    """
+    
+    GENERAL_WORD="GW"
+    """Jedná se o obecné slovo. Začíná malým písmenem a je bez poznámky."""
+    
+    NOT_GENERAL_WORD="NGW"
+    """Negace GENERAL_WORD."""
+
 
 MorphCategories._lntrfCatMap={
             MorphCategories.POS: POS.fromLntrf,

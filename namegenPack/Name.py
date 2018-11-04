@@ -19,6 +19,7 @@ from typing import List, Dict
 import namegenPack.Grammar
 
 from namegenPack.Word import Word, WordTypeMark
+from namegenPack.Grammar import Terminal
 
 
 class Name(object):
@@ -337,7 +338,11 @@ class Name(object):
                     if x.category() !=  MorphCategories.MorphCategories.CASE:
                         cateMorph.add(x)
     
-                genMorphsForWords.append(word.morphs(cateMorph, cateWord))
+                #ještě získáme flagy, pro filtraci
+                groupFlags=aToken.matchingTerminal.getAttribute(Terminal.Attribute.Type.FLAGS)
+                groupFlags= set() if groupFlags is None else groupFlags.value
+                
+                genMorphsForWords.append(word.morphs(cateMorph, cateWord, groupFlags))
             else:
                 genMorphsForWords.append(None)
 

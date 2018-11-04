@@ -10,13 +10,12 @@ from namegenPack import Errors
 import re
 from typing import Set, Dict
 from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
-    MorphCategories, POS, StylisticFlag, Case, Note
+    MorphCategories, POS, StylisticFlag, Case, Note, Flag
 from enum import Enum
 from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
 import itertools
 import copy
-from _ast import If
 
 class Terminal(object):
     """
@@ -44,7 +43,7 @@ class Terminal(object):
 
         DEGREE_TITLE= "t"   #titul
         ROMAN_NUMBER= "r"   #římská číslice
-        NUMBER="n"          #číslice (pouze z číslovek) Příklady: 12., 12
+        NUMBER="n"          #číslovka (pouze z číslic) Příklady: 12., 12
         INITIAL_ABBREVIATION= "ia"    #Iniciálová zkratka.
         X= "x"    #neznámé
         
@@ -112,6 +111,7 @@ class Terminal(object):
             NUMBER="n"  #mluvnická kategorie číslo. Číslo slova musí být takové. (filtrovací atribut)
             CASE="c"    #pád slova musí být takový    (filtrovací atribut)
             NOTE="note" #poznámka slova musí být taková    (filtrovací atribut)
+            FLAGS="f"   #Flagy, které musí mít skupina z morfologické analýzy.    (Speciální atribut)
             TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
             MATCH_REGEX="r"    #Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
@@ -142,9 +142,16 @@ class Terminal(object):
             """
             
             self._type=attrType
-            if self.type.isFiltering and not isinstance(val, MorphCategory):
+            if self.type.isFiltering :
                 #u filtrovacích atributů musí být hodnota typu MorphCategory
-                raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
+                if self._type==self.Type.FLAGS:
+                    #je možných více hodnot
+                    for f in val:
+                        if not isinstance(f, MorphCategory):
+                            raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
+                else:
+                    if not isinstance(val, MorphCategory):
+                        raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
             self._val=val
             
         @classmethod
@@ -158,7 +165,8 @@ class Terminal(object):
             :raise InvalidGrammarException: Při nevalidní hodnotě atributu.
             """
             
-            aT, aV= s.strip().split("=")
+            aT, aV= s.strip().split("=", 1)
+
             try:
                 t=cls.Type(aT)
             except ValueError:
@@ -177,9 +185,13 @@ class Terminal(object):
                 v=Case.fromLntrf(aV)
             elif cls.Type.NOTE==t:
                 v=Note.fromLntrf(aV)
+            elif cls.Type.FLAGS==t:
+                if aV[0]=='"' and aV[-1]=='"':
+                    aV=aV[1:-1]  #[1:-1] odstraňujeme " ze začátku a konce
+                v=frozenset(Flag(x.strip()) for x in aV.split(",")) 
             elif cls.Type.MATCH_REGEX==t:
                 try:
-                    v=re.compile(aV[1:-1])  #[1:-1] odstraňujeme # ze začátku a konce
+                    v=re.compile(aV[1:-1])  #[1:-1] odstraňujeme " ze začátku a konce
                 except re.error:
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT, \
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT).format(s))
@@ -211,11 +223,11 @@ class Terminal(object):
             return str(self._type.value)+"="+str(self.valueRepresentation)
                         
         def __hash__(self):
-            return hash((self._type, self._val))
+            return hash((self._type, self.valueRepresentation))
         
         def __eq__(self, other):
             if self.__class__ is other.__class__:
-                return self._type==other._type and self._val==other._val
+                return self._type==other._type and self._val==other.valueRepresentation
             
             return False
         
@@ -232,10 +244,10 @@ class Terminal(object):
                 Musí vždy obsahovat atribut daného druhu pouze jedenkrát. Jinak může způsobit nedefinované chování
                 u nějakých metod.
         :type attr: Attribute
+
         """
         
         self._type=terminalType
-        
         
         #zjistíme, zda-li byl předán word type mark
         if not any(a.type==self.Attribute.Type.TYPE for a in attr):
@@ -246,7 +258,7 @@ class Terminal(object):
         
         #pojďme zjistit hodnoty filtrovacích atributů
         self._fillteringAttrVal=set(a.value for a in self._attributes if a.type.isFiltering)
-        
+
         #cache pro zrychlení tokenMatch
         self._matchCache={}
         
@@ -338,8 +350,11 @@ class Terminal(object):
             #Token je buď ANALYZE, nebo se jedná o římské číslo.
             #Musíme zjistit jaký druh terminálu máme
             if self._type.isPOSType:
+                groupFlags=self.getAttribute(self.Attribute.Type.FLAGS)
+                groupFlags= set() if groupFlags is None else groupFlags.value
                 #jedná se o typ terminálu používající analyzátor
-                pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, frozenset({StylisticFlag.COLLOQUIALLY}))  #nechceme hovorové
+                pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, 
+                                                  frozenset({StylisticFlag.COLLOQUIALLY}), groupFlags)  #nechceme hovorové
                 
                 #máme všechny možné slovní druhy, které prošly atributovým filtrem 
                 return self._type.toPOS() in pos
@@ -585,8 +600,10 @@ class AnalyzedToken(object):
             #a morf. analýza nám řekne, že přídavné jméno může být pouze prvního stupně, tak tuto informaci zařadíme
             #k filtrům
                 
-            for _, morphCategoryValues in self._token.word.info.getAll(categories, {StylisticFlag.COLLOQUIALLY}).items():# hovorové nechceme
-                
+            for mCat, morphCategoryValues in self._token.word.info.getAll(categories, {StylisticFlag.COLLOQUIALLY}).items():# hovorové nechceme
+                if mCat == MorphCategories.NOTE:
+                    #nechceme použít, jelikož se jedná o volitelný atribut
+                    continue
                 if len(next(iter(morphCategoryValues)).__class__)>len(morphCategoryValues):
                     #danou kategorii má cenu filtrovat jelikož analýza určila, že slovo nemá všechny
                     #hodnoty z této kategorie.
@@ -705,7 +722,7 @@ class Rule(object):
             #Pokud však narazíme na ", tak čárka nemusí být oddělovačem attributu
              
             for s in mGroups.group(3):
-                if state=="R" and s==",":
+                if state=="R":
                     #Read
                     if s==",":
                         #máme potenciální atribut
@@ -738,18 +755,20 @@ class Rule(object):
                     if s=='"':
                         attribute=attribute[:-1]
                         attribute+=s
-
+            
             if len(attribute)>0:
                 #máme potenciální atribut
                 ta=Terminal.Attribute.createFrom(attribute)
+                
                 if ta.type in attrTypes:
+                    
                     #typ argumentu se opakuje
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT, \
                                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_ARGUMENT_REPEAT).format(attribute))
+                
                 attrTypes.add(ta.type)
                 attrs.add(ta)
-
-            
+        
         return Terminal(termType, attrs)
         
         
