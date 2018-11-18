@@ -1,6 +1,8 @@
 S
-S -> !T_GROUP 1{t=G,c=1,n=S,g=F} NOUN_GROUP_START PREP_GROUP !T_GROUP
-S -> !T_GROUP 2{t=G,c=1,n=S,g=F} NOUN_GROUP_START PREP_GROUP !T_GROUP	#Chceme i indiánská jména: Sedící sova
+S -> !T_GROUP 1{t=G,r="^.*(?<!ová)$",c=1,n=S,g=F} NOUN_GROUP_START PREP_GROUP !T_GROUP
+S -> !T_GROUP 1{t=S,r="^.*ová$",c=1,n=S,g=F} NOUN_GROUP_START PREP_GROUP !T_GROUP
+S -> !T_GROUP 2{t=G,r="^.*(?<!ová)$",c=1,n=S,g=F} NOUN_GROUP_START PREP_GROUP !T_GROUP	#Chceme i indiánská jména: Sedící sova
+S -> !T_GROUP 2{t=S,r="^.*ová$",c=1,n=S,g=F} NOUN_GROUP_START PREP_GROUP !T_GROUP
 NOUN_GROUP_START -> NOUN_GROUP
 NOUN_GROUP_START -> !NUM_ABBREVIATION_GROUP
 NOUN_GROUP_START -> ε

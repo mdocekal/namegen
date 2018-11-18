@@ -301,7 +301,12 @@ def main():
                     #zpochybnění odhad typu jména
                     #protože guess type používá také gramatky
                     #tak si případný výsledek uložím, abychom nemuseli dělat 2x stejnou práci
-                    aTokens=name.guessType(grammarsForTypeGuesser, tokens)
+                    tmpRes=name.guessType(grammarsForTypeGuesser, tokens)
+                    if tmpRes is not None:
+                        rules, aTokens=tmpRes
+                    else:
+                        rules, aTokens=None,None
+                        
                     if name.type is None:
                         #Nemáme informaci o druhu jména, jdeme dál.
                         print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr, flush=True)
@@ -317,11 +322,11 @@ def main():
                         
                         #rules a aTokens může obsahovat více než jednu možnou derivaci
                         if name.type==Name.Type.LOCATION:
-                            _, aTokens=grammarLocations.analyse(tokens)
+                            rules, aTokens=grammarLocations.analyse(tokens)
                         elif name.type==Name.Type.MALE:
-                            _, aTokens=grammarMale.analyse(tokens)
+                            rules, aTokens=grammarMale.analyse(tokens)
                         elif name.type==Name.Type.FEMALE:
-                            _, aTokens=grammarFemale.analyse(tokens)
+                            rules, aTokens=grammarFemale.analyse(tokens)
                         else:
                             #je cosi prohnilého ve stavu tohoto programu
                             raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
@@ -330,10 +335,18 @@ def main():
                     noMorphsWords=set()
                     missingCaseWords=set()
 
-                    for aT in aTokens:
+                    for ru, aT in zip(rules, aTokens):
                         try:
                             morphs=name.genMorphs(aT)
                             completedMorphs.add(str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs)))
+                            logging.info(str(name)+"\tDerivace:")
+                            for r in ru:
+                                logging.info("\t\t"+str(r))
+                            logging.info("\tTerminály:")
+                            for a in aT:
+                                if a.token.word is not None:
+                                    logging.info("\t\t"+str(a.token.word)+"\t"+str(a.matchingTerminal))
+
                         except Word.WordNoMorphsException as e:
                             #chyba při generování tvarů slova
                             #odchytáváme již zde, jeikož pro jedno slovo může být více alternativ

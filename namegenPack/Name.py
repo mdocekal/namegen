@@ -113,9 +113,9 @@ class Name(object):
         :param tokens: Tokeny odpovídající tomuto jménu. Tento volitelný parametr je zde zaveden pro zrychlení výpočtu, aby nebylo nutné v některých případech
             provádět vícekrát lexikální analýzu. Pokud bude vynechán nic se neděje jen si provede lexikální analýzu sám.
         :type tokens: List[Token]
-        :return: Zde vrací analyzované tokeny, získané při analýze pomocí gramatiky, která generuje jazyk
+        :return: Zde vrací analyzované tokeny ( a pravidla), získané při analýze pomocí gramatiky, která generuje jazyk
             v němž je toto jméno. Pokud je jméno ve více gramatikách nebo v žádné vrátí None.
-        :rtype aTokens: List | None
+        :rtype aTokens: (List, List) | None
         :raise Word.WordCouldntGetInfoException:Pokud se nepodařilo analyzovat nějaké slovo.
         """
         if self._type==self.Type.LOCATION:
@@ -147,20 +147,21 @@ class Name(object):
             return
     
         aTokens=None
+        rules=None
         if changeTo is None and grammars:
             #příjmení nekončí na ová
             for t, g in grammars.items():
                 try:
-                    _, tmpATokens=g.analyse(tokens)
+                    rules, aTokens=g.analyse(tokens)
 
                     if changeTo is None:
-                        #zatím odpovída jedna gramatika
+                        #zatím odpovídá jedna gramatika
                         changeTo=t
-                        aTokens=tmpATokens
                     else:
                         #více než jedna gramatika odpovídá
                         changeTo=None
                         aTokens=None
+                        rules=None
                         break
                         
                 except namegenPack.Grammar.Grammar.NotInLanguage:
@@ -174,7 +175,7 @@ class Name(object):
                 logging.info("Pro "+str(self)+" měním "+str(self._type)+" na "+str(changeTo)+".")    
             self._type=changeTo
         
-        return aTokens
+        return (rules,aTokens)
         
     @property
     def words(self):
@@ -243,7 +244,7 @@ class Name(object):
     
     def simpleWordsTypesGuess(self,tokens:List[namegenPack.Grammar.Token]=None):
         """
-        Provede zjednodušený odhad typů slov ve jméně. Bez použití morfologické analýzy.
+        Provede zjednodušený odhad typů slov ve jméně.
         
         :param tokens: Tokeny odpovídající tomuto jménu. Tento volitelný parametr je zde zaveden pro zrychlení výpočtu, aby nebylo nutné v některých případech
             provádět vícekrát lexikální analýzu. Pokud bude vynechán nic se neděje jen si provede lexikální analýzu sám.
@@ -256,9 +257,11 @@ class Name(object):
             tokens=namegenPack.Grammar.Lex.getTokens(self)
         
         types=[]
-        
+        logging.info(str(self)+"\tPoužívám zjednodušené určování druhu slov.")
         #používá se u mužských/ženských jmen, kde za předložkou dáváme lokaci
         womanManType=namegenPack.Word.WordTypeMark.GIVEN_NAME 
+        
+        lastGivenName=None   #uchováváme si index posledního křestních jmen pro pozdější změnu na příjmení
         
         for token in tokens:
             if token.type==namegenPack.Grammar.Token.Type.ANALYZE:
@@ -271,44 +274,55 @@ class Name(object):
                         if len({POS.PREPOSITION, POS.PREPOSITION_M} & pos)>0:
                             #jedná se o předložku
                             types.append(namegenPack.Word.WordTypeMark.PREPOSITION)
+                            logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.PREPOSITION)+"\tNa základě morfologické analýzy.")
                             #přepneme z křestního na lokaci
                             womanManType=namegenPack.Word.WordTypeMark.LOCATION
                         else:
+                            if womanManType==namegenPack.Word.WordTypeMark.LOCATION:
+                                logging.info("\t"+str(token.word)+"\t"+str(womanManType)+"\tSlovo se nachází za předložkou.")
+                            else:
+                                lastGivenName=len(types)
                             types.append(womanManType)
                             
                     except Word.WordCouldntGetInfoException:
                         types.append(womanManType)
             elif token.type==namegenPack.Grammar.Token.Type.INITIAL_ABBREVIATION:
+                logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION)+"\tNa základě lexikální analýzy.")
                 types.append(namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION)
             elif token.type==namegenPack.Grammar.Token.Type.ROMAN_NUMBER:
                 if self._type!=self.Type.LOCATION:
                     #může být i předložka v, kvůli stejné reprezentaci s římskou číslicí 5
                     if str(token.word)=="v":
                         #jedná se o malé v bez tečky, bereme jako předložku
+                        logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.PREPOSITION)+"\tJedná se o malé v bez tečky.")
                         types.append(namegenPack.Word.WordTypeMark.PREPOSITION)
                         #přepneme z křestního na lokaci
                         womanManType=namegenPack.Word.WordTypeMark.LOCATION
                     else:
+                        logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)+"\tNa základě lexikální analýzy.")
                         types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
                 else:
                     types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
             elif token.type==namegenPack.Grammar.Token.Type.DEGREE_TITLE:
+                logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.DEGREE_TITLE)+"\tNa základě lexikální analýzy.")
                 types.append(namegenPack.Word.WordTypeMark.DEGREE_TITLE)
             else:
+                if token.word is not None:
+                    logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.UNKNOWN))
                 types.append(namegenPack.Word.WordTypeMark.UNKNOWN)
         
         if types.count(namegenPack.Word.WordTypeMark.GIVEN_NAME)>1:   #máme více jak jedno křestní
             #poslední křestní se stane příjmením
-            
-            for i in range(len(types)-1, -1, -1):
-                if types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME:
+            for i in range(len(types)):
+                if i ==lastGivenName:
+                    logging.info("\t"+str(tokens[i].word)+"\t"+str(namegenPack.Word.WordTypeMark.SURNAME)+"\tPoslední doposud neurčené slovo.")
                     types[i]=namegenPack.Word.WordTypeMark.SURNAME
                     break
-            if self._type==self.Type.FEMALE: 
-                #+ u žen každé křestní končící na ová se stane příjmením
-                for i in range(len(types)):
-                    if types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME and self._words[i][-3:] == "ová":
-                        types[i]=namegenPack.Word.WordTypeMark.SURNAME
+                if self._type==self.Type.FEMALE and types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME and self._words[i][-3:] == "ová":
+                    logging.info("\t"+str(tokens[i].word)+"\t"+str(namegenPack.Word.WordTypeMark.SURNAME)+"\tJedná se o ženské jméno a slovo končí na ová.")
+                    types[i]=namegenPack.Word.WordTypeMark.SURNAME
+                else:
+                    logging.info("\t"+str(tokens[i].word)+"\t"+str(types[i])+"\tVýchozí druh slova.")
         
         return types
     

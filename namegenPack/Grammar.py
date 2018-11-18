@@ -8,7 +8,7 @@ Modul pro práci s gramatikou (Bezkontextovou).
 """
 from namegenPack import Errors
 import re
-from typing import Set, Dict
+from typing import Set, Dict, List
 from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
     MorphCategories, POS, StylisticFlag, Case, Note, Flag
 from enum import Enum
@@ -507,7 +507,7 @@ class AnalyzedToken(object):
     def __init__(self, token:Token, morph:bool=None, matchingTerminal:Terminal=None):
         """
         Pro běžný token vyrobí jaho analyzovanou variantu.
-        
+
         :param token: Pro kterého budujeme analýzu.
         :type token: Token
         :param morph:Příznak zda se slovo, jenž je reprezentováno tímto tokenem, má ohýbat. True ohýbat. False neohýbat.
@@ -515,11 +515,10 @@ class AnalyzedToken(object):
         :param matchingTerminal: Získaný terminál při analýze, který odpovídal tokenu.
         :type matchingTerminal: Terminal
         """
-        
         self._token=token
         self._morph=morph    #příznak zda-li se má dané slovo ohýbat
         self._matchingTerminal=matchingTerminal #Příslušný terminál odpovídající token (získaný při analýze).
-        
+    
     @property
     def token(self):
         """
