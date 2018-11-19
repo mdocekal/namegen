@@ -285,6 +285,8 @@ class Name(object):
                             types.append(womanManType)
                             
                     except Word.WordCouldntGetInfoException:
+                        if womanManType!=namegenPack.Word.WordTypeMark.LOCATION:
+                            lastGivenName=len(types)
                         types.append(womanManType)
             elif token.type==namegenPack.Grammar.Token.Type.INITIAL_ABBREVIATION:
                 logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION)+"\tNa základě lexikální analýzy.")
