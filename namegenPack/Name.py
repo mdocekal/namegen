@@ -312,19 +312,24 @@ class Name(object):
                 if token.word is not None:
                     logging.info("\t"+str(token.word)+"\t"+str(namegenPack.Word.WordTypeMark.UNKNOWN))
                 types.append(namegenPack.Word.WordTypeMark.UNKNOWN)
-        
-        if types.count(namegenPack.Word.WordTypeMark.GIVEN_NAME)>1:   #máme více jak jedno křestní
-            #poslední křestní se stane příjmením
-            for i in range(len(types)):
-                if i ==lastGivenName:
-                    logging.info("\t"+str(tokens[i].word)+"\t"+str(namegenPack.Word.WordTypeMark.SURNAME)+"\tPoslední doposud neurčené slovo.")
-                    types[i]=namegenPack.Word.WordTypeMark.SURNAME
-                    break
-                if self._type==self.Type.FEMALE and types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME and self._words[i][-3:] == "ová":
-                    logging.info("\t"+str(tokens[i].word)+"\t"+str(namegenPack.Word.WordTypeMark.SURNAME)+"\tJedná se o ženské jméno a slovo končí na ová.")
+
+        firstGivenName=True
+        for i in range(len(types)):
+            if not firstGivenName and i ==lastGivenName:
+                #poslední křestní se stane příjmením
+                #pokud není zároveň prvním
+                logging.info("\t"+str(tokens[i].word)+"\t"+str(namegenPack.Word.WordTypeMark.SURNAME)+"\tPoslední doposud neurčené slovo.")
+                types[i]=namegenPack.Word.WordTypeMark.SURNAME
+                break
+            if types[i]==namegenPack.Word.WordTypeMark.GIVEN_NAME:
+                
+                if (self._type==self.Type.FEMALE or self._type is None) and self._words[i][-3:] == "ová":
+                    logging.info("\t"+str(tokens[i].word)+"\t"+str(namegenPack.Word.WordTypeMark.SURNAME)+"\tJedná se o ženské jméno(či neznámého druhu) a slovo končí na ová.")
                     types[i]=namegenPack.Word.WordTypeMark.SURNAME
                 else:
                     logging.info("\t"+str(tokens[i].word)+"\t"+str(types[i])+"\tVýchozí druh slova.")
+                    
+                firstGivenName=False
         
         return types
     

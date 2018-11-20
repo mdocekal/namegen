@@ -469,7 +469,7 @@ class Lex(object):
             elif cls.NUMBER_REGEX.match(str(w)):
                 #číslovka z číslic, volitelně zakončená tečkou
                 token=Token(w, Token.Type.NUMBER)
-            elif w[-1] == ".":
+            elif w[-1] == "." or (len(w)<=3 and str(w).isupper()):
                 if any(str.isdigit(c) for c in w):
                     #obsahuje číslici
                     #nemůže se jednat o zkratku, či titul
@@ -477,7 +477,7 @@ class Lex(object):
                 else:
                     #slovo neobsahuje číslovku
                     #předpokládáme titul nebo iniciálovou zkratku
-                    if len(w)==2:
+                    if len(w)<=3 and str(w).isupper():
                         #zkratka
                         token=Token(w, Token.Type.INITIAL_ABBREVIATION)
                     else:

@@ -21,6 +21,7 @@ import namegenPack.morpho.MorphCategories
 import configparser
 
 from namegenPack.Name import *
+from _ast import Try
 
 outputFile = sys.stdout
 
@@ -228,8 +229,9 @@ def main():
         errorWordsShouldSave=True if args.error_words is not None else False
         
         #slova ke, kterým nemůže vygenerovat tvary, zjistit POS... 
-        #Jedná se o trojice ( druh názvu (mužský, ženský, lokace),druhu slova ve jméně, dané slovo)
-        errorWords=set()    
+        #Klíč trojice (druh názvu (mužský, ženský, lokace),druhu slova ve jméně, dané slovo).
+        #Hodnota množina jmen/názvů, kde se problém vyskytl.
+        errorWords={}
         
 
         #slouží pro výpis křestních jmen, příjmení atd.
@@ -293,7 +295,11 @@ def main():
                             
                             for w in wNoInfo:
                                 #přidáme informaci o druhu slova ve jméně a druh jména
-                                errorWords.add((name.type, wordsMarks[name.words.index(w)], w))
+                                try:
+                                    errorWords[(name.type,wordsMarks[name.words.index(w)], w)].add(name)
+                                except KeyError:
+                                    errorWords[(name.type,wordsMarks[name.words.index(w)], w)]=set([name])
+                                    
                         #nemá cenu pokračovat, jdeme na další
                         continue
                             
@@ -374,12 +380,19 @@ def main():
                             print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name),", ".join(str(w)+" "+str(m) for m,w in noMorphsWords)), file=sys.stderr, flush=True)
                             if errorWordsShouldSave:
                                 for m, w in noMorphsWords:
-                                    errorWords.add((name.type,m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w))
+                                    try:
+                                        errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)].add(name)
+                                    except KeyError:
+                                        errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)]=set([name])
                                     
                         for aTerm, msg in missingCaseWords:
                             print(str(name)+"\t"+msg+"\t"+str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
                             if errorWordsShouldSave:
-                                errorWords.add((name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word))
+                                try:
+                                    errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)].add(name)
+                                except KeyError:
+                                    errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)]=set([name])
+                                
                         
                     #vytiskneme
                     for m in completedMorphs:
@@ -408,7 +421,10 @@ def main():
                         wordsMarks=name.simpleWordsTypesGuess(tokens)
                         for i, w in enumerate(name.words):
                             if w == e.word:
-                                errorWords.add((name.type, wordsMarks[i], e.word))
+                                try:
+                                    errorWords[(name.type,wordsMarks[i], e.word)].add(name)
+                                except KeyError:
+                                    errorWords[(name.type,wordsMarks[i], e.word)]=set([name])
                                 break
                         
                 except namegenPack.Grammar.Grammar.NotInLanguage:
@@ -450,17 +466,17 @@ def main():
         if errorWordsShouldSave:
             #save words with errors into a file
             with open(args.error_words, "w") as errWFile:
-                for nT, m, w in errorWords:#druh názvu (mužský, ženský, lokace),označení typu slova ve jméně(jméno, příjmení), společně se jménem
+                for (nT, m, w), names in errorWords.items():#druh názvu (mužský, ženský, lokace),označení typu slova ve jméně(jméno, příjmení), společně se jménem
                     #u ženských a mužských jmen přidáme odhad lntrf značky
+                    resultStr=str(w)+"\t"+"j"+str(m)
                     if m in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
                         if nT == Name.Type.FEMALE:
-                            print(str(w)+"\t"+"j"+str(m)+"\tk1gFnSc1::", file=errWFile)
-                            continue
+                            resultStr+="\tk1gFnSc1::"
                         if nT == Name.Type.MALE:
-                            print(str(w)+"\t"+"j"+str(m)+"\tk1gMnSc1::", file=errWFile)
-                            continue
-                        
-                    print(str(w)+"\t"+"j"+str(m), file=errWFile)
+                            resultStr+="\tk1gMnSc1::"
+                    #přidáme jména/názvy kde se problém vyskytl
+                    resultStr+="\t"+str(nT)+"\t@\t"+", ".join(str(name) for name in names)
+                    print(resultStr, file=errWFile)
   
 
     except Errors.ExceptionMessageCode as e:
