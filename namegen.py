@@ -161,7 +161,7 @@ class ArgumentsManager(object):
         parser.add_argument("-gn", "--given-names", help="Cesta k souboru, kde budou uložena slova označená jako křestní. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument("-sn", "--surnames", help="Cesta k souboru, kde budou uložena slova označená jako příjmení. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument("-l", "--locations", help="Cesta k souboru, kde budou uložena slova označená jako lokace. Výsledek je v lntrf formátu.", type=str)
-        parser.add_argument('input', nargs=1, help='Vstupní soubor se jmény.')
+        parser.add_argument('input', nargs="?", help='Vstupní soubor se jmény.', default=None)
 
         try:
             parsed=parser.parse_args()
@@ -206,7 +206,7 @@ def main():
         logging.info("\thotovo")
         logging.info("čtení jmen")
         #načtení jmen pro zpracování
-        namesR=NameReader(args.input[0])
+        namesR=NameReader(args.input)
         logging.info("\thotovo")
         logging.info("analýza slov")
         #přiřazení morfologického analyzátoru

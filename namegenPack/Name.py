@@ -452,42 +452,55 @@ class NameReader(object):
 
     """
     
-    def __init__(self, inputFile):
+    def __init__(self, inputFile=None):
         """
         Konstruktor 
         
         :param inputFile: Cesta ke vstupnímu souboru se jmény.
-        :type inputFile: string
+            Pokud je None čte z stdin
+        :type inputFile: string | None
 
         """
         self.names=[]
         self._errorCnt=0 #počet chybných nenačtených jmen
         
+        
+        
+        if inputFile is None:
+            self._readInput(sys.stdin)
+        else:
+            with open(inputFile, "r") as rInput:
+                self._readInput(rInput)
+                    
+    def _readInput(self, rInput):
+        """
+        Čtení vstupu.
+        :param rInput: Vstup
+        """
         wordDatabase={} #zde budeme ukládat již vyskytující se slova
-        with open(inputFile, "r") as rInput:
-            for line in rInput:
-                line=line.strip()
+        for line in rInput:
+                line = line.strip()
                 parts = line.split("\t")
                 if len(parts) != 2:
                     if len(parts) > 2:
-                        #nevalidní formát vstupu
-                        print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_INVALID_NAME)+"\t"+line, file=sys.stderr)
-                        self._errorCnt+=1
+                        # nevalidní formát vstupu
+                        print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_INVALID_NAME) + "\t" + line, file=sys.stderr)
+                        self._errorCnt += 1
                         continue
                         
-                    #Necháme provést odhad typu slova.
-                    #Dle zadání má být automaticky předpokládána osoba, kde se může stát, že typ není uveden.
-                    #Řešeno v Name
+                    # Necháme provést odhad typu slova.
+                    # Dle zadání má být automaticky předpokládána osoba, kde se může stát, že typ není uveden.
+                    # Řešeno v Name
                     parts.append(None)
                     
-                #provedeme analýzu jména a uložíme je 
+                # provedeme analýzu jména a uložíme je 
                 try:
-                    #Přidáváme wordDatabase pro ušetření paměti
+                    # Přidáváme wordDatabase pro ušetření paměti
                     self.names.append(Name(parts[0], parts[1], wordDatabase))
                 except Name.NameCouldntCreateException as e:
-                    #problém při vytváření jména
+                    # problém při vytváření jména
                     print(e.message, file=sys.stderr)
-                    self._errorCnt+=1
+                    self._errorCnt += 1
                 
     @property
     def errorCnt(self):
