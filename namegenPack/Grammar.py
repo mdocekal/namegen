@@ -22,6 +22,9 @@ class Terminal(object):
     Reprezentace parametrizovaného terminálu.
     """
     
+    #Množina druhů terminálů, kterým odpovídá token ANALYZE_UNKNOWN.
+    UNKNOWN_ANALYZE_TERMINAL_MATCH=set()
+    
     class Type(Enum):
         """
         Druh terminálu.
@@ -330,6 +333,9 @@ class Terminal(object):
         :rtype: bool
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
+        if t.type==Token.Type.ANALYZE_UNKNOWN and self.type in self.UNKNOWN_ANALYZE_TERMINAL_MATCH:
+            #tento druh tokenu sedí na každý termínal druhu pos type
+            return True
         
         mr=self.getAttribute(self.Attribute.Type.MATCH_REGEX)
         if mr is not None and not mr.value.match(str(t.word)):
@@ -338,7 +344,7 @@ class Terminal(object):
             
         #Zjistíme zda-li se jedná o token, který potenciálně potřebuje analyzátor (ANALYZE, ROMAN_NUMBER)
         
-        if t.type!=Token.Type.ANALYZE and t.type!=Token.Type.ROMAN_NUMBER:
+        if t.type not in Lex.TOKEN_TYPES_THAT_NEEDS_MA:
             #Jedná se o jednoduchý token bez nutnosti morfologické analýzy.
             if t.type==Token.Type.DEGREE_TITLE_INITIAL_ABBREVIATION:
                 #může jít jak o titul, tak o inicialovou zkratku
@@ -388,7 +394,8 @@ class Token(object):
         Druh tokenu
         """
         ANALYZE=1   #komplexní typ určený pouze morfologickou analýzou slova
-        DEGREE_TITLE_INITIAL_ABBREVIATION=2 #titul, iniciálová zkratka
+        ANALYZE_UNKNOWN=2   #Přestože by měl mít token analýzu, tak se ji nepodařilo získat.
+        DEGREE_TITLE_INITIAL_ABBREVIATION=3 #titul, iniciálová zkratka
         NUMBER=Terminal.Type.NUMBER.value          #číslice (pouze z číslovek) Příklady: 12., 12
         ROMAN_NUMBER= Terminal.Type.ROMAN_NUMBER.value   #římská číslice Je třeba zohlednit i analýzu kvůli shodě s předložkou V
         DEGREE_TITLE= Terminal.Type.DEGREE_TITLE.value  #titul
@@ -438,6 +445,17 @@ class Token(object):
         """
         return self._type
     
+    @type.setter
+    def type(self, t):
+        """
+        Nastav druh tokenu.
+
+        :param t: Nový druh.
+        :type t: Type
+        """
+        
+        self._type=t
+    
     def __str__(self):
         return str(self._type)+"("+str(self._word)+")"
     
@@ -450,6 +468,8 @@ class Lex(object):
     ROMAN_NUMBER_REGEX=re.compile(r"^X{0,3}(IX|IV|V?I{0,3})\.?$", re.IGNORECASE)
     NUMBER_REGEX=re.compile(r"^[0-9]+\.?$", re.IGNORECASE)
     
+    TOKEN_TYPES_THAT_NEEDS_MA={Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER}
+    
     @classmethod
     def getTokens(cls, name):
         """
@@ -459,7 +479,6 @@ class Lex(object):
         :type name: Name
         :return: List tokenů pro dané jméno.
         :rtype: [str]
-        :raise Word.WordCouldntGetInfoException: Vyjímka symbolizující, že se nepovedlo získat morfologické kategorie ke slovu.
         """
         tokens=[]
         for w in name:
@@ -491,7 +510,19 @@ class Lex(object):
                 #ostatní
                 token=Token(w, Token.Type.ANALYZE)
                 
+                
+            #podíváme se, zda-li máme analýzu tam, kde ji potřebujeme
+            if token.type in cls.TOKEN_TYPES_THAT_NEEDS_MA:
+                try:
+                    _=token.word.info
+                    #analýzu máme
+                except Word.WordCouldntGetInfoException:
+                    #bohužel analýza není, musíme změnit druh tokenu
+                    token.type=Token.Type.ANALYZE_UNKNOWN
+                
             tokens.append(token)
+            
+        
             
         tokens.append(Token(None, Token.Type.EOF)) 
     
@@ -895,7 +926,6 @@ class Grammar(object):
     #se nemají ohýbat.
     NON_GEN_MORPH_SIGN="!"   
     
-    
     class NotInLanguage(Errors.ExceptionMessageCode):
         """
         Řetězec není v jazyce generovaným danou gramatikou.
@@ -1108,8 +1138,10 @@ class Grammar(object):
                     #token odpovídá terminálu na zásobníku
                     position+=1
                     
-                    #ještě vytvoříme analyzovaný token
-                    aTokens.append(AnalyzedToken(token, s.isMorph, s.val))# s je odpovídající terminál
+
+                    aTokens.append(AnalyzedToken(token,
+                                                False if token.type==Token.Type.ANALYZE_UNKNOWN else s.isMorph,
+                                                s.val))# s je odpovídající terminál
                     
                 else:
                     #chyba rozdílný terminál na vstupu a zásobníku

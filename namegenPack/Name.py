@@ -19,7 +19,7 @@ from typing import List, Dict
 import namegenPack.Grammar
 
 from namegenPack.Word import Word, WordTypeMark
-from namegenPack.Grammar import Terminal
+from namegenPack.Grammar import Terminal, Token
 
 
 class Name(object):
@@ -97,6 +97,16 @@ class Name(object):
     def __iter__(self):
         for w in self._words:
             yield w
+            
+    def printName(self):
+        """
+        Převede jméno do string. Pokud má jménu typ, tak je přidán. Jméno a typ jsou
+        odděleny tabulátorem.
+        """
+        if self.type:
+            return str(self)+"\t"+str(self.type)
+        else:
+            return self
             
     def guessType(self, grammars=None, tokens:List[namegenPack.Grammar.Token]=None):
         """
@@ -391,6 +401,7 @@ class Name(object):
                                 wordType=aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)
                                 if wordType!=WordTypeMark.UNKNOWN:
                                     morph+="#"+str(wordType.value)
+                                    
                                 notMatch=False
                         except KeyError:
                             #pravděpodobně nemá pád vůbec
@@ -404,7 +415,8 @@ class Name(object):
                 else:
                     #neohýbáme
                     morph+=str(word)+"#"+str(aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value)
-                
+                    if aToken.token.type==Token.Type.ANALYZE_UNKNOWN:
+                        morph+="E"
                 #přidání oddělovače slov
                 if sepIndex < len(self._separators):
                     morph+=self._separators[sepIndex]
