@@ -193,9 +193,10 @@ class ArgumentsManager(object):
         parser.add_argument("-gn", "--given-names", help="Cesta k souboru, kde budou uložena slova označená jako křestní. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument("-sn", "--surnames", help="Cesta k souboru, kde budou uložena slova označená jako příjmení. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument("-l", "--locations", help="Cesta k souboru, kde budou uložena slova označená jako lokace. Výsledek je v lntrf formátu.", type=str)
-        parser.add_argument("-pwm", "--print-without-morphs", help="Vytiskne i názvy/jména, u kterých se nepodařilo získat tvary, mezi výsledky.", action='store_true')
-        parser.add_argument("-v", "--verbose", help="Vypisuje i derivace příslušné derivace jmen/názvů.", action='store_true')
+        parser.add_argument("-in", "--include-no-morphs", help="Vytiskne i názvy/jména, u kterých se nepodařilo získat tvary, mezi výsledky.", action='store_true')
+        parser.add_argument("-v", "--verbose", help="Vypisuje i příslušné derivace jmen/názvů.", action='store_true')
         parser.add_argument('input', nargs="?", help='Vstupní soubor se jmény. Pokud není uvedeno očekává vstup na stdin.', default=None)
+
 
         try:
             parsed=parser.parse_args()
@@ -338,7 +339,7 @@ def main():
                                 except KeyError:
                                     errorWords[(name.type,wordsMarks[name.words.index(w)], w)]=set([name])
                         
-                        if args.print_without_morphs:
+                        if args.include_no_morphs:
                             #uživatel chce vytisknout i slova bez tvarů
                             print(name.printName(), file=outF)
                         #nemá cenu pokračovat, jdeme na další
@@ -358,7 +359,7 @@ def main():
                     #Nemáme informaci o druhu jména, jdeme dál.
                     print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr, flush=True)
                     errorsUnknownNameType+=1
-                    if args.print_without_morphs:
+                    if args.include_no_morphs:
                         #uživatel chce vytisknout i slova bez tvarů
                         print(name.printName(), file=outF)
                     continue
@@ -506,7 +507,7 @@ def main():
                 errorsOthersCnt+=1
                 print(str(name)+"\t"+e.message, file=sys.stderr, flush=True)
                 
-            if args.print_without_morphs and not morphsPrinted:
+            if args.include_no_morphs and not morphsPrinted:
                 #uživatel chce vytisknout i slova bez tvarů
                 print(name.printName(), file=outF)
             cnt+=1
