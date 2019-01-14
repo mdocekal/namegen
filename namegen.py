@@ -403,7 +403,11 @@ def main():
                                         
                     
                         morphs=name.genMorphs(aT)
-                        completedMorphs.add(str(name)+"\t"+str(name.type)+"\t"+("\t".join(name.additionalInfo))+"\t"+("|".join(morphs)))
+                        
+                        resAdd=str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs))
+                        if len(name.additionalInfo)>0:
+                            resAdd+="\t"+("\t".join(name.additionalInfo))
+                        completedMorphs.add(resAdd)
                         if args.verbose:
                             logging.info(str(name)+"\tDerivace:")
                             for r in ru:
