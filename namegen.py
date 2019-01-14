@@ -261,7 +261,6 @@ def main():
         errorsOthersCnt=0   
         errorsGrammerCnt=0  #není v gramatice
         errorsUnknownNameType=0  #není v gramatice
-        errorsWordInfoCnt=0   #nemůže vygenrovat tvary, zjistit POS...
         errorsDuplicity=0   #více stejných jmen (včetně typu)
 
         errorWordsShouldSave=True if args.error_words is not None else False
@@ -297,7 +296,7 @@ def main():
         #nastaveni logování
         duplicityCheck=set()    #zde se budou ukládat jména pro zamezení duplicit
         
-        grammarsForTypeGuesser={Name.Type.FEMALE: grammarFemale,Name.Type.MALE:grammarMale}
+        grammarsForTypeGuesser={Name.Type.PersonGender.FEMALE: grammarFemale,Name.Type.PersonGender.MALE:grammarMale}
         
         
         #get output
@@ -328,16 +327,13 @@ def main():
                     if len(wNoInfo)>0:
                         wordsMarks=name.simpleWordsTypesGuess(tokens)
                         print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w)+"#"+str(wordsMarks[name.words.index(w)]) for w in wNoInfo)), file=sys.stderr, flush=True)
-                        errorsWordInfoCnt+=1
     
-                        if errorWordsShouldSave:
-                            
-                            for w in wNoInfo:
-                                #přidáme informaci o druhu slova ve jméně a druh jména
-                                try:
-                                    errorWords[(name.type,wordsMarks[name.words.index(w)], w)].add(name)
-                                except KeyError:
-                                    errorWords[(name.type,wordsMarks[name.words.index(w)], w)]=set([name])
+                        for w in wNoInfo:
+                            #přidáme informaci o druhu slova ve jméně a druh jména
+                            try:
+                                errorWords[(name.type,wordsMarks[name.words.index(w)], w)].add(name)
+                            except KeyError:
+                                errorWords[(name.type,wordsMarks[name.words.index(w)], w)]=set([name])
                         
                         if args.include_no_morphs:
                             #uživatel chce vytisknout i slova bez tvarů
@@ -355,8 +351,8 @@ def main():
                 else:
                     rules, aTokens=None,None
                     
-                if name.type is None:
-                    #Nemáme informaci o druhu jména, jdeme dál.
+                if name.type == None:
+                    #Nemáme dostatečnou informaci o druhu jména, jdeme dál.
                     print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(str(name)), file=sys.stderr, flush=True)
                     errorsUnknownNameType+=1
                     if args.include_no_morphs:
@@ -372,11 +368,11 @@ def main():
                 if aTokens is None: #Nedostaly jsme aTokeny při určování druhu slova?
                     
                     #rules a aTokens může obsahovat více než jednu možnou derivaci
-                    if name.type==Name.Type.LOCATION:
+                    if name.type==Name.Type.MainType.LOCATION:
                         rules, aTokens=grammarLocations.analyse(tokens)
-                    elif name.type==Name.Type.MALE:
+                    elif name.type==Name.Type.PersonGender.MALE:
                         rules, aTokens=grammarMale.analyse(tokens)
-                    elif name.type==Name.Type.FEMALE:
+                    elif name.type==Name.Type.PersonGender.FEMALE:
                         rules, aTokens=grammarFemale.analyse(tokens)
                     else:
                         #je cosi prohnilého ve stavu tohoto programu
@@ -393,22 +389,21 @@ def main():
                             for t in aT:
                                 if t.token.type==Token.Type.ANALYZE_UNKNOWN:
                                     #zaznamenáme slova bez analýzy
-                                    errorsWordInfoCnt+=1
-                                    if errorWordsShouldSave:
-                                        # přidáme informaci o druhu slova ve jméně a druh jména
-                                        #používá se pro výpis chybových slov
-                                        try:
-                                            errorWords[(name.type, 
-                                                t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE), 
-                                                t.token.word)].add(name)
-                                        except KeyError:
-                                            errorWords[(name.type,
-                                                t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE),
-                                                t.token.word)] = set([name])
-                                            
+                                    
+                                    # přidáme informaci o druhu slova ve jméně a druh jména
+                                    #používá se pro výpis chybových slov
+                                    try:
+                                        errorWords[(name.type, 
+                                            t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE), 
+                                            t.token.word)].add(name)
+                                    except KeyError:
+                                        errorWords[(name.type,
+                                            t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE),
+                                            t.token.word)] = set([name])
+                                        
                     
                         morphs=name.genMorphs(aT)
-                        completedMorphs.add(str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs)))
+                        completedMorphs.add(str(name)+"\t"+str(name.type)+"\t"+("\t".join(name.additionalInfo))+"\t"+("|".join(morphs)))
                         if args.verbose:
                             logging.info(str(name)+"\tDerivace:")
                             for r in ru:
@@ -429,7 +424,7 @@ def main():
                                 break
                     except Word.WordMissingCaseException as e:
                         #nepodařilo se získat některý pád slova
-                        #odchytáváme již zde, jeikož pro jedno slovo může být více alternativ
+                        #odchytáváme již zde, jeLikož pro jedno slovo může být více alternativ
                         for x in aT:
                             #hledáme AnalyzedToken pro naše problémové slovo, abychom mohli ke slovu
                             #přidat i odhadnutý druh slova ve jméně (křestní, příjmení, ...)
@@ -439,31 +434,32 @@ def main():
                     
                 if len(noMorphsWords)>0 or len(missingCaseWords)>0:
                     #chyba při generování tvarů jména
-                    #nepodařilo se vygenerovat ani jeden
-                    errorsWordInfoCnt+=1
+                    
+
                     if len(noMorphsWords)>0:
                         print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name),", ".join(str(w)+" "+str(m) for m,w in noMorphsWords)), file=sys.stderr, flush=True)
-                        if errorWordsShouldSave:
-                            for m, w in noMorphsWords:
-                                try:
-                                    errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)].add(name)
-                                except KeyError:
-                                    errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)]=set([name])
-                                
+                        
+                        for m, w in noMorphsWords:
+                            try:
+                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)].add(name)
+                            except KeyError:
+                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)]=set([name])
+                            
                     for aTerm, msg in missingCaseWords:
                         print(str(name)+"\t"+msg+"\t"+str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
-                        if errorWordsShouldSave:
-                            try:
-                                errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)].add(name)
-                            except KeyError:
-                                errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)]=set([name])
-                            
-                    
+                        
+                        try:
+                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)].add(name)
+                        except KeyError:
+                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)]=set([name])
+                        
+                
                 #vytiskneme
                 for m in completedMorphs:
                     print(m, file=outF)
                     
-                morphsPrinted=True
+                if len(completedMorphs)>0:
+                    morphsPrinted=True
                 
                 #zjistíme, zda-li uživatel nechce vypsat nějaké typy jmen do souborů
 
@@ -485,17 +481,15 @@ def main():
                 if isinstance(e, Word.WordCouldntGetInfoException) and not configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]: 
                     #jen v případě, kdy nemá být použita gramatika
                     print(str(name)+"\t"+e.message, file=sys.stderr, flush=True)
-                    errorsWordInfoCnt+=1
-    
-                    if errorWordsShouldSave:
-                        wordsMarks=name.simpleWordsTypesGuess(tokens)
-                        for i, w in enumerate(name.words):
-                            if w == e.word:
-                                try:
-                                    errorWords[(name.type,wordsMarks[i], e.word)].add(name)
-                                except KeyError:
-                                    errorWords[(name.type,wordsMarks[i], e.word)]=set([name])
-                                break
+                    
+                    wordsMarks=name.simpleWordsTypesGuess(tokens)
+                    for i, w in enumerate(name.words):
+                        if w == e.word:
+                            try:
+                                errorWords[(name.type,wordsMarks[i], e.word)].add(name)
+                            except KeyError:
+                                errorWords[(name.type,wordsMarks[i], e.word)]=set([name])
+                            break
                     
             except namegenPack.Grammar.Grammar.NotInLanguage:
                 errorsGrammerCnt+=1
@@ -537,7 +531,7 @@ def main():
         print("\tNačtených jmen/názvů celkem: ", len(namesR.names), file=sys.stderr)
         print("\tNeznámý druh jména: ", errorsUnknownNameType, file=sys.stderr)
         print("\tNepokryto gramatikou: ", errorsGrammerCnt, file=sys.stderr)
-        print("\tNepodařilo se získat informace o slově (tvary, slovní druh...): ", errorsWordInfoCnt, file=sys.stderr)
+        print("\tPočet slov, pro které se nepodařilo získat informace (tvary, slovní druh...): ", len(errorWords), file=sys.stderr)
         
         
         if errorWordsShouldSave:
@@ -547,9 +541,9 @@ def main():
                     #u ženských a mužských jmen přidáme odhad lntrf značky
                     resultStr=str(w)+"\t"+"j"+str(m)
                     if m in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
-                        if nT == Name.Type.FEMALE:
+                        if nT == Name.Type.PersonGender.FEMALE:
                             resultStr+="\tk1gFnSc1::"
-                        if nT == Name.Type.MALE:
+                        if nT == Name.Type.PersonGender.MALE:
                             resultStr+="\tk1gMnSc1::"
                     #přidáme jména/názvy kde se problém vyskytl
                     resultStr+="\t"+str(nT)+"\t@\t"+", ".join(str(name) for name in names)

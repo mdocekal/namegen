@@ -1247,7 +1247,6 @@ class Grammar(object):
                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
                 
                 
-
                 if len(actRules)==1:
                     #jedno možné pravidlo
                     r=next(iter(actRules))
@@ -1259,6 +1258,7 @@ class Grammar(object):
                     #pro každou možnou derivaci zavoláme rekurzivně tuto metodu
                     newRules=[]
                     newATokens=[]
+
                     for r in actRules:
                         try:
                             #prvně aplikujeme pravidlo na nový stack
