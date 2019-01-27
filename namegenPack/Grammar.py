@@ -16,6 +16,7 @@ from builtins import isinstance
 from namegenPack.Word import Word, WordTypeMark
 import itertools
 import copy
+import time
 
 class Terminal(object):
     """
@@ -116,7 +117,7 @@ class Terminal(object):
             CASE="c"    #pád slova musí být takový    (filtrovací atribut)
             NOTE="note" #poznámka slova musí být taková    (filtrovací atribut)
             FLAGS="f"   #Flagy, které musí mít skupina z morfologické analýzy.    (Speciální atribut)
-            TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
+            WORD_TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
             MATCH_REGEX="r"    #Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
             
@@ -286,9 +287,9 @@ class Terminal(object):
         self._type=terminalType
         
         #zjistíme, zda-li byl předán word type mark
-        if not any(a.type==self.Attribute.Type.TYPE for a in attr):
+        if not any(a.type==self.Attribute.Type.WORD_TYPE for a in attr):
             #nebyl, přidáme neznámý
-            attr=attr|set([self.Attribute(self.Attribute.Type.TYPE, WordTypeMark.UNKNOWN)])
+            attr=attr|set([self.Attribute(self.Attribute.Type.WORD_TYPE, WordTypeMark.UNKNOWN)])
         
         self._attributes=frozenset(attr)
         
@@ -1017,7 +1018,15 @@ class Grammar(object):
         """
         Řetězec není v jazyce generovaným danou gramatikou.
         """
-        pass
+        def __init__(self):
+            super().__init__(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE)
+    
+    class TimeoutException(Errors.ExceptionMessageCode):
+        """
+        Při provádění syntaktické analýzy, nad daným řetězcem, došlo k timeoutu.
+        """
+        def __init__(self):
+            super().__init__(Errors.ErrorMessenger.CODE_GRAMMAR_SYN_ANAL_TIMEOUT)
     
     class ParsingTableSymbolRow(dict):
         """
@@ -1066,12 +1075,15 @@ class Grammar(object):
             
 
 
-    def __init__(self, filePath):
+    def __init__(self, filePath, timeout=None):
         """
         Inicializace grammatiky jejim načtením ze souboru.
         
         :param filePath: Cesta k souboru s gramatikou
         :type filePath: str
+        :param timeout: TimeoutException pro syntaktickou analýzu. Po kolik max milisekundách má přestat.
+            TimeoutException je kontrolován vždy na začátku metody crawling.
+        :type timeout: None | int
         :raise exception:
             Errors.ExceptionMessageCode pokud nemůže přečíst vstupní soubor.
             InvalidGrammarException pokud je problém se samotnou gramtikou.
@@ -1084,6 +1096,10 @@ class Grammar(object):
         self._removeAllUsellesSymbols()
         #vytvoříme si tabulku pro parsování
         self._makeTable()
+        
+        self.timeout=timeout
+        self.grammarEllapsedTime=0
+        self.grammarNumOfAnalyzes=0
         
     
     def load(self,filePath):
@@ -1175,11 +1191,15 @@ class Grammar(object):
         :param tokens: Tokeny pro zpracování.
         :type tokens: list
         :return: Dvojici s listem listu pravidel určujících všechny možné derivace a list listů analyzovaných tokenů.
-        :rtype: (list(list(Rule)), list(list(AnalyzedToken)))
+            Pokud vrací None došlo k timeoutu.
+        :rtype: (list(list(Rule)), list(list(AnalyzedToken))) | None
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
         :raise WordCouldntGetInfoException: Problém při analýze slova.
+        :raise TimeoutException: Při provádění syntaktické analýzy, nad daným řetězcem, došlo k timeoutu.
         """
         
+        #provedeme samotnou analýzu a vrátíme výsledek
+        self.analyzeStartTime = time.time()
         if tokens[-1].type!=Token.Type.EOF:
             tokens.append(Token(None,Token.Type.EOF))
             
@@ -1187,9 +1207,10 @@ class Grammar(object):
         stack=[Symbol(Terminal(Terminal.Type.EOF), True, True), Symbol(self._startS, False, self._startS[0]!=self.NON_GEN_MORPH_SIGN)]
         position=0
         
-        #provedeme samotnou analýzou a vrátíme výsledek
-        return self.crawling(stack, tokens, position)
-        
+        res=self.crawling(stack, tokens, position)
+        self.grammarEllapsedTime+=time.time()-self.analyzeStartTime
+        self.grammarNumOfAnalyzes+=1
+        return res
     
     def crawling(self, stack, tokens, position):
         """
@@ -1210,7 +1231,14 @@ class Grammar(object):
         :rtype: (list(list(Rule)), list(list(AnalyzedToken)))
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
         :raise WordCouldntGetInfoException: Problém při analýze slova.
+        :raise TimeoutException: Při provádění syntaktické analýzy, nad daným řetězcem, došlo k timeoutu.
         """
+        if self.timeout is not None:
+            #kontrola na timeout
+            if (time.time()-self.analyzeStartTime)*1000 >=self.timeout:
+                #překročen timeout -> končíme
+                raise self.TimeoutException()
+                
         aTokens=[]  #analyzované tokeny
         rules=[]    #použitá pravidla
         
@@ -1232,8 +1260,7 @@ class Grammar(object):
                     
                 else:
                     #chyba rozdílný terminál na vstupu a zásobníku
-                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
+                    raise self.NotInLanguage()
             else:
                 #neterminál na zásobníku
 
@@ -1243,8 +1270,7 @@ class Grammar(object):
                 
                 if not actRules:
                     #v gramatice neexistuje vhodné pravidlo
-                    raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
+                    raise self.NotInLanguage()
                 
                 
                 if len(actRules)==1:
@@ -1265,7 +1291,7 @@ class Grammar(object):
                             newStack=stack.copy()
                             self.putRuleOnStack(r, newStack, s.isMorph)
                             
-                            #zkusíme zdali s tímto pravidlem uspějeme
+                            #zkusíme zdali s tímto pravidlem uspějeme                            
                             resRules, resATokens=self.crawling(newStack, tokens, position)
                             
                             if resRules and resATokens:
@@ -1285,8 +1311,7 @@ class Grammar(object):
             
                     if len(newRules) == 0:
                         #v gramatice neexistuje vhodné pravidlo
-                        raise self.NotInLanguage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE, \
-                                                 Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NOT_IN_LANGUAGE))
+                        raise self.NotInLanguage()
     
                         
                     #jelikož jsme zbytek prošli rekurzivním voláním, tak můžeme již skončit

@@ -57,6 +57,7 @@ class ErrorMessenger(object):
     CODE_NAME_WITHOUT_TYPE=24
     CODE_NAME_NO_MORPHS_GENERATED=25
     CODE_GRAMMAR_MULTIPLE_VAL_ATTRIBUTES=26
+    CODE_GRAMMAR_SYN_ANAL_TIMEOUT=27
     
     CODE_ALL_VALUES_NOT_COVERED=99
     CODE_UNKNOWN_ERROR=100
@@ -91,6 +92,7 @@ class ErrorMessenger(object):
             CODE_NAME_WITHOUT_TYPE:"U {} se nepodařilo zjistit druh jména/názvu.",
             CODE_NAME_NO_MORPHS_GENERATED:"Pro jméno {} se nepodařilo vygenerovat tvary u některých slov: {}",
             CODE_GRAMMAR_MULTIPLE_VAL_ATTRIBUTES:"Terminál obsahuje více volitelných atributů.",
+            CODE_GRAMMAR_SYN_ANAL_TIMEOUT:"Při provádění syntaktické analýzy, nad daným jménem/názvem, došlo k timeoutu.",
             
             CODE_ALL_VALUES_NOT_COVERED: "Nejsou pokryty všechny hodnoty.",
             CODE_UNKNOWN_ERROR:"Neznámá chyba."  ,

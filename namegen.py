@@ -23,6 +23,7 @@ import configparser
 from namegenPack.Name import *
 from _ast import Try
 from namegenPack.Grammar import Token
+import time
 
 outputFile = sys.stdout
 
@@ -111,7 +112,8 @@ class ConfigManager(object):
 
         result={
             "PARSE_UNKNOWN_ANALYZE": True if self.configParser[self.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]=="True" else False,
-            "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH":set()
+            "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH":set(),
+            "TIMEOUT":None,
             }
         
         if result["PARSE_UNKNOWN_ANALYZE"]:
@@ -125,8 +127,18 @@ class ConfigManager(object):
                     raise ConfigManagerInvalidException(
                         Errors.ErrorMessenger.CODE_INVALID_CONFIG, 
                         "Nevalidní konfigurační soubor. PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH: "+t)
-                
-
+        
+        try:
+            if self.configParser[self.sectionGrammar]["TIMEOUT"].upper()!="NONE":
+                result["TIMEOUT"]=int(self.configParser[self.sectionGrammar]["TIMEOUT"])
+                if result["TIMEOUT"]<=0:
+                    raise ValueError
+        except ValueError:
+            #Nevalidní hodnota pro timeout.
+                    
+            raise ConfigManagerInvalidException(
+                    Errors.ErrorMessenger.CODE_INVALID_CONFIG, 
+                        "Nevalidní konfigurační soubor. "+self.sectionGrammar+"/TIMEOUT: "+self.configParser[self.sectionGrammar]["TIMEOUT"])
         return result
     
     def __transformDataFiles(self):
@@ -228,17 +240,20 @@ def main():
         logging.info("načtení gramatik")
         #načtení gramatik
         try:
-            grammarMale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"])
+            grammarMale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"],
+                                                    configAll[configManager.sectionGrammar]["TIMEOUT"])
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"]+": "+e.message)
         
         try:
-            grammarFemale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"])
+            grammarFemale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"],
+                                                    configAll[configManager.sectionGrammar]["TIMEOUT"])
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"]+": "+e.message)
         
         try:
-            grammarLocations=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"])
+            grammarLocations=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"],
+                                                    configAll[configManager.sectionGrammar]["TIMEOUT"])
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"]+": "+e.message)
         logging.info("\thotovo")
@@ -255,13 +270,14 @@ def main():
                 namesR.allWords(True)))
         
         logging.info("\thotovo")
-        logging.info("\tgenerování tvarů")
+        logging.info("generování tvarů")
         
         #čítače chyb
         errorsOthersCnt=0   
         errorsGrammerCnt=0  #není v gramatice
         errorsUnknownNameType=0  #není v gramatice
         errorsDuplicity=0   #více stejných jmen (včetně typu)
+        errorsTimout=0 # U kolika jmen došlo k timeoutu při syntaktické analýze.
 
         errorWordsShouldSave=True if args.error_words is not None else False
         
@@ -301,6 +317,8 @@ def main():
         
         #get output
         outF= open(args.output, "w") if args.output else sys.stdout
+        
+        startOfGenMorp = time.time()
         
         for name in namesR:
             morphsPrinted=False
@@ -394,11 +412,11 @@ def main():
                                     #používá se pro výpis chybových slov
                                     try:
                                         errorWords[(name.type, 
-                                            t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE), 
+                                            t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, 
                                             t.token.word)].add(name)
                                     except KeyError:
                                         errorWords[(name.type,
-                                            t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE),
+                                            t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
                                             t.token.word)] = set([name])
                                         
                     
@@ -445,17 +463,17 @@ def main():
                         
                         for m, w in noMorphsWords:
                             try:
-                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)].add(name)
+                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, w)].add(name)
                             except KeyError:
-                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, w)]=set([name])
+                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, w)]=set([name])
                             
                     for aTerm, msg in missingCaseWords:
                         print(str(name)+"\t"+msg+"\t"+str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
                         
                         try:
-                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)].add(name)
+                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, aTerm.token.word)].add(name)
                         except KeyError:
-                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value, aTerm.token.word)]=set([name])
+                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, aTerm.token.word)]=set([name])
                         
                 
                 #vytiskneme
@@ -479,7 +497,11 @@ def main():
                                 wordRules[wordType][str(w)]=rules
 
                 
-                    
+            except namegenPack.Grammar.Grammar.TimeoutException as e:
+                #Při provádění syntaktické analýzy, nad aktuálním jménem, došlo k timeoutu.
+                errorsTimout+=1
+                print(e.message+"\t"+str(name)+"\t"+str(name.type), file=sys.stderr, flush=True)
+                
             except (Word.WordException) as e:
                 Word.WordCouldntGetInfoException
                 if isinstance(e, Word.WordCouldntGetInfoException) and not configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]: 
@@ -512,6 +534,8 @@ def main():
             if cnt%100==0:
                 logging.info("Projito jmen/názvů: "+str(cnt))
         
+        endOfGenMorp = time.time()
+        
         if args.output:
             #close the output file
             outF.close()
@@ -533,9 +557,27 @@ def main():
         print("\tNenačtených jmen: "+ str(namesR.errorCnt), file=sys.stderr)
         print("\tDuplicitních jmen: "+ str(errorsDuplicity), file=sys.stderr)
         print("\tNačtených jmen/názvů celkem: ", len(namesR.names), file=sys.stderr)
-        print("\tNeznámý druh jména: ", errorsUnknownNameType, file=sys.stderr)
-        print("\tNepokryto gramatikou: ", errorsGrammerCnt, file=sys.stderr)
-        print("\tPočet slov, pro které se nepodařilo získat informace (tvary, slovní druh...): ", len(errorWords), file=sys.stderr)
+        print("\tPrůměrný čas strávený nad generováním tvarů jednoho jména/názvu: ", 
+              round((endOfGenMorp - startOfGenMorp)/len(namesR.names),3) if len(namesR.names)>0 else 0 , file=sys.stderr)
+        print("\tPrůměrný čas strávený nad jednou syntaktickou analýzou napříč gramatikami:", 
+              (grammarFemale.grammarEllapsedTime+grammarLocations.grammarEllapsedTime+grammarMale.grammarEllapsedTime)/(grammarFemale.grammarNumOfAnalyzes+grammarMale.grammarNumOfAnalyzes+grammarLocations.grammarNumOfAnalyzes)
+              if (grammarFemale.grammarNumOfAnalyzes+grammarMale.grammarNumOfAnalyzes+grammarLocations.grammarNumOfAnalyzes)>0 else 0, file=sys.stderr)
+        print("\t\t FEMALE", file=sys.stderr)
+        print("\t\t\t Průměrný čas strávený nad jednou syntaktickou analýzou:", 
+              grammarFemale.grammarEllapsedTime/grammarFemale.grammarNumOfAnalyzes if grammarFemale.grammarNumOfAnalyzes>0 else 0, file=sys.stderr)
+        print("\t\t\t Počet analýz:", grammarFemale.grammarNumOfAnalyzes, file=sys.stderr)
+        print("\t\t MALE", file=sys.stderr)
+        print("\t\t\t Průměrný čas strávený nad jednou syntaktickou analýzou:", 
+              grammarMale.grammarEllapsedTime/grammarMale.grammarNumOfAnalyzes if grammarMale.grammarNumOfAnalyzes>0 else 0, file=sys.stderr)
+        print("\t\t\t Počet analýz:", grammarMale.grammarNumOfAnalyzes, file=sys.stderr)
+        print("\t\t LOCATION", file=sys.stderr)
+        print("\t\t\t Průměrný čas strávený nad jednou syntaktickou analýzou:", 
+              grammarLocations.grammarEllapsedTime/grammarLocations.grammarNumOfAnalyzes if grammarLocations.grammarNumOfAnalyzes>0 else 0, file=sys.stderr)
+        print("\t\t\t Počet analýz:", grammarLocations.grammarNumOfAnalyzes, file=sys.stderr)
+        print("\tNeznámý druh jména:", errorsUnknownNameType, file=sys.stderr)
+        print("\tNepokryto gramatikou:", errorsGrammerCnt, file=sys.stderr)
+        print("\tPočet jmen, u kterých došlo k timeoutu při syntaktické analýze:", errorsTimout, file=sys.stderr)
+        print("\tPočet slov, pro které se nepodařilo získat informace (tvary, slovní druh...):", len(errorWords), file=sys.stderr)
         
         
         if errorWordsShouldSave:

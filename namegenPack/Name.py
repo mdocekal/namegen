@@ -219,6 +219,7 @@ class Name(object):
             v němž je toto jméno. Pokud je jméno ve více gramatikách nebo v žádné vrátí None.
         :rtype aTokens: (List, List) | None
         :raise Word.WordCouldntGetInfoException:Pokud se nepodařilo analyzovat nějaké slovo.
+        :raise TimeoutException: Při provádění syntaktické analýzy (pro jednou z gramatik), nad tímto jménem, došlo k timeoutu.
         """
         if self._type==self.Type.MainType.LOCATION:
             #lokace -> ponecháváme
@@ -508,7 +509,7 @@ class Name(object):
                                     #toto je jeden z dalších tvarů
                                     morph += "/"
                                 morph+=wordMorph+"["+maRule.lntrfWithoutNote+"]"
-                                wordType=aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE)
+                                wordType=aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE)
                                 if wordType!=WordTypeMark.UNKNOWN:
                                     morph+="#"+str(wordType.value)
 
@@ -524,7 +525,7 @@ class Name(object):
                                     Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+str(c.value)+"\t"+str(word))
                 else:
                     #neohýbáme
-                    morph+=str(word)+"#"+str(aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value)
+                    morph+=str(word)+"#"+str(aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value)
                     if aToken.token.type==Token.Type.ANALYZE_UNKNOWN:
                         morph+="E"
                 #přidání oddělovače slov
@@ -551,7 +552,7 @@ class Name(object):
         """
         selection=[]
         for aToken in analyzedTokens:
-            if aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.TYPE).value==wordType:
+            if aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value==wordType:
 
                 #získáme příslušná pravidla
                 cateFilters=aToken.morphCategories    #podmínky na původní slovo
@@ -658,6 +659,4 @@ class NameReader(object):
         """
         Iterace přes všechna jména.
         """
-
-        for name in self.names:
-            yield name
+        return iter(self.names)
