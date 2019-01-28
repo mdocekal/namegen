@@ -578,7 +578,7 @@ def main():
         print("\tNepokryto gramatikou:", errorsGrammerCnt, file=sys.stderr)
         print("\tPočet jmen, u kterých došlo k timeoutu při syntaktické analýze:", errorsTimout, file=sys.stderr)
         print("\tPočet slov, pro které se nepodařilo získat informace (tvary, slovní druh...):", len(errorWords), file=sys.stderr)
-        
+        print("MAX", namegenPack.Grammar.Grammar.maxTime)
         
         if errorWordsShouldSave:
             #save words with errors into a file
