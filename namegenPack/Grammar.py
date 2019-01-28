@@ -1014,8 +1014,6 @@ class Grammar(object):
     #se nemají ohýbat.
     NON_GEN_MORPH_SIGN="!"   
     
-    maxTime=0
-    
     class NotInLanguage(Errors.ExceptionMessageCode):
         """
         Řetězec není v jazyce generovaným danou gramatikou.
@@ -1210,9 +1208,7 @@ class Grammar(object):
         position=0
         
         res=self.crawling(stack, tokens, position)
-        
-        if Grammar.maxTime<time.time()-self.analyzeStartTime:
-            Grammar.maxTime=time.time()-self.analyzeStartTime
+
         self.grammarEllapsedTime+=time.time()-self.analyzeStartTime
         self.grammarNumOfAnalyzes+=1
         return res
