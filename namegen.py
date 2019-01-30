@@ -267,7 +267,7 @@ def main():
         Word.setMorphoAnalyzer(
             namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
                 configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 
-                namesR.allWords(True)))
+                namesR.allWords(True, True)))
         
         logging.info("\thotovo")
         logging.info("generování tvarů")
@@ -335,7 +335,7 @@ def main():
                 wNoInfo=set()
                 for t in tokens:
                     if t.type==Token.Type.ANALYZE_UNKNOWN:
-                        #Vybyrame ty tokeny, pro které není dostupná analýza a měla by být.
+                        #Vybíráme ty tokeny, pro které není dostupná analýza a měla by být.
                         wNoInfo.add(t.word)
                 
                 if not configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"] or len(wNoInfo)==len(name.words):
@@ -399,17 +399,21 @@ def main():
                 completedMorphs=set()    #pro odstranění dualit používáme set
                 noMorphsWords=set()
                 missingCaseWords=set()
-
+                wNoInfo=set()
                 for ru, aT in zip(rules, aTokens):
                     try:
 
                         if configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]: 
+                            
+                            
                             for t in aT:
                                 if t.token.type==Token.Type.ANALYZE_UNKNOWN:
                                     #zaznamenáme slova bez analýzy
                                     
                                     # přidáme informaci o druhu slova ve jméně a druh jména
                                     #používá se pro výpis chybových slov
+                                    
+                                    wNoInfo.add((t.token.word, t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value))
                                     try:
                                         errorWords[(name.type, 
                                             t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, 
@@ -419,6 +423,7 @@ def main():
                                             t.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
                                             t.token.word)] = set([name])
                                         
+                            
                     
                         morphs=name.genMorphs(aT)
                         
@@ -453,7 +458,10 @@ def main():
                             if x.token.word==e.word:
                                 missingCaseWords.add((x ,e.message))
                                 break
-                    
+                
+                if len(wNoInfo)>0:
+                    #vypšeme slova, kdy analýza selhala
+                    print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w)+"#"+str(m) for w, m in wNoInfo)), file=sys.stderr, flush=True)
                 if len(noMorphsWords)>0 or len(missingCaseWords)>0:
                     #chyba při generování tvarů jména
                     

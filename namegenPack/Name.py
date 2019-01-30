@@ -634,25 +634,39 @@ class NameReader(object):
         """
         return self._errorCnt
 
-    def allWords(self, stringRep=False):
+    def allWords(self, stringRep=False, alnumCheck=False):
         """
         Slova vyskytující se ve všech jménech.
 
         :param stringRep: True v str reprezentaci. False jako Word objekt.
         :type stringRep: bool
+        :param alnumCheck: Vybere jen ta slova, která obsahují aspoň jeden alfanumerický znak.
+        :type alnumCheck: bool
         :return Množina všech slov ve jménech.
         :rtype: Set[Word] | Set[str]
         """
         words=set()
         if stringRep:
-            for name in self.names:
-                for w in name:
-                    words.add(str(w))
+            if alnumCheck:
+                for name in self.names:
+                    for w in name:
+                        st=str(w)
+                        if any(s.isalnum() for s in st):
+                            words.add(st)
+            else:
+                for name in self.names:
+                    for w in name:
+                        words.add(str(w))
         else:
-            for name in self.names:
-                for w in name:
-                    words.add(w)
-
+            if alnumCheck:
+                for name in self.names:
+                    for w in name:
+                        if any(s.isalnum() for s in str(w)):
+                            words.add(w)
+            else:
+                for name in self.names:
+                    for w in name:
+                        words.add(w)
         return words
 
     def __iter__(self):

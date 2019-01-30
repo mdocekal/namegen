@@ -84,7 +84,7 @@ class ErrorMessenger(object):
             CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR:"Název není v jazyce generovaným poskytnutou gramatikou.",
             CODE_WORD_MISSING_MORF_FOR_CASE:"Nepovedlo se vygenerovat tvar pro pád.",
             CODE_GRAMMAR_NOT_IN_LANGUAGE:"Selhání na příslušnosti do jazyka.",
-            CODE_MA_FAILURE:"Morfologický analyzátor selhal.",
+            CODE_MA_FAILURE:"Morfologický analyzátor či komunikace s ním selhala.",
             CODE_MORPH_ENUM_INVALID_CATEGORY:"Neznámá morfologická kategorie: {}",
             CODE_MORPH_ENUM_INVALID_VALUE:"Neznámá hodnota pro morfologickou kategorii {}: {}",
             CODE_GRAMMAR_INVALID_ARGUMENT:"V souboru s gramatikou je nevalidní atribut: {}.",

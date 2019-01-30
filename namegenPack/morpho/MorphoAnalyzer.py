@@ -15,6 +15,9 @@ import collections
 
 from typing import Set, Dict, Tuple
 import string
+import math
+import logging
+import sys
 
 class MARule(collections.Mapping):
     """
@@ -231,9 +234,6 @@ class MorphoAnalyzerLibma(object):
     .. _ma: http://knot.fit.vutbr.cz/wiki/index.php/Morfologický_slovník_a_morfologický_analyzátor_pro_češtinu
     
     """
-    
-    MAX_NUMBER_OF_WORDS_PASSED_TO_MA_AT_ONCE=10000
-    
     class MAWordGroup():
         """
         Třída reprezentující skupinu slov k nějakému slovu.
@@ -732,31 +732,12 @@ class MorphoAnalyzerLibma(object):
         #vytvoříme novou prázdnou databázi slov
         self._wordDatabase={}
         
-        #získání informací o slovech
-        wordCnt=0
-        strForMa="" #řetězec, který bude odeslán na vstup ma
-        for word in words:
-            #postupujeme po částech, protože vznikaly problémy při přeposílání velkého množství slov.
-            strForMa+=word+"\n"
-            wordCnt+=1
-            if wordCnt==len(words) or wordCnt%self.MAX_NUMBER_OF_WORDS_PASSED_TO_MA_AT_ONCE==0:
-                p = Popen([pathToMa, "-F", "-m", "-n"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-                
-                
-                output, _ = p.communicate(str.encode(strForMa)) #vrací stdout a stderr
-                #zkontrolujeme návratový kód
-                rc = p.returncode
-                
-                if rc!=0:
-                    #selhání analyzátoru
-                    raise MorphoAnalyzerException(ErrorMessenger.CODE_MA_FAILURE)
-                
-                self._parseMaOutput(output.decode())
-                
-                #vyčistit pro další část
-                strForMa=""
-            
+        self._pathToMa=pathToMa
         
+        #získání informací o slovech
+        words=list(words)
+        self.__commWithMA(words)
+
         #přidáme ke slovům von, da a de
         #analýzu, že se jedná o předložky za nimiž se slova ohýbají
         for w in ["von", "da", "de"]:
@@ -797,6 +778,47 @@ class MorphoAnalyzerLibma(object):
             except KeyError:
                 pass
 
+    def __commWithMA(self, words):
+        """
+        Pošle ma slova, která mají být analyzována.
+        
+        :param words: Slova pro analýzu
+        :type words:List[str]
+        :raise MorphoAnalyzerException: Chyba analyzátoru.
+        """
+        
+        
+        p = Popen([self._pathToMa, "-F", "-m", "-n"], stdin=PIPE, stdout=PIPE, stderr=None)
+                
+        output, _ = p.communicate(str.encode(("\n".join(words))+"\n")) #vrací stdout a stderr
+        
+        #zkontrolujeme návratový kód
+        if p.returncode!=0:
+            #selhání analyzátoru
+            raise MorphoAnalyzerException(ErrorMessenger.CODE_MA_FAILURE)
+        
+
+        retWords=self._parseMaOutput(output.decode())
+
+        if retWords!=len(words):
+
+            #nemáme všechna slova
+            #zřejmě byl pro komunikaci výstup příliš velký pokusíme se poslat méně slov
+            if len(words)==1:
+                #Níž nelze. Vynecháme toto slovo. Není pravděpodobné, že by jedno slovo mělo tak příliš velký výstup
+                #zřejmě se spíše jedná o nevhodné slovo pro ma. Jako je například slovo . (tečka).
+                return
+            
+            origCnt=len(words)
+            words=words[retWords:]#zbavíme se již zpracovaných
+            
+            partSize=math.ceil(len(words)/2)
+            logging.info("\tPři komunikaci s ma došlo ke ztrátě slov (odesláno: "+str(origCnt)+", přijato: "+str(retWords)+"). Pokusím se o komunikaci znovu s menším počtem slov: "+\
+                         str(origCnt)+" -> "+str(partSize)+".")
+            for offset in range(0, len(words), partSize):
+                self.__commWithMA(words[offset:offset+partSize])
+            
+        
         
     def _parseMaOutput(self, output):
         """
@@ -804,13 +826,22 @@ class MorphoAnalyzerLibma(object):
         
         :param output: Výstup z analyzátoru.
         :type output: str
+        :return: Počet získaných slov. (i nezpracovaných ma>--not found)
+        :rtype: int
         """
-        actWordGroup=None   #obsahuje data k aktuálně parsované skupině
 
+        actWordGroup=None   #obsahuje data k aktuálně parsované skupině
+        cntUnWords=0
+        wordsInDBAtStart=len(self._wordDatabase)
         for line in output.splitlines():
+            if line=="ma>--not found":
+                #máme další slovo, ale nezpracované
+                cntUnWords+=1
+                continue
+            
             #rozdělení řádku
             parts=line.strip().split()
-            
+                
             if parts[0][-3:]=="<s>":
                 #začínáme číst novou skupinu slova
                 #<s> vstupní slovo (vzor 1)
@@ -865,7 +896,8 @@ class MorphoAnalyzerLibma(object):
             #nebyla
             self._wordDatabase[actWordGroup.word].delGroup(actWordGroup)
             
-            
+        return cntUnWords+len(self._wordDatabase)-wordsInDBAtStart
+    
     def analyze(self, word):
         """
         Získání kompletních znalostí o slově. Slovo by mělo být 
