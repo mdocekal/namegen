@@ -63,12 +63,6 @@ class Word(object):
         """
         pass
     
-    class WordMissingCaseException(WordException):
-        """
-        Vyjímka symbolizující, že se nepovedlo získat některý pád.
-        """
-        pass
-    
     ma=None
     """Morfologický analyzátor."""
     

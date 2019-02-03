@@ -15,7 +15,7 @@ import logging
 from namegenPack.morpho import MorphCategories
 from namegenPack.morpho.MorphCategories import Case, StylisticFlag, POS
 
-from typing import List, Dict
+from typing import List, Dict, Set,Tuple
 import namegenPack.Grammar
 
 from namegenPack.Word import Word, WordTypeMark
@@ -454,16 +454,20 @@ class Name(object):
 
         return types
 
-    def genMorphs(self, analyzedTokens:List[namegenPack.Grammar.AnalyzedToken]):
+    def genMorphs(self, analyzedTokens:List[namegenPack.Grammar.AnalyzedToken], missingCaseToken:Set[Tuple[namegenPack.Grammar.AnalyzedToken,Case]]=None):
         """
         Na základě slovům odpovídajících analyzovaných tokenů ve jméně vygeneruje tvary jména.
+        Pokusí se vygenerovat všech sedm pádů, pokud nebude možné nějaké vygenerovat vrátí alespoň ty, které
+        se mu vygenerovat povedly.
 
         :param analyzedTokens: Analyzované tokeny, získané ze syntaktické analýzy tohoto jména.
         :type analyzedTokens: List[namegenPack.Grammar.AnalyzedToken]
+        :param missingCaseToken: Volitelný atribut, který lze použít pro získání tokenú/slov, u kterých se nepodařilo
+            získat tvar v nějakém z pádů.
+        :type missingCaseToken: Set[Tuple[AnalyzedToken, Case]]
         :return:  Vygenerované tvary.
-        :rtype: list(str)
+        :rtype: list[str]
         :raise Word.WordNoMorphsException: Pokud se nepodaří získat tvary u nějakého slova.
-        :raise Word.WordMissingCaseException: Pokud chybí nějaký pád.
         :raise WordCouldntGetInfoException: Vyjímka symbolizující, že se nepovedlo získat mluvnické kategorie ke slovu.
         """
 
@@ -518,11 +522,9 @@ class Name(object):
                             #pravděpodobně nemá pád vůbec
                             pass
 
-                    if notMatch:
+                    if notMatch and missingCaseToken is not None:
                         #nepovedlo se získat některý pád
-
-                        raise Word.WordMissingCaseException(word, Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE,\
-                                    Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+str(c.value)+"\t"+str(word))
+                        missingCaseToken.add((aToken, c))
                 else:
                     #neohýbáme
                     morph+=str(word)+"#"+str(aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value)
@@ -533,7 +535,8 @@ class Name(object):
                     morph+=self._separators[sepIndex]
                 sepIndex+=1
 
-            morphs.append(morph)
+            if len(morph)>0:
+                morphs.append(morph)
 
         return morphs
 
@@ -548,7 +551,7 @@ class Name(object):
         :param analyzedTokens: Analyzované tokeny, získané ze syntaktické analýzy tohoto jména.
         :type analyzedTokens: List[namegenPack.Grammar.AnalyzedToken]
         :return: List s vybranými slovy a příslušnými značko pravidly.
-        :rtype: List[Touple[Word, Set[MARule]]]
+        :rtype: List[Tuple[Word, Set[MARule]]]
         """
         selection=[]
         for aToken in analyzedTokens:

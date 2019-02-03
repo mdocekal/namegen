@@ -201,11 +201,12 @@ class ArgumentsManager(object):
         parser = ExceptionsArgumentParser(description="namegen je program pro generování tvarů jmen osob a lokací.")
         
         parser.add_argument("-o", "--output", help="Výstupní soubor. Pokud není uvedeno vypisuje na stdout.", type=str, required=False)
-        parser.add_argument("-ew", "--error-words", help="Cesta k souboru, kde budou uložena slova, pro která se nepovedlo získat informace (tvary, slovní druh...). Výsledek je v lntrf formátu s tím, že provádí odhad značko-pravidel pro ženská a mužská jména.", type=str)
+        parser.add_argument("-ew", "--error-words", help="Cesta k souboru, kde budou uložena slova, která poskytnutý morfologický analyzátor nezná. Výsledek je v lntrf formátu s tím, že provádí odhad značko-pravidel pro ženská a mužská jména.", type=str)
         parser.add_argument("-gn", "--given-names", help="Cesta k souboru, kde budou uložena slova označená jako křestní. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument("-sn", "--surnames", help="Cesta k souboru, kde budou uložena slova označená jako příjmení. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument("-l", "--locations", help="Cesta k souboru, kde budou uložena slova označená jako lokace. Výsledek je v lntrf formátu.", type=str)
         parser.add_argument("-in", "--include-no-morphs", help="Vytiskne i názvy/jména, u kterých se nepodařilo získat tvary, mezi výsledky.", action='store_true')
+        parser.add_argument("-w", "--whole", help="Na výstupu se budou vyskytovat pouze tvary jmen ve všech pádech.", action='store_true')
         parser.add_argument("-v", "--verbose", help="Vypisuje i příslušné derivace jmen/názvů.", action='store_true')
         parser.add_argument('input', nargs="?", help='Vstupní soubor se jmény. Pokud není uvedeno očekává vstup na stdin.', default=None)
 
@@ -424,9 +425,12 @@ def main():
                                             t.token.word)] = set([name])
                                         
                             
-                    
-                        morphs=name.genMorphs(aT)
-                        
+                        #Získáme tvary a pokud budou pro nějaké slovo problémy, při získání tvarů,
+                        #tak si necháme uložit korespondující token ke slovo do množiny missingCaseWords (společně s problémovým pádem).
+                        morphs=name.genMorphs(aT, missingCaseWords)
+                        if args.whole and len(morphs)<len(Case):
+                            #Uživatel chce tisknout pouze pokud máme tvary pro všechny pády.
+                            continue
                         resAdd=str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs))
                         if len(name.additionalInfo)>0:
                             resAdd+="\t"+("\t".join(name.additionalInfo))
@@ -439,6 +443,9 @@ def main():
                             for a in aT:
                                 if a.token.word is not None:
                                     logging.info("\t\t"+str(a.token.word)+"\t"+str(a.matchingTerminal))
+                                
+                            
+                            
 
                     except Word.WordNoMorphsException as e:
                         #chyba při generování tvarů slova
@@ -449,16 +456,7 @@ def main():
                             if x.token.word==e.word:
                                 noMorphsWords.add((x.matchingTerminal,e.word))
                                 break
-                    except Word.WordMissingCaseException as e:
-                        #nepodařilo se získat některý pád slova
-                        #odchytáváme již zde, jeLikož pro jedno slovo může být více alternativ
-                        for x in aT:
-                            #hledáme AnalyzedToken pro naše problémové slovo, abychom mohli ke slovu
-                            #přidat i odhadnutý druh slova ve jméně (křestní, příjmení, ...)
-                            if x.token.word==e.word:
-                                missingCaseWords.add((x ,e.message))
-                                break
-                
+                            
                 if len(wNoInfo)>0:
                     #vypšeme slova, kdy analýza selhala
                     print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w)+"#"+str(m) for w, m in wNoInfo)), file=sys.stderr, flush=True)
@@ -468,21 +466,9 @@ def main():
 
                     if len(noMorphsWords)>0:
                         print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name),", ".join(str(w)+" "+str(m) for m,w in noMorphsWords)), file=sys.stderr, flush=True)
-                        
-                        for m, w in noMorphsWords:
-                            try:
-                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, w)].add(name)
-                            except KeyError:
-                                errorWords[(name.type, m.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, w)]=set([name])
-                            
-                    for aTerm, msg in missingCaseWords:
-                        print(str(name)+"\t"+msg+"\t"+str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
-                        
-                        try:
-                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, aTerm.token.word)].add(name)
-                        except KeyError:
-                            errorWords[(name.type, aTerm.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, aTerm.token.word)]=set([name])
-                        
+                         
+                    for aTerm, c in missingCaseWords:
+                        print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE)+"\t"+str(c.value)+"\t"+str(aTerm.token.word)+"\t"+str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
                 
                 #vytiskneme
                 for m in completedMorphs:
@@ -585,7 +571,7 @@ def main():
         print("\tNeznámý druh jména:", errorsUnknownNameType, file=sys.stderr)
         print("\tNepokryto gramatikou:", errorsGrammerCnt, file=sys.stderr)
         print("\tPočet jmen, u kterých došlo k timeoutu při syntaktické analýze:", errorsTimout, file=sys.stderr)
-        print("\tPočet slov, pro které se nepodařilo získat informace (tvary, slovní druh...):", len(errorWords), file=sys.stderr)
+        print("\tPočet slov, které poskytnutý morfologický analyzátor nezná:", len(set(w for (_, _, w), _ in errorWords.items())), file=sys.stderr)
 
         if errorWordsShouldSave:
             #save words with errors into a file
