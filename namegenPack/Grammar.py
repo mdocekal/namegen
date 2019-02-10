@@ -422,14 +422,14 @@ class Terminal(object):
                 groupFlags= set() if groupFlags is None else groupFlags.value
                 #jedná se o typ terminálu používající analyzátor
                 pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues, 
-                                                  frozenset({StylisticFlag.COLLOQUIALLY}), groupFlags)  #nechceme hovorové
+                                                  set(), groupFlags)
                 
                 #máme všechny možné slovní druhy, které prošly atributovým filtrem 
                 if len(pos)==0 and self.hasVoluntaryAttr:
                     
                     #zkusme štěstí ještě pro variantu bez volitelných
                     pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValuesWithoutVoluntary, 
-                                                  frozenset({StylisticFlag.COLLOQUIALLY}), groupFlags)
+                                                  set(), groupFlags)
                     
                     return self._type.toPOS() in pos
                 
@@ -679,8 +679,7 @@ class AnalyzedToken(object):
         hodnot, tak je vůbec nevrací.
 
         Příklad: Analýzou jsme zjistili, že se může jednat pouze o podstatné jméno rodu mužského v jednotném čísle.
-        
-        Pozor! Je zakázán výběr StylisticFlag.COLLOQUIALLY
+
         Tyto dodatečné podmínky jsou přímo uzpůsobeny pro použití výsledku ke generování tvarů.
         
         :rtype: Set[MorphCategory]
@@ -701,14 +700,14 @@ class AnalyzedToken(object):
             #nejprve zkusím s volitelnými atributy
             
             #jedná se o typ terminálu používající analyzátor
-            morphsInfo = self._token.word.info.getAll(categories, {StylisticFlag.COLLOQUIALLY}, groupFlags)  # hovorové nechceme
+            morphsInfo = self._token.word.info.getAll(categories, set(), groupFlags)  # hovorové nechceme
             
             if len(morphsInfo)==0:
                 # zkusme štěstí ještě pro variantu bez volitelných atributů
                 categories=self.matchingTerminal.fillteringAttrValuesWithoutVoluntary.copy()
                 categories.add(self.matchingTerminal.type.toPOS())
                 
-                morphsInfo = self._token.word.info.getAll(categories, {StylisticFlag.COLLOQUIALLY}, groupFlags)
+                morphsInfo = self._token.word.info.getAll(categories, set(), groupFlags)
                 
             #Například pokud víme, že máme přídavné jméno rodu středního v jednotném čísle
             #a morf. analýza nám řekne, že přídavné jméno může být pouze prvního stupně, tak tuto informaci zařadíme

@@ -263,8 +263,9 @@ def main():
         namesR=NameReader(args.input)
         logging.info("\thotovo")
         logging.info("analýza slov")
+        
         #přiřazení morfologického analyzátoru
-
+        #Tento analyzátor je nastaven tak, že z ma ignoruje všechny hovorové tvary.
         Word.setMorphoAnalyzer(
             namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
                 configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 

@@ -47,8 +47,29 @@ class MARule(collections.Mapping):
     def __str__(self):
         return str(self._d)
     
-    def __rept__(self):
+    def __repr__(self):
         return repr(self._d)
+    
+    def sameExcept(self, other, exceptCat:Set[MorphCategories]=set()):
+        """
+        Porovnává aktuální pravidlo s nějakým jiným zdali je stejné až na dané morfologické kategorie.
+        
+        :param other: Pravidlo pro porovnání.
+        :type other: MARule
+        :param exceptCat: Kategorie, které nejsou zohledňovány při kontrole na shodu.
+        :type exceptCat: Set[MorphCategories]
+        """
+        try:
+            for morphCat, morphCatVal in self.items():
+                if morphCat not in exceptCat and other[morphCat]!=morphCatVal:
+                    #nemá stejnou hodnotu pro morphcat a nejedná se o pád
+                    return False
+        except KeyError:
+            #asi nemá morphCat vůbec
+            return False
+        
+        return True
+        
     
     @property
     def lntrf(self):
@@ -335,16 +356,35 @@ class MorphoAnalyzerLibma(object):
             """
             self._word = value    
             
-        def addMorph(self, tagRule, morph):
+        def addMorph(self, tagRule, morph, relevant=False):
             """
             Přidání tvaru.
+            !!!NA ZÁKLADĚ POKYNŮ JSOU NEJSOU PŘÍJMÁNY VŠECHNY HOVOROVÉ TVARY
             
             :param tagRule: Značko pravidlo pro tvar (příklad k1gFnSc7)
             :type tagRule: str
             :param morph: Tvar slova.
             :type morph: str
+            :param relevant: Pokud je true, tak nepřídá daný tvar, který nevyhovuje přidaným pravidlům.
+                Tvar nevyhovuje přidaným pravidlům ve skupině, máli jiné hodnoty morfologických kategorií až na
+                CASE (pád). Chceme získávat všechny relevantní tvary.
+               
+            :type relevant: bool
             """
-            self._morphs.append((self.convTagRule(tagRule), morph))
+            rule=self.convTagRule(tagRule)
+            if MorphCategories.STYLISTIC_FLAG in rule and rule[MorphCategories.STYLISTIC_FLAG]==StylisticFlag.COLLOQUIALLY:
+                #nechceme hovorové
+                return
+            
+            if relevant:
+                #uživatel chce přidat jen relevantní
+                for r in self._tagRules:
+                    if r.sameExcept(rule, set([MorphCategories.CASE, MorphCategories.STYLISTIC_FLAG])):
+                        #je stejné jako alespoň jedno pravidlo
+                        self._morphs.append((rule, morph))
+                        return
+            else:
+                self._morphs.append((rule, morph))
 
         def getMorphs(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set())->Set[Tuple[MARule,str]]:
             """
@@ -434,6 +474,8 @@ class MorphoAnalyzerLibma(object):
             """
             Přidání značko pravidla, které již bylo zkonvertováno pomocí convTagRule.
             
+            NEPŘÍJMÁ StylisticFlag.COLLOQUIALLY
+            
             :param tagRule: Značko pravidlo 
             :type tagRule: MARule
             """
@@ -443,21 +485,24 @@ class MorphoAnalyzerLibma(object):
                 if Flag.GENERAL_WORD in self._flags:
                     #pokud ano, tak musíme tento flag odstranit.
                     self._flags.remove(Flag.GENERAL_WORD)
-                    #a vrátíme impicitní
+                    #a vrátíme implicitní
                     self._flags.add(Flag.NOT_GENERAL_WORD)
                 
+            
             self._tagRules.append(tagRule)
             
         def addTagRule(self, tagRule):
             """
             Přidání značko pravidla.
             
+            NEPŘÍJMÁ StylisticFlag.COLLOQUIALLY
+            
             :param tagRule: Značko pravidlo (příklad k1gFnPc1)
             :type tagRule: str
             """
             r=self.convTagRule(tagRule)
             if r:
-                self._tagRules.append(r)
+                self.addTagRuleConv(r)
             
         def getAll(self, valFilter: Set[MorphCategory] =set(), notValFilter: Set[MorphCategory] =set()) -> Dict[MorphCategories,Set[MorphCategory]]:
             """
@@ -888,7 +933,10 @@ class MorphoAnalyzerLibma(object):
                 
             elif parts[0][:3]=="<f>":
                 #Přidání tvaru slova
-                actWordGroup.addMorph((parts[0][3:])[1:-1], parts[1])
+                #pouze pokud je relevantní k znočko pravidlům, které sedí na dané slovo.
+                #Tento požadavek si můžeme dovolit, jelikoř v tuto dobu by měly být zpracovány
+                #všechny <c> řádky.
+                actWordGroup.addMorph((parts[0][3:])[1:-1], parts[1], True)
                 
         
         #byla předešlá skupina k něčemu dobrá?
