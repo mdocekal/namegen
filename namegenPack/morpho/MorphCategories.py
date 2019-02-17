@@ -77,7 +77,9 @@ class MorphCategory(Enum):
         """
         return self._mappingLntrf[self]
     
-        
+    def __str__(self):
+        return self.lntrfValue
+    
     @classmethod    
     def fromLntrf(cls, val):
         """

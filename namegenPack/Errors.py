@@ -58,6 +58,11 @@ class ErrorMessenger(object):
     CODE_NAME_NO_MORPHS_GENERATED=25
     CODE_GRAMMAR_MULTIPLE_VAL_ATTRIBUTES=26
     CODE_GRAMMAR_SYN_ANAL_TIMEOUT=27
+    CODE_GRAMMAR_NONTERM_INVALID_SYNTAX=28
+    CODE_GRAMMAR_NONTERM_NO_PAR_VALUE=29
+    CODE_GRAMMAR_NONTERM_W_SAME_NAME_DIFF_PAR=30
+    CODE_GRAMMAR_COULDNT_GENERATE_RULE=31
+    CODE_GRAMMAR_NETERMINAL_NO_CORESPONDING_RULE=32
     
     CODE_ALL_VALUES_NOT_COVERED=99
     CODE_UNKNOWN_ERROR=100
@@ -93,7 +98,11 @@ class ErrorMessenger(object):
             CODE_NAME_NO_MORPHS_GENERATED:"Pro jméno {} se nepodařilo vygenerovat tvary u některých slov: {}",
             CODE_GRAMMAR_MULTIPLE_VAL_ATTRIBUTES:"Terminál obsahuje více volitelných atributů.",
             CODE_GRAMMAR_SYN_ANAL_TIMEOUT:"Při provádění syntaktické analýzy, nad daným jménem/názvem, došlo k timeoutu.",
-            
+            CODE_GRAMMAR_NONTERM_INVALID_SYNTAX:"Nevalidní podoba neterminálu: {}",
+            CODE_GRAMMAR_NONTERM_NO_PAR_VALUE:"Parametr daného neterminálu nemá přiřazenou hodnotu: {}",
+            CODE_GRAMMAR_NONTERM_W_SAME_NAME_DIFF_PAR:"Dva stejně pojmenované neterminály na levé straně pravidla nesmí mít rozdílné parametry.\t{}\t{}",
+            CODE_GRAMMAR_COULDNT_GENERATE_RULE:"Nelze vygenerovat pravidlo:\n\t{}\nnejsou známi hodnoty všech parametrů.",
+            CODE_GRAMMAR_NETERMINAL_NO_CORESPONDING_RULE:"Neterminál {} nemá korespondující pravidlo.",
             CODE_ALL_VALUES_NOT_COVERED: "Nejsou pokryty všechny hodnoty.",
             CODE_UNKNOWN_ERROR:"Neznámá chyba."  ,
     }

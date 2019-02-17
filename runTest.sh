@@ -3,7 +3,7 @@
 
 mkdir testRes/test/suggestions
 
-./namegen.py -w -o testRes/test/res.txt testData/test -in -ew testRes/test/suggestions/suggested_additions.ln_source -gn testRes/test/given_names.lntrf -sn testRes/test/surnames.lntrf -l testRes/test/locations.lntrf 2> testRes/test/log.txt
+./namegen.py -v -w -o testRes/test/res.txt testData/test -in -ew testRes/test/suggestions/suggested_additions.ln_source -gn testRes/test/given_names.lntrf -sn testRes/test/surnames.lntrf -l testRes/test/locations.lntrf 2> testRes/test/log.txt
 
 
 cd testRes/test/suggestions/
