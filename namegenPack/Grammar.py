@@ -43,6 +43,7 @@ class Nonterminal(object):
             return "{}({})".format(self.name, ",".join([ p if v is None else p+"="+v for p,v in self.params.items()]))
         else:
             return self.name
+        
     
     def __eq__(self, other):
         """
@@ -58,6 +59,16 @@ class Nonterminal(object):
         
     def __hash__(self):
         return hash(self.name)
+    
+    def addDefault(self, defVal):
+        """
+        Přiřzení defaultních hodnot chybějícím parametrům.
+        
+        :param defVal: Defaultní hodnoty, které budeme přiřazovat.
+        :type defVal: Dict[str,str]
+        """
+        self.params=dict([(p,v) for p,v in defVal.items() if v is not None]+list(self.params.items()))
+        
     
     def generateLeft(self,v):
         """
@@ -75,17 +86,21 @@ class Nonterminal(object):
         """
 
         if len(self.params)>0:
-            
+            resV={}
             for par, defV in self.params.items():
-                #kontrola jestli máme všechny hodnoty
-                if par not in v and defV is None:
+                if par in v:
+                    #máme hodnotu
+                    resV[par]=v[par]
+                elif defV is None:
+                    #máme alespoň výchozí hodnotu
+                    resV[par]=defV
+                else:
                     #nemáme defaultní hodnotu a ani předanou v argumentu metody
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE, \
                                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE).format(str(self)+" <- "+par))
-                
-
-            params=["{}={}".format(p,val) for p,val in v.items()]
-            return self.name if len(v)==0 else "{}({})".format(self.name, ",".join(params))
+            
+            params=["{}={}".format(p,val) for p,val in resV.items()]
+            return self.name if len(resV)==0 else "{}({})".format(self.name, ",".join(params))
         else:
             return self.name
         
@@ -1133,8 +1148,8 @@ class RuleTemplate(object):
                                           Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+fromString)
         
         #neterminál, vše je ok
-        if set(self._leftSide.params)!=self._variables:
-            #nemáme pokryty všechny parametry nebo některé přebývají
+        if not self._variables.issubset(set(self._leftSide.params)):
+            #Některé proměnné jsou v pravidle na levé straně navíc.
             raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE, 
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+fromString)
         
@@ -1154,6 +1169,7 @@ class RuleTemplate(object):
                     if not act.allParamsWithValue:
                         raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_INVALID_SYNTAX, \
                                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_INVALID_SYNTAX).format(act))
+                    
                 self._rightSide[i]=act
             except InvalidGrammarException as e:
                 #došlo k potížím s aktuálním pravidlem
@@ -1211,21 +1227,19 @@ class RuleTemplate(object):
         if len(self._leftSide.params)==0:
             #jednoduché pravidlo
             return str(self)
-        #doplnění defaultních
-        val=v.copy()
-        for pd,vd in self._leftSide.params.items():
-            if pd not in val:
-                val[pd]=vd
                 
         #Máme všechny parametry?
-        if val.keys()!=self._leftSide.params.keys():
-            #nemá
+        if v.keys()!=self._leftSide.params.keys():
+            #nemáme
             raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_COULDNT_GENERATE_RULE, 
                                          Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_COULDNT_GENERATE_RULE).format(str(self)))
         
+        
+        
         s=self._leftSide.generateLeft(v)+"->"+" ".join(str(x) for x in self._rightSide)
-
-        for p,pval in val.items():
+        
+        #přiřadíme hodnoty proměnným
+        for p,pval in v.items():
             s=s.replace("$"+p, pval)
         return s
     
@@ -1480,9 +1494,9 @@ class Grammar(object):
                     r=RuleTemplate(line)
                     #pro lepší rozgenerování uložíme do pomocné struktury
                     try:
-                        if nontermsOnLeft[r.leftSide][0].params.keys()!=r.leftSide.params.keys():
+                        if nontermsOnLeft[r.leftSide][0].params!=r.leftSide.params:
                             #Neprošla kontrola na stejné parametry. Na levé straně pravidel
-                            #musí mít neterminály stejného jména stejné parametry.
+                            #musí mít neterminály stejného jména stejné parametry včetně výchozích hodnot.
                             raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_W_SAME_NAME_DIFF_PAR, \
                                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_W_SAME_NAME_DIFF_PAR).format(str(r.leftSide), str(nontermsOnLeft[r.leftSide][0])))
                         nontermsOnLeft[r.leftSide][1].append(r)
@@ -1490,8 +1504,10 @@ class Grammar(object):
                         #první výskyt
                         nontermsOnLeft[r.leftSide]=(r.leftSide,[r])
                 
+                #nejprve přiřadíme výchozí hodnoty
+                self._addDefValNon(nontermsOnLeft)
                 #rozgenerujeme šablony
-                self.generateRules(nontermsOnLeft, Nonterminal(self._startS))
+                self._generateRules(nontermsOnLeft, Nonterminal(self._startS))
                 
                 
                 if len(self._rules) == 0:
@@ -1506,9 +1522,30 @@ class Grammar(object):
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_COULDNT_READ_INPUT_FILE)+"\n\t"+filePath)
             
         
-    def generateRules(self, nontermsToRules:Dict[Nonterminal,Tuple[Nonterminal, List[RuleTemplate]]], s:Nonterminal):
+    def _addDefValNon(self, nontermsToRules:Dict[Nonterminal,Tuple[Nonterminal, List[RuleTemplate]]]):
+        """
+        Přiřadí parametrizovaným neterminálům defaulní hodnoty pro parametry, kde není přiřazena hodnota.
+        Pracuje in-situ.
+        
+        :param nontermsToRules: Mapuje neterminály na dvojici neterminál a pravidla na jejichž levé straně
+            se vyskytuje.
+        :type nontermsToRules: Dict[Nonterminal,Tuple(Nonterminal, List[RuleTemplate])]
+        """
+        
+        for _, templates in nontermsToRules.values():
+            for t in templates:
+                #projdeme neterminály na pravé straně
+                for n in t.nontermsOnRightSide:
+                    #přiřadíme defaultní hodnoty
+                    n.addDefault(nontermsToRules[n][0].params)
+
+
+    def _generateRules(self, nontermsToRules:Dict[Nonterminal,Tuple[Nonterminal, List[RuleTemplate]]], s:Nonterminal):
         """
         Rozgenerování providlových šablon, do klasických pravidel.
+        
+        Předpokládá, že již byly vloženy defaultní hodnoty a parametry k neterminálům na pravých stranách pravidel, kterým nějaký
+        takový parametr úplně chyběl.
         
         :param nontermsToRules: Mapuje neterminály na dvojici neterminál a pravidla na jejichž levé straně
             se vyskytuje.
@@ -1518,7 +1555,8 @@ class Grammar(object):
         :type s: Nonterminal
         :param paramsValues: Přiřazení hodnot parametrům neterminálů.
         :type paramsValues: Dict[str,str]
-
+        :raise InvalidGrammarException:
+            InvalidGrammarException pokud je problém se samotnou gramtikou.
         """
         #najdeme pravidla na jejichž levé straně je daný neterminál
         
@@ -1526,21 +1564,37 @@ class Grammar(object):
         try:
             templates=nontermsToRules[s][1]
         except KeyError:
-            raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_GRAMMAR_NETERMINAL_NO_CORESPONDING_RULE,
-                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NETERMINAL_NO_CORESPONDING_RULE).format(s))
+            raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE,
+                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE).format(s))
 
         for t in templates:
             #procházíme korespondující pravidla
             #vygenerujeme nové pravidlo a přidáme terminály a neterminály
+            
             r=Rule(t.generate(s.params), self._terminals, self._nonterminals)
             
             if r not in self._rules:
+                print(r)
                 #máme nové pravidlo
                 self._rules.add(r)
             
                 #projdeme neterminály na pravé straně
                 for n in t.nontermsOnRightSide:
-                    self.generateRules(nontermsToRules, n)
+                    #přiřadíme hodnoty proměnným
+                    #výchozí hodnoty zde vkládat nemusíme, prože mají být vloženy před
+                    #voláním této funkce
+                    n=copy.deepcopy(n)
+                    try:
+                        for varName, varValue in n.params.items():
+                            if RuleTemplate.VARIABLE_REGEX.search(varValue):
+                                #jedná se o proměnnou
+                                n.params[varName]=s.params[varName]
+                    except KeyError:
+                        #nemáme asi hodnotu pro některou proměnnou
+                        raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE,
+                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE).format(n))
+                        
+                    self._generateRules(nontermsToRules, n)
             
             
     
