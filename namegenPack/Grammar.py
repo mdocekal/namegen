@@ -1574,7 +1574,6 @@ class Grammar(object):
             r=Rule(t.generate(s.params), self._terminals, self._nonterminals)
             
             if r not in self._rules:
-                print(r)
                 #máme nové pravidlo
                 self._rules.add(r)
             
