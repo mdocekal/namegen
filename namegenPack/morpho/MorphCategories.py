@@ -229,7 +229,7 @@ class POS(MorphCategory):
     INTERJECTION=10
     """citoslovce"""
     
-    ABBREVIATION="a"
+    ABBREVIATION="A"
     """zkratka"""
     
     @staticmethod

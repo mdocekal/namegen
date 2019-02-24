@@ -22,7 +22,7 @@ import configparser
 
 from namegenPack.Name import *
 from _ast import Try
-from namegenPack.Grammar import Token
+from namegenPack.Grammar import Token, Grammar
 import time
 
 outputFile = sys.stdout
@@ -111,6 +111,7 @@ class ConfigManager(object):
         """
 
         result={
+            "TITLES":set( x.upper() for x in self.configParser[self.sectionGrammar]["TITLES"].split()),
             "PARSE_UNKNOWN_ANALYZE": True if self.configParser[self.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]=="True" else False,
             "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH":set(),
             "TIMEOUT":None,
@@ -237,6 +238,10 @@ def main():
         if configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]:
             #nastavní druhů terminálů UNKNOWN_ANALYZE_TERMINAL_MATCH
             Terminal.UNKNOWN_ANALYZE_TERMINAL_MATCH=configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH"]
+        
+        if configAll[configManager.sectionGrammar]["TITLES"]:
+            #nastavíme řetězce, které se mají brát jako tituly
+            namegenPack.Grammar.Lex.TITLES=configAll[configManager.sectionGrammar]["TITLES"]
         
         logging.info("načtení gramatik")
         #načtení gramatik

@@ -33,19 +33,20 @@ S2 -> NUM_ADJ_NOUN(n=P,g=F) !NUM_ADJ_NOUN_CONTINUE END
 #dovolujeme i číslovky mezi (příklad: Estonská první republika)
 NUM_ADJ_NOUN(c=1,n,g) -> NUM(c=$c,n=$n,g=$g) ADJ_GROUP(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g) LOC2(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g) ADJ_GROUP(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g)
 
+#stejné jako NUM_ADJ_NOUN, ale má zafixovaný rod a číslo
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=S,g=M)
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=S,g=I)
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=S,g=N)
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=S,g=F)
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=P,g=M)
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=P,g=I)
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=P,g=N)
+NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=P,g=F)
+
+#neohebná verze NUM_ADJ_NOUN_CASE_SELECT
+!NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN_CASE_SELECT(c=$c)
 
 !NUM_ADJ_NOUN_CONTINUE -> 1{t=L} !CONJ 1{t=L}	#Např pro: Národní akademické divadlo opery a baletu
-
-#To samé co NUM_ADJ_NOUN, ale pro druhý pád a neohebné.
-#!NUM_ADJ_NOUN_C_2 -> NUM_S_M_C_2 ADJ_GROUP_S_M_C_2 NUM_S_M_C_2 LOC2_S_M NUM_S_M ADJ_GROUP_S_M NUM_S_M
-#!NUM_ADJ_NOUN_C_2 -> NUM_S_I_C_2 ADJ_GROUP_S_I_C_2 NUM_S_I_C_2 LOC2_S_I NUM_S_I ADJ_GROUP_S_I NUM_S_I
-#!NUM_ADJ_NOUN_C_2 -> NUM_S_N_C_2 ADJ_GROUP_S_N_C_2 NUM_S_N_C_2 LOC2_S_N NUM_S_N ADJ_GROUP_S_N NUM_S_N
-#!NUM_ADJ_NOUN_C_2 -> NUM_S_F_C_2 ADJ_GROUP_S_F_C_2 NUM_S_F_C_2 LOC2_S_F NUM_S_F ADJ_GROUP_S_F NUM_S_F
-#!NUM_ADJ_NOUN_C_2 -> NUM_P_M_C_2 ADJ_GROUP_P_M_C_2 NUM_P_M_C_2 LOC2_P_M NUM_P_M ADJ_GROUP_P_M NUM_P_M
-#!NUM_ADJ_NOUN_C_2 -> NUM_P_I_C_2 ADJ_GROUP_P_I_C_2 NUM_P_I_C_2 LOC2_P_I NUM_P_I ADJ_GROUP_P_I NUM_P_I
-#!NUM_ADJ_NOUN_C_2 -> NUM_P_N_C_2 ADJ_GROUP_P_N_C_2 NUM_P_N_C_2 LOC2_P_N NUM_P_N ADJ_GROUP_P_N NUM_P_N
-#!NUM_ADJ_NOUN_C_2 -> NUM_P_F_C_2 ADJ_GROUP_P_F_C_2 NUM_P_F_C_2 LOC2_P_F NUM_P_F ADJ_GROUP_P_F NUM_P_F
-
 
 #Nevolitelná předložková skupina
 #Příklad: Pod Šibenicí
@@ -85,13 +86,18 @@ S2 -> NUM(n=P,g=F) ADJ_GROUP_MANDATORY(n=P,g=F) LOC2(n=P,g=F) END
 
 #Uvodní část v 1. pádě ohebná. Zbytek v 2. neohebný.
 #	Spojené království Velké Británie a Severního Irska
-#S2 -> NUM_ADJ_NOUN !NUM_ADJ_NOUN_C_2 END
+S2 -> NUM_ADJ_NOUN_CASE_SELECT !NUM_ADJ_NOUN_CASE_SELECT(c=2) END
+S2 -> NUM_ADJ_NOUN_CASE_SELECT !NUM_ADJ_NOUN_CASE_SELECT(c=2) !CONJ !NUM_ADJ_NOUN_CASE_SELECT(c=2) END
 
 !ADVERB -> 6{t=L}
 !ADVERB -> ε
 
-!ABBER -> ia{t=I}
+!ABBER -> !ABBER_MANDATORY
 !ABBER -> ε
+
+!ABBER_MANDATORY -> ia{t=I}
+!ABBER_MANDATORY -> a{t=A,r="^(?!^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$).*$"}	#regex vylučuje římskou číslici
+
 
 END -> !PREP_GROUP !ROMAN_NUM !ABBER !NUMERIC NEXT
 
@@ -130,6 +136,7 @@ ADJ_GROUP(c=1,n,g) -> ε
 #	Palác Flóra
 #	Brno
 
+LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g} !ABBER_MANDATORY !VOLUNTARY_NO_FLEX_N	#Kaple sv. Anny
 LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=GW} !NAME_NOMINATIVE
 LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=GW} !VOLUNTARY_NO_FLEX_N
 LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=NGW} !VOLUNTARY_NO_FLEX_N

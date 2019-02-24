@@ -40,7 +40,7 @@ class Nonterminal(object):
         
     def __str__(self):
         if len(self.params)>0:
-            return "{}({})".format(self.name, ",".join([ p if v is None else p+"="+v for p,v in self.params.items()]))
+            return "{}({})".format(self.name, ",".join([ p if v is None else p+"="+v for p,v in sorted(self.params.items())]))
         else:
             return self.name
         
@@ -99,7 +99,7 @@ class Nonterminal(object):
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE, \
                                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE).format(str(self)+" <- "+par))
             
-            params=["{}={}".format(p,val) for p,val in resV.items()]
+            params=["{}={}".format(p,val) for p,val in sorted(resV.items())]
             return self.name if len(resV)==0 else "{}({})".format(self.name, ",".join(params))
         else:
             return self.name
@@ -552,12 +552,7 @@ class Terminal(object):
         
         if t.type not in Lex.TOKEN_TYPES_THAT_NEEDS_MA:
             #Jedná se o jednoduchý token bez nutnosti morfologické analýzy.
-            if t.type==Token.Type.DEGREE_TITLE_INITIAL_ABBREVIATION:
-                #může jít jak o titul, tak o inicialovou zkratku
-                return Terminal.Type.DEGREE_TITLE==self._type or \
-                    Terminal.Type.INITIAL_ABBREVIATION==self._type
-            else:
-                return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
+            return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
         else:
             #Token je buď ANALYZE, nebo se jedná o římské číslo.
             #Musíme zjistit jaký druh terminálu máme
@@ -609,7 +604,6 @@ class Token(object):
         """
         ANALYZE=1   #komplexní typ určený pouze morfologickou analýzou slova
         ANALYZE_UNKNOWN=2   #Přestože by měl mít token analýzu, tak se ji nepodařilo získat.
-        DEGREE_TITLE_INITIAL_ABBREVIATION=3 #titul, iniciálová zkratka
         NUMBER=Terminal.Type.NUMBER.value          #číslice (pouze z číslovek) Příklady: 12., 12
         ROMAN_NUMBER= Terminal.Type.ROMAN_NUMBER.value   #římská číslice Je třeba zohlednit i analýzu kvůli shodě s předložkou V
         DEGREE_TITLE= Terminal.Type.DEGREE_TITLE.value  #titul
@@ -678,8 +672,11 @@ class Lex(object):
     """
     Lexikální analyzátor pro jména.
     """
+    TITLES=set()
+    """Banka titulů je načtena na začátku z konfiguračního souboru.
+    Převeďte do velkých písmen pro správné porovnání!"""
 
-    ROMAN_NUMBER_REGEX=re.compile(r"^X{0,3}(IX|IV|V?I{0,3})\.?$", re.IGNORECASE)
+    ROMAN_NUMBER_REGEX=re.compile(r"^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$", re.IGNORECASE)
     NUMBER_REGEX=re.compile(r"^[0-9]+\.?$", re.IGNORECASE)
     
     TOKEN_TYPES_THAT_NEEDS_MA={Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER}
@@ -710,16 +707,17 @@ class Lex(object):
                 else:
                     #slovo neobsahuje číslovku
                     #předpokládáme titul nebo iniciálovou zkratku
-                    if len(w)<=3 and str(w).isupper():
-                        #zkratka
+                    
+                    if str(w).upper() in cls.TITLES:
+                        #jedná se o titul
+                        token=Token(w, Token.Type.DEGREE_TITLE)
+                    elif len(w)<=3 and str(w).isupper():
+                        #iniciálová zkratka
                         token=Token(w, Token.Type.INITIAL_ABBREVIATION)
                     else:
-                        if str(w).count(".")>1:
-                            #titul nebo zkratka
-                            token=Token(w, Token.Type.DEGREE_TITLE_INITIAL_ABBREVIATION)
-                        else:
-                            #titul
-                            token=Token(w, Token.Type.DEGREE_TITLE)
+                        #ostatní
+                        #Vzhledem k počtu písmen se pravděpodobně jedná o zkratku.
+                        token=Token(w, Token.Type.ANALYZE)
             else:
                 #ostatní
                 token=Token(w, Token.Type.ANALYZE)
@@ -1530,6 +1528,7 @@ class Grammar(object):
         :param nontermsToRules: Mapuje neterminály na dvojici neterminál a pravidla na jejichž levé straně
             se vyskytuje.
         :type nontermsToRules: Dict[Nonterminal,Tuple(Nonterminal, List[RuleTemplate])]
+        :raise InvalidGrammarException: Pokud netermínál na pravé straně pravidla, se nevyskytuje nikde na levé straně nějakého pravidla.
         """
         
         for _, templates in nontermsToRules.values():
@@ -1537,7 +1536,12 @@ class Grammar(object):
                 #projdeme neterminály na pravé straně
                 for n in t.nontermsOnRightSide:
                     #přiřadíme defaultní hodnoty
-                    n.addDefault(nontermsToRules[n][0].params)
+                    try:
+                        n.addDefault(nontermsToRules[n][0].params)
+                    except KeyError:
+                        raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE,
+                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE).format(n))
+
 
 
     def _generateRules(self, nontermsToRules:Dict[Nonterminal,Tuple[Nonterminal, List[RuleTemplate]]], s:Nonterminal):

@@ -24,6 +24,7 @@ class WordTypeMark(Enum):
     NUMBER="4"                      #Číslovka. Příklad: 2
     DEGREE_TITLE="T"                #Titul. Příklad: prof.
     INITIAL_ABBREVIATION="I"        #Iniciálová zkratka. Příklad H. ve jméně John H. White
+    ABBREVIATION="A"                #Zkratka. Příklad Sv. ve jméně Sv. Nikola
     UNKNOWN="U"                     #Neznámé
 
     def __str__(self):
