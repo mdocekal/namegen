@@ -64,6 +64,7 @@ Možné atributy a jejich hodnoty:
     	8	Spojka.
     	T	Titul. Příklad: prof.
     	I	Iniciálová zkratka. Příklad H. ve jméně John H. White
+    	A	Zkratka. Příklad Sv. ve jméně Sv. Nikola
     	U	Neznámé
     r - Regulární výraz, který určuje podobu slova.
     	Hodnota musí být vepsána v uvozovkách.

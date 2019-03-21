@@ -188,7 +188,7 @@ class Name(object):
     def printName(self):
         """
         Převede jméno do string. Pokud má jménu typ, tak je přidán. Jméno a typ jsou
-        odděleny tabulátorem. Pokud má jméno nějaké přídavní informace, tak je také přidá.
+        odděleny tabulátorem. Pokud má jméno nějaké přídavné informace, tak je také přidá.
         """
         
         res=str(self)
@@ -196,7 +196,7 @@ class Name(object):
             res+="\t"+str(self.type)
             
         if len(self.additionalInfo)>0:
-            res+="\t"+("\t".join(self.additionalInfo))
+            res+="\t\t"+("\t".join(self.additionalInfo))
         
         return res
 
