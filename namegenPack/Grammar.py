@@ -667,6 +667,15 @@ class Token(object):
     def __str__(self):
         return str(self._type)+"("+str(self._word)+")"
     
+    def __hash__(self):
+        return hash((self._type,self._word))
+        
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return self._type==other._type and self._word==other._word
+        
+        return False
+    
     
 class Lex(object):
     """
@@ -711,7 +720,7 @@ class Lex(object):
                     if str(w).upper() in cls.TITLES:
                         #jedná se o titul
                         token=Token(w, Token.Type.DEGREE_TITLE)
-                    elif len(w)<=3 and str(w).isupper():
+                    elif len(w)<3 and str(w).isupper() and w[-1] == ".":
                         #iniciálová zkratka
                         token=Token(w, Token.Type.INITIAL_ABBREVIATION)
                     else:
@@ -762,6 +771,14 @@ class AnalyzedToken(object):
         self._morph=morph    #příznak zda-li se má dané slovo ohýbat
         self._matchingTerminal=matchingTerminal #Příslušný terminál odpovídající token (získaný při analýze).
     
+    
+    def __hash__(self):
+        return hash((self._token,self._morph,self._matchingTerminal))
+        
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return self._token==other._token and self._morph==other._morph and self._matchingTerminal==other._matchingTerminal
+        
     @property
     def token(self):
         """
@@ -1690,7 +1707,7 @@ class Grammar(object):
                 
         aTokens=[]  #analyzované tokeny
         rules=[]    #použitá pravidla
-        
+
         while(len(stack)>0):
             s=stack.pop()
             token=tokens[position]
@@ -1743,6 +1760,7 @@ class Grammar(object):
                             #zkusíme zdali s tímto pravidlem uspějeme                            
                             resRules, resATokens=self.crawling(newStack, tokens, position)
                             
+
                             if resRules and resATokens:
                                 #zaznamenáme aplikováná pravidla a analyzované tokeny
                                 #může obsahovat i více různých derivací

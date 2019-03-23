@@ -407,7 +407,17 @@ def main():
                 noMorphsWords=set()
                 missingCaseWords=set()
                 wNoInfo=set()
+                
+                alreadyGenerated=set()  #mnozina ntic analizovanych terminalu, ktere byly jiz generovany
                 for ru, aT in zip(rules, aTokens):
+
+                    aTTuple=tuple(aT)
+                    if aTTuple in alreadyGenerated:
+                        #nechce zpracovávat co jsme již zpracovávali
+                        #k jedné větě může existovat vícero derivací, proto je nutná tato kontrola.
+                        continue
+
+                    alreadyGenerated.add(aTTuple)
                     try:
 
                         if configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]: 
@@ -517,7 +527,7 @@ def main():
                                 errorWords[(name.type,wordsMarks[i], e.word)]=set([name])
                             break
                     
-            except namegenPack.Grammar.Grammar.NotInLanguage:
+            except namegenPack.Grammar.Grammar.NotInLanguage as e:
                 errorsGrammerCnt+=1
                 print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_IS_NOT_IN_LANGUAGE_GENERATED_WITH_GRAMMAR)+\
                           "\t"+str(name)+"\t"+str(name.type), file=sys.stderr, flush=True)

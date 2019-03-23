@@ -13,7 +13,7 @@ from namegenPack import Errors
 import logging
 
 from namegenPack.morpho import MorphCategories
-from namegenPack.morpho.MorphCategories import Case, StylisticFlag, POS
+from namegenPack.morpho.MorphCategories import Case, POS
 
 from typing import List, Dict, Set,Tuple
 import namegenPack.Grammar
@@ -333,19 +333,39 @@ class Name(object):
 
         actWord=""
         actSeparator=""
+        separatorOccured=False
+        
+        parsingNumeric=False     #Chceme i rozdělovat slova jako: 1.díl (Jako např. v názvu Škarez 1.díl )
 
         #Procházíme jméno a hledáme slova s jejich oddělovači.
         #Vynacháváme oddělovače na konci a začátku.
         for c in name:
             if (c.isspace() or c=='-' or c=='–' or c==','):
                 #separátor
-
+                
                 if len(actWord)>0:
                     #počáteční vynecháváme
                     actSeparator+=c
+                    separatorOccured=True 
+                    
+                parsingNumeric=False    #budeme delit tak, ci tak
             else:
                 #znak slova
-                if len(actSeparator)>0:
+                
+                if c.isnumeric():
+                    #slovo obsahuje cislici, budeme chtit pripadne delit
+                    #a pokud mame co, tak budeme delit jiz hned
+                    if len(actWord)>0 and not parsingNumeric:
+                        #pred cislici byly nejake znaky (ne cislice)
+                        separatorOccured=True 
+                        
+                    parsingNumeric=True
+                elif parsingNumeric and c!=".":
+                    #budeme delit
+                    separatorOccured=True
+                    parsingNumeric=False
+
+                if separatorOccured:
                     #již se má načítat další slovo
                     #uložíme to staré a příslušný separátor
                     words.append(actWord)
@@ -353,13 +373,16 @@ class Name(object):
 
                     separators.append(actSeparator)
                     actSeparator=""
+                    separatorOccured=False
 
+                
+                    
                 actWord+=c
 
 
         if len(actWord)>0:
             words.append(actWord)
-
+        
         return (words, separators)
 
 
@@ -504,20 +527,35 @@ class Name(object):
                 if aToken.morph and isinstance(genMorphsForWords[i], set):
                     #ohýbáme
                     notMatch=True
+                    
+                    morphsThatWeAlreadyHaves=set()
                     for maRule, wordMorph in genMorphsForWords[i]:
                         #najdeme tvar slova pro daný pád
                         try:
                             if maRule[MorphCategories.MorphCategories.CASE]==c:
+                                
+                                actMorph=wordMorph+"["+maRule.lntrfWithoutNote+"]"
+                                wordType=aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE)
+                                if wordType!=WordTypeMark.UNKNOWN:
+                                    actMorph+="#"+str(wordType.value)
+                                    
+                                if actMorph in morphsThatWeAlreadyHaves:
+                                    #Díky tomu, že nezohledňujeme poznámku při výpisu,
+                                    #tak můžeme dostávat tvary, které vypadají totožně a není
+                                    #nutné je tedy vypisovat.
+                                    continue
+                                else:
+                                    morphsThatWeAlreadyHaves.add(actMorph)
+                                    
                                 if not notMatch:
                                     #můžeme mít více tvarů daného slova
                                     #toto je jeden z dalších tvarů
                                     morph += "/"
-                                morph+=wordMorph+"["+maRule.lntrfWithoutNote+"]"
-                                wordType=aToken.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE)
-                                if wordType!=WordTypeMark.UNKNOWN:
-                                    morph+="#"+str(wordType.value)
-
+                                morph+=actMorph
+                                
                                 notMatch=False
+                                
+                                
                         except KeyError:
                             #pravděpodobně nemá pád vůbec
                             pass

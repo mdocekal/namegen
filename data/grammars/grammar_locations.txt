@@ -31,7 +31,7 @@ S2 -> NUM_ADJ_NOUN(n=P,g=F) !NUM_ADJ_NOUN_CONTINUE END
 
 #Číslovka s volitelnou skupinou přídavných jmen vázajícíh se na první ze skupiny podstatných jmén.
 #dovolujeme i číslovky mezi (příklad: Estonská první republika)
-NUM_ADJ_NOUN(c=1,n,g) -> NUM(c=$c,n=$n,g=$g) ADJ_GROUP(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g) LOC2(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g) ADJ_GROUP(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g)
+NUM_ADJ_NOUN(c=1,n,g) -> !ROM_OR_NUMERIC NUM(c=$c,n=$n,g=$g) ADJ_GROUP(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g) LOC2(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g) ADJ_GROUP(c=$c,n=$n,g=$g) NUM(c=$c,n=$n,g=$g)
 
 #stejné jako NUM_ADJ_NOUN, ale má zafixovaný rod a číslo
 NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=S,g=M)
@@ -107,6 +107,11 @@ NUM(c=1,n,g) -> 4{c=$c,t=L,n=$n,g=$g}
 NUM(c=1,n,g) -> ε
 #/
 
+#volitelna nesklona rimska ci bezna cislice
+!ROM_OR_NUMERIC -> !ROMAN_NUM
+!ROM_OR_NUMERIC -> !NUMERIC
+!ROM_OR_NUMERIC -> ε
+
 !ROMAN_NUM -> r{t=R}
 !ROMAN_NUM -> ε
 
@@ -135,15 +140,18 @@ ADJ_GROUP(c=1,n,g) -> ε
 #Příklad: Rozhledna Vladimíra Menšíka
 #	Palác Flóra
 #	Brno
+#	Jirsko 2.díl
 
 LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g} !ABBER_MANDATORY !VOLUNTARY_NO_FLEX_N	#Kaple sv. Anny
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=GW} !NAME_NOMINATIVE
+LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g} !NUMERIC !NAME_NOMINATIVE	#Jirsko 2.díl (nevím jestli je 2.díl nominativ, ale nema se ohybat)
+LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=GW} !NAME_NOMINATIVE	#Palác Flóra
 LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=GW} !VOLUNTARY_NO_FLEX_N
 LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=NGW} !VOLUNTARY_NO_FLEX_N
 LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=NGW} LOC2_CONTINUE(c=$c,n=$n,g=$g)
 LOC2_CONTINUE(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g}
 LOC2_CONTINUE(c=1,n,g) ->ε
 
+!NAME_NOMINATIVE -> 1{c=1,t=L} !NAME_NOMINATIVE
 !NAME_NOMINATIVE -> 1{c=1,t=L}
 !VOLUNTARY_NO_FLEX_N -> 1{c=2,t=L} !VOLUNTARY_NO_FLEX_N
 !VOLUNTARY_NO_FLEX_N -> ε
