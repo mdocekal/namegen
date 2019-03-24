@@ -25,6 +25,7 @@ from _ast import Try
 from namegenPack.Grammar import Token, Grammar
 import time
 
+
 outputFile = sys.stdout
 
 
@@ -111,7 +112,7 @@ class ConfigManager(object):
         """
 
         result={
-            "TITLES":set( x.upper() for x in self.configParser[self.sectionGrammar]["TITLES"].split()),
+            "TITLES":self._readTitles(self.configParser[self.sectionGrammar]["TITLES"]),
             "PARSE_UNKNOWN_ANALYZE": True if self.configParser[self.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]=="True" else False,
             "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH":set(),
             "TIMEOUT":None,
@@ -141,6 +142,24 @@ class ConfigManager(object):
                     Errors.ErrorMessenger.CODE_INVALID_CONFIG, 
                         "Nevalidní konfigurační soubor. "+self.sectionGrammar+"/TIMEOUT: "+self.configParser[self.sectionGrammar]["TIMEOUT"])
         return result
+    
+    def _readTitles(self, pathT):
+        """
+        Získá tituly ze souboru s tituly.
+        
+        :param pathT: Cesta k souboru
+        :type pathT: str
+        """
+        titles=set()
+        with open(pathT, "r") as titlesF:
+            for line in titlesF:
+                content=line.split("#",1)[0].strip()
+                if content:
+                    for t in content.split():
+                        titles.add(t.upper())
+                    
+        
+        return titles
     
     def __transformDataFiles(self):
         """
@@ -172,13 +191,24 @@ class ConfigManager(object):
         
         for k in result.keys():
             if parConf[k]: 
-                if parConf[k][0]!="/":
-                    result[k]=os.path.dirname(os.path.realpath(__file__))+"/"+parConf[k]
-                else:
-                    result[k]=parConf[k]
+                result[k]=self.__makePath(parConf[k])
             else:
                 raise ConfigManagerInvalidException(Errors.ErrorMessenger.CODE_INVALID_CONFIG, "Nevalidní konfigurační soubor. Chybí "+self.sectionDataFiles+" -> "+k)
 
+
+    def __makePath(self, pathX):
+        """
+        Převede cestu na bezpečný tvar.
+        Absolutní cesty jsou ponechány, tak jak jsou. K relativním
+        je připojena cesta ke skriptu.
+        
+        :param pathX: cesta
+        :type pathX: str
+        """
+        if os.path.isabs(pathX):
+            return pathX
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)),pathX)
+        
 
 class ArgumentParserError(Exception): pass
 class ExceptionsArgumentParser(ArgumentParser):
@@ -254,7 +284,6 @@ def main():
         try:
             grammarFemale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"],
                                                     configAll[configManager.sectionGrammar]["TIMEOUT"])
-            print(grammarFemale)
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"]+": "+e.message)
         

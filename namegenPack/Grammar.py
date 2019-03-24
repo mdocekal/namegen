@@ -194,6 +194,7 @@ class Terminal(object):
         NUMBER="n"          #číslovka (pouze z číslic) Příklady: 12., 12
         INITIAL_ABBREVIATION= "ia"    #Iniciálová zkratka.
         X= "x"    #neznámé
+
         
         @property
         def isPOSType(self):
@@ -271,7 +272,7 @@ class Terminal(object):
             @property
             def voluntary(self):
                 """
-                Určuje zda tento type atributu je voluntary.
+                Určuje zda tento typ atributu je voluntary.
                 Tato vlastnost se používá při syntaktické analýze a generování tvarů. Pravidlo/tvar je
                 použito pouze tehdy, když má tento typ nebo když ani jeden z ostatních pravidel/tvarů
                 jej nemá.
@@ -305,7 +306,7 @@ class Terminal(object):
         
         def __init__(self, attrType, val):
             """
-            Vytvoří atribut neterminálu.
+            Vytvoří atribut terminálu.
             
             :param attrType: Druh attributu.
             :type attrType: self.Type
@@ -413,7 +414,7 @@ class Terminal(object):
             return False
         
     
-    def __init__(self, terminalType, attr=set()):
+    def __init__(self, terminalType, attr=set(), morph=True):
         """
         Vytvoření terminálu.
         Pokud není předán atribut s typem slova ve jméně, tak je automaticky přidán
@@ -425,10 +426,13 @@ class Terminal(object):
                 Musí vždy obsahovat atribut daného druhu pouze jedenkrát. Jinak může způsobit nedefinované chování
                 u nějakých metod.
         :type attr: Attribute
+        :param morph: True terminál semá ohýbat. False terminál je neohebný.
+        :type morph: bool
 
         """
         
         self._type=terminalType
+        self.morph=morph
         
         #zjistíme, zda-li byl předán word type mark
         if not any(a.type==self.Attribute.Type.WORD_TYPE for a in attr):
@@ -580,7 +584,8 @@ class Terminal(object):
             
 
     def __str__(self):
-        s=str(self._type.value)
+
+        s=str(self._type.value) if self.morph else Grammar.NON_GEN_MORPH_SIGN+str(self._type.value)
         if self._attributes:
             s+="{"+", ".join( str(a) for a in self._attributes )+"}"
         return s
@@ -979,12 +984,18 @@ class Rule(object):
         #Group 3.    3-10    `g=M,t=G`
 
         termType=None
+        termMorph=True  #terminál je ohebný
         try:
-            termType=Terminal.Type(mGroups.group(1) )
+            ts=mGroups.group(1)
+            if ts[0]==Grammar.NON_GEN_MORPH_SIGN:
+                termMorph=False
+                ts=ts[1:]
+            termType=Terminal.Type(ts)
         except ValueError:
             #neterminál, nemusíme nic měnit
             #stačí původní reprezentace
             return x
+            
         
         #máme terminál
         attrs=set()
@@ -1046,7 +1057,7 @@ class Rule(object):
                 attrTypes.add(ta.type)
                 attrs.add(ta)
         
-        return Terminal(termType, attrs)
+        return Terminal(termType, attrs, termMorph)
         
         
     def getSymbols(self):
@@ -1220,10 +1231,15 @@ class RuleTemplate(object):
         #Group 3.    3-10    `g=M,t=G`
 
         try:
-            Terminal.Type(mGroups.group(1) )
+            ts=mGroups.group(1)
+            if ts[0]==Grammar.NON_GEN_MORPH_SIGN:
+                #pro urceni typu je treba odstranit
+                ts=ts[1:]
+            Terminal.Type(ts)
         except ValueError:
             #neterminál
             return Nonterminal(s)
+        
         
         #máme terminál
         #stačí string
@@ -1453,8 +1469,8 @@ class Grammar(object):
         
         self._load(filePath)
 
-        #self._removeAllUsellesSymbols()
-        self._simplify()
+        self._removeAllUsellesSymbols()
+        #self._simplify()
         #vytvoříme si tabulku pro parsování
         self._makeTable()
         
@@ -1722,7 +1738,7 @@ class Grammar(object):
                     
 
                     aTokens.append(AnalyzedToken(token,
-                                                False if token.type==Token.Type.ANALYZE_UNKNOWN else s.isMorph,
+                                                False if token.type==Token.Type.ANALYZE_UNKNOWN else s.isMorph and s.val.morph,
                                                 s.val))# s je odpovídající terminál
                     
                 else:
@@ -1738,7 +1754,6 @@ class Grammar(object):
                 if not actRules:
                     #v gramatice neexistuje vhodné pravidlo
                     raise self.NotInLanguage()
-                
                 
                 if len(actRules)==1:
                     #jedno možné pravidlo
@@ -1857,13 +1872,10 @@ class Grammar(object):
         """
         Provede zjednodušení gramatiky.
         """
-
+        self._removeAllUsellesSymbols()
         self._eliminatingEpRules()
         self._removeUnaryRules()
-        self._removeAllUsellesSymbols()
-
-        
-    
+  
     def _removeAllUsellesSymbols(self):
         """
         Provede odstranění zbytečných symbolů.
@@ -1936,7 +1948,7 @@ class Grammar(object):
                 #0-vynechání
                 tmpRules.add(r)
                 
-                allEmptyOnRSide={n for n in r.rightSide if self._empty[n]}
+                allEmptyOnRSide=[i for i, n in enumerate(r.rightSide) if self._empty[n]]
                 
                 for i in range(1, len(allEmptyOnRSide)+1):
                     #vynecháváme 1-x symbolů
@@ -1944,7 +1956,7 @@ class Grammar(object):
                         #vybraná kombinace pro odstranění
                         newRule=copy.copy(r)
                         #upravíme pravou stranu
-                        newRule.rightSide=[s for s in newRule.rightSide if s not in shouldRemove]
+                        newRule.rightSide=[s for pi,s in enumerate(newRule.rightSide) if pi not in shouldRemove]
                         if len(newRule.rightSide)>0:
                             tmpRules.add(newRule)
         if self._empty[self._startS]:
@@ -1957,9 +1969,11 @@ class Grammar(object):
         Provede odstranění jednoduchých pravidel ve formě: A->B, kde A,B jsou neterminály.
         POZOR!: Předpokládá gramatiku, na kterou bylo použito eliminatingEpRules.
         """
+        #Source: https://courses.engr.illinois.edu/cs373/sp2009/lectures/lect_12.pdf
+        #Lecture 12: Cleaning upCFGs and Chomsky Nor-mal form, CS 373: Theory of Computation ̃Sariel Har-Peled and Madhusudan Parthasarathy
         
         #zjistíme takzvané jednotkové páry (Unit pair).
-        #X,Y z N je jednotkový pár, pokud  X=>*Y
+        #X,Y z N je jednotkový pár, pokud  X =>* Y
         
         unitPairs={r for r in self._rules if len(r.rightSide)==1 and not isinstance(r.rightSide[0], Terminal) and r.rightSide[0]!=self.EMPTY_STR}#na pravé straně je pouze 1 neterminál
         numberOfPairs=0
@@ -1970,21 +1984,79 @@ class Grammar(object):
             for unitPairRule in tmpUnitPair:  #(X->Y)
                 for unitPairRuleOther in {r for r in tmpUnitPair if r.leftSide==unitPairRule.rightSide[0] }:#(Y->Z)
                     newRule=copy.copy(unitPairRule)
-                    newRule.rightSide=unitPairRuleOther.rightSide[0]
+                    newRule.rightSide=[unitPairRuleOther.rightSide[0]]
+                    
+                    if unitPairRuleOther.leftSide[0]==self.NON_GEN_MORPH_SIGN and \
+                        unitPairRuleOther.rightSide[0][0]!=self.NON_GEN_MORPH_SIGN:
+                        #Nesmíme zapomenout přidat příznak, že se nemá ohýbat,
+                        #pokud je třeba.
+                        newRule.rightSide[0]=self.NON_GEN_MORPH_SIGN+newRule.rightSide[0]
+                        
                     unitPairs.add(newRule)#(X->Z)
-        
+
         #odstraníme jednoduchá pravidla
         oldRules=self._rules.copy()
         self._rules -= unitPairs
         
         for unitPairRule in unitPairs:  #X->A
             for r in {oldR for oldR in oldRules if oldR.leftSide==unitPairRule.rightSide[0]}:   #A->w
+
                 if len(r.rightSide)>1 or (isinstance(r.rightSide[0], Terminal) or r.rightSide[0]==self.EMPTY_STR):
-                    #na pravé straně není pouze neterminál
+                    #na pravé straně není pouze daný neterminál
                     
                     newRule=copy.copy(unitPairRule)
                     newRule.rightSide=r.rightSide
-                    self._rules.add(newRule)
+
+                    if newRule.leftSide[0]!=self.NON_GEN_MORPH_SIGN and r.leftSide[0]==self.NON_GEN_MORPH_SIGN:
+                        #Nesmíme zapomenout přidat příznak, že se nemá ohýbat, ale tentokráto to musíme
+                        #přesunout přímo to terminálu.
+                        for s in newRule.rightSide:
+                            if isinstance(s, Terminal):
+                                
+                                s.morph=False
+                                
+                    self._rules.add(newRule)    #X->w
+                    
+                    
+    def _makeGroups(self):
+        """
+        Provede slučování pravidel na základě prefixů. Vhodné pro zjednodušení procesů analýzy.
+        
+        Příklad:
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"}
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} !T_GROUP
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} NOUN_GROUP_START
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} NOUN_GROUP_START !T_GROUP
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} NOUN_GROUP_START PREP_GROUP
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} NOUN_GROUP_START PREP_GROUP !T_GROUP
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} PREP_GROUP
+            S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} PREP_GROUP !T_GROUP
+            
+            Převede na:
+                S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} S_1
+                S_1-> ε
+                S_1-> !T_GROUP
+                S_1-> NOUN_GROUP_START S_2
+                S_1-> PREP_GROUP S_3
+                S_2 -> !T_GROUP
+                S_2 -> PREP_GROUP
+                S_2 -> PREP_GROUP !T_GROUP
+                S_3-> !T_GROUP 
+                S_3-> ε         
+            
+        
+        """
+        
+        searchAccordingToLeftSide={}
+        for r in self._rules:
+            #najdeme pravidla se stejnou prvou stranou
+            try:
+                searchAccordingToLeftSide[r.leftSide].add(r)
+            except KeyError:
+                searchAccordingToLeftSide[r.leftSide]=set([r])
+                
+        
+        
         
     def _makeTable(self):
         """
@@ -2039,7 +2111,7 @@ class Grammar(object):
         print(pandas.DataFrame(data, ordeNon, inputSymbols))
     '''
     
-    def _makeEmptySets(self, force=False):
+    def _makeEmptySets(self, force=True):
         """
         Získání "množin" empty (v aktuální gramatice) v podobě dict s příznaky True/False,
          zda daný symbol lze derivovat na prázdný řetězec.

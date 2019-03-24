@@ -4,7 +4,7 @@ Zde si popíšeme formát souboru s gramatikou.
 * Zbytek řádků představuje pravidla. Vždy jedno pravidlo na řádku.
   * Formát pravidla: Neterminál -> Terminály a neterminály odděleny bílým znakem
 * Startovací symbol je z množiny neterminálů. Znak ε je vyhrazen pro prázdný řetězec.
-* Pokud je jako 1. znak v neterminálu uveden !, pak se jedná o neohebnou část jména (dědí se dále v derivačním stromu).
+* Pokud je jako 1. znak v ne/terminálu uveden !, pak se jedná o neohebnou část jména (dědí se dále v derivačním stromu).
 * Neterminály mohou být zvoleny libovolně avšak odlišně od terminálů. Nepoužívejte vyhrazené posloupnosti znaků jako jsou: ->,$.
 * Je možné používat komentáře, které jsou uvozeny znakem #. Stejně, tak ignoruje prázdné řádky, či řádky, které obsahují pouze komentář.
 * Neterminály mohou mít přiřazeny parametry, v takovém případě tvoří šablonu, která bude použita pro vygenerování pravidel. Umožňují kompaktnější a přehlednější zápis množiny pravidel, která se liší pouze v několika málo hodnotách. Více v sekci [Šablony](#šablony).
