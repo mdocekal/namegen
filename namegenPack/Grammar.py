@@ -1980,7 +1980,7 @@ class Grammar(object):
         for unitPairRule in unitPairs:  #X->A
             for r in {oldR for oldR in oldRules if oldR.leftSide==unitPairRule.rightSide[0]}:   #A->w
                 if len(r.rightSide)>1 or (isinstance(r.rightSide[0], Terminal) or r.rightSide[0]==self.EMPTY_STR):
-                    #na levé straně není pouze neterminál
+                    #na pravé straně není pouze neterminál
                     
                     newRule=copy.copy(unitPairRule)
                     newRule.rightSide=r.rightSide

@@ -254,12 +254,14 @@ def main():
         try:
             grammarFemale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"],
                                                     configAll[configManager.sectionGrammar]["TIMEOUT"])
+            print(grammarFemale)
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"]+": "+e.message)
         
         try:
             grammarLocations=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"],
                                                     configAll[configManager.sectionGrammar]["TIMEOUT"])
+            
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"]+": "+e.message)
         logging.info("\thotovo")
