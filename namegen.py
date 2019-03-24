@@ -413,8 +413,8 @@ def main():
 
                     aTTuple=tuple(aT)
                     if aTTuple in alreadyGenerated:
-                        #nechce zpracovávat co jsme již zpracovávali
-                        #k jedné větě může existovat vícero derivací, proto je nutná tato kontrola.
+                        #Nechceme zpracovávat co jsme již zpracovávali.
+                        #K jedné větě může existovat vícero derivací, proto je nutná tato kontrola.
                         continue
 
                     alreadyGenerated.add(aTTuple)

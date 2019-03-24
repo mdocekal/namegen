@@ -1453,7 +1453,8 @@ class Grammar(object):
         
         self._load(filePath)
 
-        self._removeAllUsellesSymbols()
+        #self._removeAllUsellesSymbols()
+        self._simplify()
         #vytvoříme si tabulku pro parsování
         self._makeTable()
         
