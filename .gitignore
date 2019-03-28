@@ -1,8 +1,9 @@
-BACKUP
-pylibma
-py3libma
-__pycache__
-testRes
+BACKUP/
+czechnames_old_version_1/
+__pycache__/
+testRes/
+testData/
 .settings
 .project
 .pydevproject
+/resMA.txt

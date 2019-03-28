@@ -72,6 +72,8 @@ class ConfigManager(object):
         
         return self.__transformVals()
         
+    def getAbsolutePath(self, path):
+        return ("{}/".format(os.path.dirname(os.path.abspath(__file__))) if path[:1] == '.' else "") + path
         
     def __transformVals(self):
         """
@@ -98,7 +100,7 @@ class ConfigManager(object):
         """
 
         result={
-            "PATH_TO":self.configParser[self.sectionMorphoAnalyzer]["PATH_TO"]
+            "PATH_TO":self.getAbsolutePath(self.configParser[self.sectionMorphoAnalyzer]["PATH_TO"])
             }
 
         return result
@@ -112,7 +114,7 @@ class ConfigManager(object):
         """
 
         result={
-            "TITLES":self._readTitles(self.configParser[self.sectionGrammar]["TITLES"]),
+            "TITLES":self._readTitles(self.getAbsolutePath(self.configParser[self.sectionGrammar]["TITLES"])),
             "PARSE_UNKNOWN_ANALYZE": True if self.configParser[self.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"]=="True" else False,
             "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH":set(),
             "TIMEOUT":None,
