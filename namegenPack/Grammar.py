@@ -1971,7 +1971,7 @@ class Grammar(object):
         """
         self._removeAllUsellesSymbols()
         self._eliminatingEpRules()
-        self._removeUnaryRules()
+        #self._removeUnaryRules()
         self._makeGroups()
   
     def _removeAllUsellesSymbols(self):
