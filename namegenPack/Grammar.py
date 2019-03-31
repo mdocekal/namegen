@@ -899,7 +899,7 @@ class Rule(object):
     
     TERMINAL_REGEX=re.compile("^(.+?)(\{(.*)\})?$") #oddělení typu a attrbutů z terminálu
     
-    def __init__(self, fromString, terminals=None, nonterminals=None):
+    def __init__(self, fromString, terminals=None, nonterminals=None, leftSide:str=None, rightSide=None):
         """
         Vytvoření pravidla z řetězce.
         formát pravidla: Neterminál -> Terminály a neterminály
@@ -910,17 +910,24 @@ class Rule(object):
         :type terminals: set
         :param nonterminals: Zde bude ukládat nalezené neterminály.
         :type nonterminals: set
+        :param leftSide: Pokud je zadáno, tak se ignoruje levá strana z fromString a použije se tato.
+            Jedná se o jeden neterminál.
+        :type leftSide: str
+        :param rightSide:  Pokud je zadáno, tak se ignoruje pravá strana z fromString a použije se tato.
+            Jedná se o jeden terminály či prázdný řetězec Grammar.EMPTY_STR. Neprovádí kontroly jako v případě kdy je hodnota brána z fromString.
+        :type rightSide: List[Terminal|Grammar.EMPTY_STR]
         :raise InvalidGrammarException: 
              pokud je pravidlo v chybném formátu.
         """
-        try:
-            self._leftSide, self._rightSide=fromString.split("->")
-        except ValueError:
-            #špatný formát pravidla
-            raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE,
-                                          Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+fromString)
-            
-        self._leftSide=self._parseSymbol(self._leftSide)
+        if leftSide is None or rightSide is None:
+            try:
+                self._leftSide, self._rightSide=fromString.split("->")
+            except ValueError:
+                #špatný formát pravidla
+                raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE,
+                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+fromString)
+                
+        self._leftSide=self._parseSymbol(self._leftSide) if leftSide is None else leftSide
         if isinstance(self._leftSide, Terminal) or self._leftSide==Grammar.EMPTY_STR:
             #terminál nebo prázdný řetězec
             #ovšem v naší gramatice může být na levé straně pouze neterminál
@@ -931,15 +938,36 @@ class Rule(object):
         if nonterminals is not None:
             nonterminals.add(self._leftSide)
 
-            
-        self._rightSide=[x for x in self._rightSide.split()]
-
-        #vytvoříme ze řetězců potřebné struktury a přidáváme nalezené (ne)terminály do množiny (ne)terminálů
-        for i, x in enumerate(self._rightSide):
-            try:
-                self.rightSide[i]=self._parseSymbol(x)
-                
-                if terminals is not None or nonterminals is not None:
+        if rightSide is None:
+            self._rightSide=[x for x in self._rightSide.split()]
+            #vytvoříme ze řetězců potřebné struktury a přidáváme nalezené (ne)terminály do množiny (ne)terminálů
+            for i, x in enumerate(self._rightSide):
+                try:
+                    self.rightSide[i]=self._parseSymbol(x)
+                    
+                    if terminals is not None or nonterminals is not None:
+                        if isinstance(self.rightSide[i], Terminal):
+                            # terminál
+                            if terminals is not None:
+                                terminals.add(self.rightSide[i])
+                        else:
+                            #neterminál nebo prázdný řetězec
+                            if self.rightSide[i]!=Grammar.EMPTY_STR:
+                                #neterminál
+                                if nonterminals is not None:
+                                    nonterminals.add(self.rightSide[i])
+                except InvalidGrammarException as e:
+                    #došlo k potížím s aktuálním pravidlem
+                    raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE, 
+                                                  Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+x+"\t"+fromString
+                                                  +"\n\t"+e.message)
+                except:
+                    raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE, 
+                                                  Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+x+"\t"+fromString)
+        else:
+            self._rightSide=rightSide
+            if terminals is not None or nonterminals is not None:
+                for i, x in enumerate(self._rightSide):
                     if isinstance(self.rightSide[i], Terminal):
                         # terminál
                         if terminals is not None:
@@ -950,15 +978,6 @@ class Rule(object):
                             #neterminál
                             if nonterminals is not None:
                                 nonterminals.add(self.rightSide[i])
-            except InvalidGrammarException as e:
-                #došlo k potížím s aktuálním pravidlem
-                raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE, 
-                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+x+"\t"+fromString
-                                              +"\n\t"+e.message)
-            except:
-                raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE, 
-                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)+"\n\t"+x+"\t"+fromString)
-        
     @classmethod
     def _parseSymbol(cls, s):
         """
@@ -1128,6 +1147,82 @@ class Rule(object):
             return self._leftSide==other._leftSide and self._rightSide==other._rightSide
             
         return False
+
+
+class RulePrefixTree(object):
+    """
+    Prefixový strom vhodný pro získání skupin pravidel o stejných prefixech na pravé straně pravidla.
+    
+    Strom je tvořen dalšími stromy.
+    """
+
+    def __init__(self, rules:Set[Rule], level=0):
+        """
+        Inicializace prefixoveho stromu.
+        
+        :param rules: Pravidla pro zpracování
+        :type rules: Set[Rule]
+        :param level: Uroveň zanoření stromu.
+        :type level: int
+        """
+        pref = {}
+        for r in rules:
+            if level >= len(r.rightSide):
+                if None not in pref:
+                    # listový
+                    pref[None] = set()
+                continue
+            try:
+                pref[r.rightSide[level]].add(r)
+            except KeyError:
+                pref[r.rightSide[level]] = set([r])
+    
+        self._rules = rules
+        self._offsprings = {}
+        for p, x in pref.items():
+            if p is None:
+                self._offsprings[p] = RulePrefixTree(x, level + 1)
+            else:
+                # zkusme najít další větvení
+                move = 1
+                toCompare = next(iter(x)).rightSide
+                try:
+                    while all(toCompare[level + move] == c.rightSide[level + move] for c in x):
+                        # všichni začínají stejně a nevětví se tedy
+                        # můžeme posunout délku prefixu
+                        move += 1
+                except IndexError:
+                    # překročeno, už nemůžeme dál
+                    pass
+                    
+                self._offsprings[tuple(toCompare[level:level + move])] = RulePrefixTree(x, level + move)
+
+    @property
+    def rules(self):
+        """
+        Všechny pravidla v tomto stromě.
+        """
+        return self._rules
+    
+    @property
+    def offsprings(self):
+        """
+        Potomci v prefixovém stromě v podobě dict.
+        
+        Příklad
+            1 2 3 4
+            1 2 3
+            1 2
+            4 5
+        
+        Vrátí:
+            (1,2):RulePrefixTree
+            (4,5):RulePrefixTree
+        :return: Dict kde key je nejdelší možný prefix (jako touple) 
+            než dojde k větvení a value je prefixový strom (pro větvení).
+        :rtype: Dict[Tuple,RulePrefixTree]
+        """
+        return self._offsprings
 
 
 class RuleTemplate(object):
@@ -1389,6 +1484,11 @@ class Grammar(object):
     #se nemají ohýbat.
     NON_GEN_MORPH_SIGN="!"   
     
+    GEN_NONTERM_CNT_SEPPARATOR="$"
+    """
+    Separátor používány v auto. generovaných neterminálech pro oddělení původního jména s počítadlem.
+    """
+    
     class NotInLanguage(Errors.ExceptionMessageCode):
         """
         Řetězec není v jazyce generovaným danou gramatikou.
@@ -1449,6 +1549,7 @@ class Grammar(object):
                 return dict.__getitem__(self, key)
             
 
+    
 
     def __init__(self, filePath, timeout=None):
         """
@@ -1469,20 +1570,16 @@ class Grammar(object):
         
         self._load(filePath)
 
-        self._removeAllUsellesSymbols()
-        #self._simplify()
+
+        self._simplify()
+        
         #vytvoříme si tabulku pro parsování
         self._makeTable()
         
         self.timeout=timeout
         self.grammarEllapsedTime=0
         self.grammarNumOfAnalyzes=0
-        
-    def _translateRules(self):
-        """
-        Provede překlad (rozgenerování) parametrizovaných pravidel.
-        """
-        
+
     
     def _load(self,filePath):
         """
@@ -1875,6 +1972,7 @@ class Grammar(object):
         self._removeAllUsellesSymbols()
         self._eliminatingEpRules()
         self._removeUnaryRules()
+        self._makeGroups()
   
     def _removeAllUsellesSymbols(self):
         """
@@ -1969,6 +2067,7 @@ class Grammar(object):
         Provede odstranění jednoduchých pravidel ve formě: A->B, kde A,B jsou neterminály.
         POZOR!: Předpokládá gramatiku, na kterou bylo použito eliminatingEpRules.
         """
+        #Inspirováno:
         #Source: https://courses.engr.illinois.edu/cs373/sp2009/lectures/lect_12.pdf
         #Lecture 12: Cleaning upCFGs and Chomsky Nor-mal form, CS 373: Theory of Computation ̃Sariel Har-Peled and Madhusudan Parthasarathy
         
@@ -2020,7 +2119,7 @@ class Grammar(object):
                     
     def _makeGroups(self):
         """
-        Provede slučování pravidel na základě prefixů. Vhodné pro zjednodušení procesů analýzy.
+        Provede slučování pravidel na základě prefixů. Vhodné pro zjednodušení procesu analýzy.
         
         Příklad:
             S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"}
@@ -2032,31 +2131,109 @@ class Grammar(object):
             S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} PREP_GROUP
             S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} PREP_GROUP !T_GROUP
             
-            Převede na:
-                S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} S_1
-                S_1-> ε
-                S_1-> !T_GROUP
-                S_1-> NOUN_GROUP_START S_2
-                S_1-> PREP_GROUP S_3
-                S_2 -> !T_GROUP
-                S_2 -> PREP_GROUP
-                S_2 -> PREP_GROUP !T_GROUP
-                S_3-> !T_GROUP 
-                S_3-> ε         
+            S -> NUM(n=S,g=M) ADJ_GROUP_MANDATORY(n=S,g=M) END
+            S -> NUM(n=S,g=M) ADJ_GROUP_MANDATORY(n=S,g=M) LOC2(n=S,g=M) END
             
+            Převede na:
+                S->!NUMERIC 1{g=F, note=jS, n=S, c=1, t=S, r="^.*ová$"} S$1
+                S$1-> ε
+                S$1-> !T_GROUP
+                S$1-> NOUN_GROUP_START S$2
+                S$1-> PREP_GROUP S$3
+                S$2-> ε
+                S$2 -> !T_GROUP
+                S$2 -> PREP_GROUP
+                S$2 -> PREP_GROUP !T_GROUP
+                S$3-> !T_GROUP 
+                S$3-> ε         
+                S -> NUM(n=S,g=M) ADJ_GROUP_MANDATORY(n=S,g=M) S$4
+                S$4-> ε
+                S$4-> LOC2(n=S,g=M) END
         
         """
         
         searchAccordingToLeftSide={}
         for r in self._rules:
-            #najdeme pravidla se stejnou prvou stranou
+            #najdeme pravidla se stejnou levou stranou
             try:
                 searchAccordingToLeftSide[r.leftSide].add(r)
             except KeyError:
                 searchAccordingToLeftSide[r.leftSide]=set([r])
                 
+        self._rules=set()   #budeme plnit novými pravidly
+
+        for leftSide, rules in searchAccordingToLeftSide.items():
+            #rekurzivní vytváření nových pravidel na základě společného prefixu
+            #pravých stran
+            self._rules|=self._makePrefixGroups(leftSide, RulePrefixTree(rules))
+            
+    def _makePrefixGroups(self, leftSide, prefTree):
+        """
+        Vytvoři nová pravidla na základě prefixového stromu.
         
+        :param leftSide: Levá strana pravidel, které se mají vytvářet.
+            Pokud dojde v rekurzi ke větvení, tak přidává pro rozlyšení hodnotu čítače k názvu.
+        :type leftSide: str
+        :param prefTree: Prefixový strom na jehož základě tvoří nová pravidla.
+        :type prefTree: RulePrefixTree
+        """
         
+        #Budeme si zde pro lepší představu ukazovat průběh na modelovém prefixovém stromu.
+        #1] (1,2) (3) (4)    {1}
+        #2] (1,2) (3)        {1,2}
+        #3] (1,2)            {1,2,3}
+        #4] (3,4)            {4}
+        # touply vždy označují nejdelší prefixy, než dojde k větvení. V množinových závorkách jsou čísla pravidel
+        # se stejným prefixem.
+        
+        rules=set()
+
+        newNontermsCnt=0
+        for prefix, tree in prefTree.offsprings.items():
+            if len(tree.rules)>1:
+                #větvíme
+                #budeme potřebovat nový neterminál pro
+                #reprezentaci větve
+                newNonTerm=leftSide+self.GEN_NONTERM_CNT_SEPPARATOR+str(newNontermsCnt)
+                newNontermsCnt+=1
+                
+                #vytvoříme novou větev
+                rules.add(Rule(fromString=None, 
+                               terminals=self._terminals,
+                               nonterminals=self._nonterminals,leftSide=leftSide,
+                     rightSide=list(prefix)+[newNonTerm]))
+
+                #rekurzivně se zanoříme do větve
+                rules|=self._makePrefixGroups(newNonTerm,tree)
+            else:
+                #konec už dál nevětvíme
+                if prefix is None:
+                    #None jako prefix znamená, že aktuální neterminál na levé straně pravidla
+                    #se může derivovat na prázdný řetězec.
+                
+                    #Například chci povolit derivaci jak pro případ znázorněný pravidlem:
+                    #3] (1,2)            {1,2,3}
+                    #tak i dalších sdílejících prefix.
+                    #1] (1,2) (3) (4)    {1}
+                    #2] (1,2) (3)        {1,2}
+                    rules.add(Rule(fromString=None, 
+                                   terminals=self._terminals,
+                                   nonterminals=self._nonterminals,leftSide=leftSide,
+                                   rightSide=[self.EMPTY_STR]))
+                
+                else:      
+                    rules.add(Rule(fromString=None, 
+                               terminals=self._terminals,
+                               nonterminals=self._nonterminals,
+                               leftSide=leftSide,rightSide=list(prefix)))
+                
+                    #v našem modelovém případu to odpovídá:
+                    #    1] (1,2) (3) (4)    {1}
+                    #    4] (3,4)            {4}    
+                
+                
+            
+        return rules
         
     def _makeTable(self):
         """
@@ -2111,23 +2288,15 @@ class Grammar(object):
         print(pandas.DataFrame(data, ordeNon, inputSymbols))
     '''
     
-    def _makeEmptySets(self, force=True):
+    def _makeEmptySets(self):
         """
         Získání "množin" empty (v aktuální gramatice) v podobě dict s příznaky True/False,
          zda daný symbol lze derivovat na prázdný řetězec.
          
         Jedná se o Dict s příznaky: True lze derivovat na prázdný řetězec, či False nelze. 
-        
-        :param force: Pokud je True, tak vytvoří množinu empty bez ohledu na to, zda-li je už vytvořena.
-            Pokud False, tak ji nebude vytvářet, pokud již existuje.
-        :type force: Bool
+
         """
-        if not force:
-            try:
-                return self._empty
-            except AttributeError:
-                #tak nic ještě empty nemáme
-                pass
+
             
         self._empty={t:False for t in self._terminals} #terminály nelze derivovat na prázdný řetězec
         self._empty[self.EMPTY_STR]=True    #prázdný řetězec mohu triviálně derivovat na prázdný řetězec
