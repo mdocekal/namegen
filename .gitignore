@@ -1,7 +1,9 @@
 BACKUP/
 czechnames_old_version_1/
 __pycache__/
+testData/
 testRes/
+ma/
 .settings
 .project
 .pydevproject
