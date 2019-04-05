@@ -370,7 +370,7 @@ class Name(object):
                     #uložíme to staré a příslušný separátor
                     words.append(actWord)
                     actWord=""
-
+                    
                     separators.append(actSeparator)
                     actSeparator=""
                     separatorOccured=False
@@ -570,7 +570,9 @@ class Name(object):
                         morph+="E"
                 #přidání oddělovače slov
                 if sepIndex < len(self._separators):
-                    morph+=self._separators[sepIndex]
+                    putSep=self._separators[sepIndex]
+                    #přidáváme mezeru nulové délky, pokud neni separator
+                    morph+=(putSep if len(putSep)>0 else u'\u200b')   
                 sepIndex+=1
 
             if len(morph)>0:
