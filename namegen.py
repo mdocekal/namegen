@@ -158,7 +158,7 @@ class ConfigManager(object):
                 content=line.split("#",1)[0].strip()
                 if content:
                     for t in content.split():
-                        titles.add(t.upper())
+                        titles.add(t)
                     
         
         return titles

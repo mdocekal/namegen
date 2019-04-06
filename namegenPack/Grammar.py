@@ -543,14 +543,16 @@ class Terminal(object):
         :rtype: bool
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
-        if t.type==Token.Type.ANALYZE_UNKNOWN and self.type in self.UNKNOWN_ANALYZE_TERMINAL_MATCH:
-            #tento druh tokenu sedí na každý termínal druhu pos type
-            return True
+        
         
         mr=self.getAttribute(self.Attribute.Type.MATCH_REGEX)
         if mr is not None and not mr.value.match(str(t.word)):
             #kontrola na regex match neprošla
             return False
+        
+        if t.type==Token.Type.ANALYZE_UNKNOWN and self.type in self.UNKNOWN_ANALYZE_TERMINAL_MATCH:
+            #tento druh tokenu sedí na každý termínal druhu z self.UNKNOWN_ANALYZE_TERMINAL_MATCH
+            return True
             
         #Zjistíme zda-li se jedná o token, který potenciálně potřebuje analyzátor (ANALYZE, ROMAN_NUMBER)
         
@@ -722,7 +724,7 @@ class Lex(object):
                     #slovo neobsahuje číslovku
                     #předpokládáme titul nebo iniciálovou zkratku
                     
-                    if str(w).upper() in cls.TITLES:
+                    if str(w) in cls.TITLES:
                         #jedná se o titul
                         token=Token(w, Token.Type.DEGREE_TITLE)
                     elif len(w)<3 and str(w).isupper() and w[-1] == ".":
@@ -737,7 +739,7 @@ class Lex(object):
                 token=Token(w, Token.Type.ANALYZE)
                 
                 
-            #podíváme se, zda-li máme analýzu tam, kde ji potřebujeme
+            #podíváme se, zdali máme analýzu tam, kde ji potřebujeme
             if token.type in cls.TOKEN_TYPES_THAT_NEEDS_MA:
                 try:
                     _=token.word.info

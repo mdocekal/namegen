@@ -3,7 +3,7 @@ Tato složka obsahuje složku s gramatikami a soubor titles.txt. Pokud chcete v�
 
 ## Tituly
 
-Soubor s tituly obsahuje výčet slov (nezáleží na velikosti písmen), které mají být brany jako titul. Jednotlivé tituly jsou odděleny alespoň jedním bílým znakem (dělí python .split). Je možné přidávat řádkové komentáře pomocí #.
+Soubor s tituly obsahuje výčet slov (záleží na velikosti písmen), které mají být brany jako titul. Jednotlivé tituly jsou odděleny alespoň jedním bílým znakem (dělí python .split). Je možné přidávat řádkové komentáře pomocí #.
 
 Příklad obsahu:
 

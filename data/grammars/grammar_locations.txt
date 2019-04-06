@@ -97,7 +97,7 @@ S2 -> NUM_ADJ_NOUN_CASE_SELECT !NUM_ADJ_NOUN_CASE_SELECT(c=2) !CONJ !NUM_ADJ_NOU
 
 !ABBER_TITLE_MANDATORY -> ia{t=I}
 !ABBER_TITLE_MANDATORY -> t{t=T}
-!ABBER_TITLE_MANDATORY -> a{t=A,r="^(?!^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$).*$"}	#regex vylučuje římskou číslici
+!ABBER_TITLE_MANDATORY -> a{t=A,r="^(?!^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$).*\.$"}	#regex vylučuje římskou číslici
 
 
 END -> !PREP_GROUP !ROMAN_NUM !ABBER_TITLE !NUMERIC NEXT
