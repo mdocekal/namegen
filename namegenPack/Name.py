@@ -180,10 +180,16 @@ class Name(object):
 
     def __hash__(self):
         return hash(str(self))^hash(self._type)
+    
+    def __len__(self):
+        return len(self._words)
 
     def __iter__(self):
         for w in self._words:
             yield w
+            
+    def __getitem__(self, key):
+        return self._words[key]
 
     def printName(self):
         """

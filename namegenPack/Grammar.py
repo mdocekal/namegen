@@ -682,21 +682,52 @@ class Token(object):
             return self._type==other._type and self._word==other._word
         
         return False
-    
-    
+
 class Lex(object):
     """
     Lexikální analyzátor pro jména.
     """
-    TITLES=set()
-    """Banka titulů je načtena na začátku z konfiguračního souboru.
-    Převeďte do velkých písmen pro správné porovnání!"""
+    __TITLES=set()
+    """Banka titulů je načtena na začátku z konfiguračního souboru. Pro přiřazení použijte
+    metodu setTitles"""
+    
+    __TITLES_PREFIXES=set()
+    """Banka prefixů titulů. Příklady titulových prefixů pro titul  Ing.arch.:
+        Ing."""
 
     ROMAN_NUMBER_REGEX=re.compile(r"^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$", re.IGNORECASE)
     NUMBER_REGEX=re.compile(r"^[0-9]+\.?$", re.IGNORECASE)
     
     TOKEN_TYPES_THAT_NEEDS_MA={Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER}
     
+    @classmethod
+    def setTitles(cls, titles:Set[str]):
+        """
+        Nastaví řetězce, které mají být brány za tituly.
+        Zabezpečuje, aby byly brány i různé varianty u titulů typu:
+            Ing.arch.
+            Varianty: Ing.arch.    Ing. arch.
+        
+        :param titles: Množina titulů.
+        :type titles: Set[str]
+        """
+        cls.__TITLES=titles
+        
+        #Přidáme i všechny prefixy, tak abysme později lépe detekovali získanou část titulu.
+        #Příklady titulových prefixů pro titul  Ing.arch.:
+        #Ing.
+        
+        for t in titles:
+            
+            pref=""
+            for i,c in enumerate(t):
+                pref+=c
+                if c == "." and i!=len(t)-1:    #i!=len(t)-1 poslední ne
+                    cls.__TITLES_PREFIXES.add(pref)
+
+        
+        
+        
     @classmethod
     def getTokens(cls, name):
         """
@@ -708,7 +739,28 @@ class Lex(object):
         :rtype: [str]
         """
         tokens=[]
-        for w in name:
+
+        wCnt=0
+        while wCnt<len(name):
+            
+            #prvně zjistíme tituly
+            wT=cls.isTitle(name, wCnt)
+            for _ in range(wT):
+                #zjistíme všechna slova, která tvoří titul
+                #Návratové hodnoty isTitle
+                #    0 na této pozici se nenacházi titul
+                #    1 titul je tvořen aktuálním slovem
+                #    2    titul tvoří více slov
+                tokens.append(Token(name[wCnt], Token.Type.DEGREE_TITLE)) 
+                wCnt+=1
+            if wT>0:
+                #našli jsme titul
+                #můžeme začít dalším
+                continue
+            
+            w=name[wCnt]
+            wCnt+=1
+            
             if cls.ROMAN_NUMBER_REGEX.match(str(w)):
                 #římská číslovka
                 token=Token(w, Token.Type.ROMAN_NUMBER)
@@ -716,18 +768,16 @@ class Lex(object):
                 #číslovka z číslic, volitelně zakončená tečkou
                 token=Token(w, Token.Type.NUMBER)
             elif w[-1] == "." or (len(w)<=3 and str(w).isupper()):
+                #zkratka
                 if any(str.isdigit(c) for c in w):
                     #obsahuje číslici
-                    #nemůže se jednat o zkratku, či titul
+                    #nemůže se jednat o zkratku
                     token=Token(w, Token.Type.ANALYZE)
                 else:
                     #slovo neobsahuje číslovku
-                    #předpokládáme titul nebo iniciálovou zkratku
+                    #předpokládáme iniciálovou zkratku
                     
-                    if str(w) in cls.TITLES:
-                        #jedná se o titul
-                        token=Token(w, Token.Type.DEGREE_TITLE)
-                    elif len(w)<3 and str(w).isupper() and w[-1] == ".":
+                    if len(w)<3 and str(w).isupper() and w[-1] == ".":
                         #iniciálová zkratka
                         token=Token(w, Token.Type.INITIAL_ABBREVIATION)
                     else:
@@ -755,7 +805,61 @@ class Lex(object):
         tokens.append(Token(None, Token.Type.EOF)) 
     
         return tokens  
-     
+    
+    @classmethod
+    def isTitle(cls, name, pos):
+        """
+        Zjistí zdali se na aktuální pozici vyskytuje titul.
+        
+        :param name: Jméno, ve kterém hledáme.
+        :type name: Name
+        :param pos: Pozice slova, kde začínáme hledat titul.
+        :type pos: int
+        :return: Počet slov, které tvoří titul.
+            Pokud 0 není zde titul
+        :rtype: int
+        """
+        w=name[pos]
+        
+        pos+=1
+        
+        if str(w) in cls.__TITLES or (str(w) in cls.__TITLES_PREFIXES and pos<len(name)):
+            #jedná se o titul nebo o jeho potencionální část
+            if str(w) in cls.__TITLES_PREFIXES and pos<len(name):
+                #může se jednat o část delšího titulu
+                #musíme se tedy podívat dopředu
+                
+                #Bereme nejdelší možný titul, protože jinak bychom nemohli pracovat s tituly jako je
+                #Ing.Arch. kvůli existenci titulu Ing.
+
+                lookAhead=pos
+                lastEvaluatedAsTitle=lookAhead if str(w) in cls.__TITLES else None
+                actTitlePrefix=str(w)+str(name[lookAhead])
+                
+                lookAhead+=1
+  
+                while str(actTitlePrefix) in cls.__TITLES_PREFIXES and lookAhead<len(name):
+                    if actTitlePrefix in cls.__TITLES:
+                        lastEvaluatedAsTitle=lookAhead
+                    actTitlePrefix+=str(name[lookAhead])
+
+                    lookAhead+=1
+                
+                if actTitlePrefix in cls.__TITLES:
+                    lastEvaluatedAsTitle=lookAhead-1
+                        
+                if lastEvaluatedAsTitle is not None:
+                    #našli jsme nejdelší možný
+                    #můsíme označit všechny slova, ze kterých se skládá jako tituly
+                    return lastEvaluatedAsTitle-pos+2
+                    
+            elif str(w) in cls.__TITLES:
+                #slovo je titulem nebo jeho částí
+                return 1
+            
+        #nejedná se o titul
+        return 0
+                    
 class AnalyzedToken(object):
     """
     Jedná se o analyzovaný token, který vzniká při syntaktické analýze.

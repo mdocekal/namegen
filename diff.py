@@ -26,39 +26,39 @@ class Morphs(object):
                     wordTagRule, wType=variant, ""
                 match = re.match( r'(.+)\[(.+)\]', wordTagRule, re.MULTILINE)
                 if match is None:
-                    #probably without tag rule 
+                    #probably without tag rule
                     variants.add((wordTagRule,"",wType))
                 else:
                     #word, tagRule,type
                     variants.add((match.group(1),match.group(2),wType))
             words.append(variants)
-            
+
         return words
-    
+
     def __hash__(self):
         return self._hash
-    
+
     def __repr__(self):
         return self._origRepr
     def __str__(self):
         return repr(self)
-    
+
     def __eq__(self, other):
 
         if isinstance(other, Morphs):
             if len(self.cases)!=len(other.cases):
                 return False
-            
+
             for wordsS,wordsO in zip(self.cases, other.cases):
                 if len(wordsS)!=len(wordsO):
                     #their do not have same number of words
                     return False
-                
+
                 for variantsF, variantsO in zip(wordsS,wordsO):
                     #ok, finally we have two sets, that we can compare
                     if variantsF!=variantsO:
                         return False
-                        
+
             return True
         return False
 
@@ -67,21 +67,21 @@ def loadFile(fileName):
     with open(fileName, "r") as f:
         for line in f:
             parts=line.split("\t")
-            
+
 
             name=parts[0]
             nameType=parts[1]
-            
-            if len(parts)==3:
+
+            if len(parts)==3 or len(parts[2])==0:
                 res=(nameType, parts[2])
             else:
                 res=(nameType, Morphs(parts[2]), parts[3])
-  
+
             try:
                 names[name].add(res)
             except KeyError:
                 names[name]=set([res])
-    
+
     return names
 
 first=loadFile(sys.argv[1])
@@ -92,17 +92,33 @@ if len(diff):
     print("Names that aren't in both files:")
     for name in diff:
         print("\t"+name)
-        
+
 else:
     numberOfDiff=0
+    numberOfNoMorphs=0
     #both files consists of same names, let's check also other informations
     for name, firstVariants in first.items():
+
         diffVar=firstVariants^second[name]
-        
-        if len(diffVar)>0:
-            numberOfDiff+=len(diffVar)
-            for x in diffVar:
-                print(name+"\t"+str(x))
-    
+
+        noMorphs=0
+        for v in firstVariants:
+            if len(v)==2 or len(v[1].cases)==0:
+                noMorphs=1
+                break
+        for v in second[name]:
+            if len(v)==2 or len(v[1].cases)==0:
+                noMorphs= 0 if noMorphs>0 else 1
+                break
+        if noMorphs>0:
+            numberOfNoMorphs+=1
+            print(name+"\t"+"No morphs in "+[sys.argv[1],sys.argv[2]][noMorphs-1]+".")
+        else:
+            if len(diffVar)>0:
+                numberOfDiff+=len(diffVar)
+
+                for x in diffVar:
+                    print(name+"\t"+str(x))
+
+    print("Number of no morphs at one and some morphs at other:\t"+str(numberOfNoMorphs))
     print("Number of different name variants:\t"+str(numberOfDiff))
-    

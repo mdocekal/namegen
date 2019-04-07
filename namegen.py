@@ -273,7 +273,7 @@ def main():
         
         if configAll[configManager.sectionGrammar]["TITLES"]:
             #nastavíme řetězce, které se mají brát jako tituly
-            namegenPack.Grammar.Lex.TITLES=configAll[configManager.sectionGrammar]["TITLES"]
+            namegenPack.Grammar.Lex.setTitles(configAll[configManager.sectionGrammar]["TITLES"])
         
         logging.info("načtení gramatik")
         #načtení gramatik
