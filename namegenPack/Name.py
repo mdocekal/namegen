@@ -50,7 +50,7 @@ class Name(object):
             Je x jméno ženy?
                 x== PersonGender.FEMALE
         
-        Zjištění zda je druh x plně určen pro výber vhodné gramatiky:
+        Zjištění zda je druh x plně určen pro výběr vhodné gramatiky (true není):
             x == None
         """
         
@@ -62,6 +62,7 @@ class Name(object):
             Hlavní druh jména.
             """
             LOCATION="L"
+            EVENTS="E"
             PERSON="P"
             
             def __str__(self):
@@ -108,18 +109,24 @@ class Name(object):
     
         def __eq__(self, other):
             if other is None:
+                #Zjištění zda je druh x plně určen pro výběr vhodné gramatiky
                 if self.levels[self.INDEX_OF_MAIN_TYPE]==self.MainType.PERSON and \
                     self.levels[self.INDEX_OF_PERSONS_GENDER]==other:
+                    #není
                     return True
 
             if isinstance(other, self.__class__):
+                #druhý je také typ
+                #klasicky porovnáme
                 return self.__dict__ == other.__dict__
             
             if isinstance(other, self.MainType):
+                #porovnání na úrorvni main type
                 if self.levels[self.INDEX_OF_MAIN_TYPE]==other:
                     return True;
             
             if isinstance(other, self.PersonGender):
+                #porovnání na úrovni osob
                 if self.levels[self.INDEX_OF_MAIN_TYPE]==self.MainType.PERSON and \
                     self.levels[self.INDEX_OF_PERSONS_GENDER]==other:
                     return True;
@@ -209,7 +216,7 @@ class Name(object):
     def guessType(self, grammars=None, tokens:List[namegenPack.Grammar.Token]=None):
         """
         Provede odhad typu jména. Jedná se o jisté zpochybnění zda-li se jedná o mužské, či ženské jméno.
-        Jména lokací nezpochybňujě.
+        Jména lokací a událostí nezpochybňujě.
         Přepíše typ jména pokud si myslí, že je jiný.
         Pokud není typ jména uveden odhadne jej, ovšem pevně předpokládá, že se jedná o jméno osoby.
         (Dle zadání má být automaticky předpokládána osoba, kde se může stát, že typ není uveden.)
@@ -227,8 +234,8 @@ class Name(object):
         :raise Word.WordCouldntGetInfoException:Pokud se nepodařilo analyzovat nějaké slovo.
         :raise TimeoutException: Při provádění syntaktické analýzy (pro jednou z gramatik), nad tímto jménem, došlo k timeoutu.
         """
-        if self._type==self.Type.MainType.LOCATION:
-            #lokace -> ponecháváme
+        if self._type!=self.Type.MainType.PERSON:
+            #zbochybňujeme jen jména a osob
             return
         if not tokens:
             tokens=namegenPack.Grammar.Lex.getTokens(self)

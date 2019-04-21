@@ -59,6 +59,7 @@ Možné atributy a jejich hodnoty:
 		G	Křestní jméno. Příklad: Petra
     	S	Příjmení. Příklad: Novák
     	L	Lokace. Příklad: Brno
+    	E	Událost. Příklad: Osvobození Československa
     	R	Římská číslice. Příklad: IV
     	7	Předložka.
     	8	Spojka.

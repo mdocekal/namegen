@@ -174,7 +174,8 @@ class ConfigManager(object):
         result={
             "GRAMMAR_MALE":None,
             "GRAMMAR_FEMALE":None,
-            "GRAMMAR_LOCATIONS":None
+            "GRAMMAR_LOCATIONS":None,
+            "GRAMMAR_EVENTS":None
             }
         self.__loadPathArguments(self.configParser[self.sectionDataFiles], result)
 
@@ -295,6 +296,14 @@ def main():
             
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"]+": "+e.message)
+        
+        try:
+            grammarEvents=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_EVENTS"],
+                                                    configAll[configManager.sectionGrammar]["TIMEOUT"])
+            
+        except Errors.ExceptionMessageCode as e:
+            raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_EVENTS"]+": "+e.message)
+        
         logging.info("\thotovo")
         logging.info("čtení jmen")
         #načtení jmen pro zpracování
@@ -428,6 +437,8 @@ def main():
                     #rules a aTokens může obsahovat více než jednu možnou derivaci
                     if name.type==Name.Type.MainType.LOCATION:
                         rules, aTokens=grammarLocations.analyse(tokens)
+                    elif name.type==Name.Type.MainType.EVENTS:
+                        rules, aTokens=grammarEvents.analyse(tokens)
                     elif name.type==Name.Type.PersonGender.MALE:
                         rules, aTokens=grammarMale.analyse(tokens)
                     elif name.type==Name.Type.PersonGender.FEMALE:
@@ -603,8 +614,8 @@ def main():
         print("\tPrůměrný čas strávený nad generováním tvarů jednoho jména/názvu: ", 
               round((endOfGenMorp - startOfGenMorp)/len(namesR.names),3) if len(namesR.names)>0 else 0 , file=sys.stderr)
         print("\tPrůměrný čas strávený nad jednou syntaktickou analýzou napříč gramatikami:", 
-              (grammarFemale.grammarEllapsedTime+grammarLocations.grammarEllapsedTime+grammarMale.grammarEllapsedTime)/(grammarFemale.grammarNumOfAnalyzes+grammarMale.grammarNumOfAnalyzes+grammarLocations.grammarNumOfAnalyzes)
-              if (grammarFemale.grammarNumOfAnalyzes+grammarMale.grammarNumOfAnalyzes+grammarLocations.grammarNumOfAnalyzes)>0 else 0, file=sys.stderr)
+              (grammarFemale.grammarEllapsedTime+grammarLocations.grammarEllapsedTime+grammarEvents.grammarEllapsedTime+grammarMale.grammarEllapsedTime)/(grammarFemale.grammarNumOfAnalyzes+grammarMale.grammarNumOfAnalyzes+grammarLocations.grammarNumOfAnalyzes+grammarEvents.grammarNumOfAnalyzes)
+              if (grammarFemale.grammarNumOfAnalyzes+grammarMale.grammarNumOfAnalyzes+grammarLocations.grammarNumOfAnalyzes+grammarEvents.grammarNumOfAnalyzes)>0 else 0, file=sys.stderr)
         print("\t\t FEMALE", file=sys.stderr)
         print("\t\t\t Průměrný čas strávený nad jednou syntaktickou analýzou:", 
               grammarFemale.grammarEllapsedTime/grammarFemale.grammarNumOfAnalyzes if grammarFemale.grammarNumOfAnalyzes>0 else 0, file=sys.stderr)
@@ -617,6 +628,10 @@ def main():
         print("\t\t\t Průměrný čas strávený nad jednou syntaktickou analýzou:", 
               grammarLocations.grammarEllapsedTime/grammarLocations.grammarNumOfAnalyzes if grammarLocations.grammarNumOfAnalyzes>0 else 0, file=sys.stderr)
         print("\t\t\t Počet analýz:", grammarLocations.grammarNumOfAnalyzes, file=sys.stderr)
+        print("\t\t EVENTS", file=sys.stderr)
+        print("\t\t\t Průměrný čas strávený nad jednou syntaktickou analýzou:", 
+              grammarEvents.grammarEllapsedTime/grammarEvents.grammarNumOfAnalyzes if grammarEvents.grammarNumOfAnalyzes>0 else 0, file=sys.stderr)
+        print("\t\t\t Počet analýz:", grammarEvents.grammarNumOfAnalyzes, file=sys.stderr)
         print("\tNeznámý druh jména:", errorsUnknownNameType, file=sys.stderr)
         print("\tNepokryto gramatikou:", errorsGrammerCnt, file=sys.stderr)
         print("\tPočet jmen, u kterých došlo k timeoutu při syntaktické analýze:", errorsTimout, file=sys.stderr)

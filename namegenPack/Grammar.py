@@ -7,7 +7,7 @@ Modul pro práci s gramatikou (Bezkontextovou).
 :contact:    xdocek09@stud.fit.vubtr.cz
 """
 from namegenPack import Errors
-import re
+import regex as re
 from typing import Set, Dict, List, Tuple
 from namegenPack.morpho.MorphCategories import MorphCategory, Gender, Number,\
     MorphCategories, POS, StylisticFlag, Case, Note, Flag
@@ -554,13 +554,10 @@ class Terminal(object):
             #tento druh tokenu sedí na každý termínal druhu z self.UNKNOWN_ANALYZE_TERMINAL_MATCH
             return True
             
-        #Zjistíme zda-li se jedná o token, který potenciálně potřebuje analyzátor (ANALYZE, ROMAN_NUMBER)
+        #Zjistíme zda-li se jedná o token, který potenciálně potřebuje analyzátor.
         
-        if t.type not in Lex.TOKEN_TYPES_THAT_NEEDS_MA:
-            #Jedná se o jednoduchý token bez nutnosti morfologické analýzy.
-            return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
-        else:
-            #Token je buď ANALYZE, nebo se jedná o římské číslo.
+        if t.type in Lex.TOKEN_TYPES_THAT_NEEDS_MA:
+            #potřebujeme analýzu
             #Musíme zjistit jaký druh terminálu máme
             if self._type.isPOSType:
                 groupFlags=self.getAttribute(self.Attribute.Type.FLAGS)
@@ -581,8 +578,12 @@ class Terminal(object):
                 return self._type.toPOS() in pos
             else:
                 #pro tento terminál se nepoužívá analyzátor
-                #musí být shoda na římské číslo
-                return t.type.value==self._type.value==Token.Type.ROMAN_NUMBER.value
+                
+                return t.type.value==self._type.value
+        else:
+            #Jedná se o jednoduchý token bez nutnosti morfologické analýzy.
+            return t.type.value==self._type.value   #V tomto případě požívá terminál a token stejné hodnoty u typů
+            
             
 
     def __str__(self):
@@ -614,7 +615,7 @@ class Token(object):
         NUMBER=Terminal.Type.NUMBER.value          #číslice (pouze z číslovek) Příklady: 12., 12
         ROMAN_NUMBER= Terminal.Type.ROMAN_NUMBER.value   #římská číslice Je třeba zohlednit i analýzu kvůli shodě s předložkou V
         DEGREE_TITLE= Terminal.Type.DEGREE_TITLE.value  #titul
-        INITIAL_ABBREVIATION= Terminal.Type.INITIAL_ABBREVIATION.value   #Iniciálová zkratka.
+        INITIAL_ABBREVIATION= Terminal.Type.INITIAL_ABBREVIATION.value   #Iniciálová zkratka. Je třeba zohlednit i analýzu kvůli shodě s některými předložkami.
         EOF= Terminal.Type.EOF.value #konec vstupu
         X= Terminal.Type.X.value    #neznámé
         #Pokud zde budete něco měnit je třeba provést úpravy v Terminal.tokenMatch.
@@ -698,7 +699,7 @@ class Lex(object):
     ROMAN_NUMBER_REGEX=re.compile(r"^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$", re.IGNORECASE)
     NUMBER_REGEX=re.compile(r"^[0-9]+\.?$", re.IGNORECASE)
     
-    TOKEN_TYPES_THAT_NEEDS_MA={Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER}
+    TOKEN_TYPES_THAT_NEEDS_MA={Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER, Token.Type.INITIAL_ABBREVIATION}
     
     @classmethod
     def setTitles(cls, titles:Set[str]):
@@ -776,14 +777,7 @@ class Lex(object):
                 else:
                     #slovo neobsahuje číslovku
                     #předpokládáme iniciálovou zkratku
-                    
-                    if len(w)<3 and str(w).isupper() and w[-1] == ".":
-                        #iniciálová zkratka
-                        token=Token(w, Token.Type.INITIAL_ABBREVIATION)
-                    else:
-                        #ostatní
-                        #Vzhledem k počtu písmen se pravděpodobně jedná o zkratku.
-                        token=Token(w, Token.Type.ANALYZE)
+                    token=Token(w, Token.Type.INITIAL_ABBREVIATION)
             else:
                 #ostatní
                 token=Token(w, Token.Type.ANALYZE)
