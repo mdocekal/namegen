@@ -171,4 +171,4 @@ LOC2_CONTINUE(c=1,n,g) ->ε
 !AFTER_PREP_ENDING -> ε
 #/
 
-!ABBER -> a{t=A,r="^(?!^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$)\p{Lu}\p{Lu}+\.?$"} #regex vylučuje římskou číslici, mimo to musí končit tečkou a obsahovat pouze velká písmena
+!ABBER -> a{t=A,r="^(?!^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$)((\p{Lu}\p{Lu}+\.?)|(..+\.))$"} #regex vylučuje římskou číslici, mimo to musí končit tečkou nebo obsahovat pouze velká písmena a mít alespoň 2 písmena

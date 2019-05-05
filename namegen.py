@@ -24,7 +24,7 @@ from namegenPack.Name import *
 from _ast import Try
 from namegenPack.Grammar import Token, Grammar
 import time
-
+import copy
 
 outputFile = sys.stdout
 
@@ -40,7 +40,8 @@ class ConfigManager(object):
     """
     Tato třída slouží pro načítání konfigurace z konfiguračního souboru.
     """
-
+    
+    sectionDefault="DEFAULT"
     sectionDataFiles="DATA_FILES"
     sectionGrammar="GRAMMAR"
     sectionMorphoAnalyzer="MA"
@@ -84,11 +85,26 @@ class ConfigManager(object):
         """
         result={}
 
+        result[self.sectionDefault]=self.__transformDefaults()
         result[self.sectionDataFiles]=self.__transformDataFiles()
         result[self.sectionGrammar]=self.__transformGrammar()
         result[self.sectionMorphoAnalyzer]=self.__transformMorphoAnalyzer()
         
         
+        return result
+    
+    def __transformDefaults(self):
+        """
+        Převede hodnoty pro DEFAULT a validuje je.
+        
+        :returns: dict -- ve formátu jméno prametru jako klíč a k němu hodnota parametru
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+        
+        result={
+            "ALLOW_PRIORITY_FILTRATION":self.getAbsolutePath(self.configParser[self.sectionDefault]["ALLOW_PRIORITY_FILTRATION"])=="True"
+            }
+
         return result
     
     def __transformMorphoAnalyzer(self):
@@ -254,7 +270,57 @@ class ArgumentsManager(object):
             Errors.ErrorMessenger.echoError(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_INVALID_ARGUMENTS), Errors.ErrorMessenger.CODE_INVALID_ARGUMENTS)
 
         return parsed
- 
+
+def priorityDerivationFilter(aTokens):
+    """
+    Filtrování derivací na základě priorit terminálů.
+    
+    Příklad:
+            1. derivace: Adam F    P:::M    Adam[k1gMnSc1]#G F[k1gNnSc1]#S ...
+                Adam    1{p=0, c=1, t=G, g=M, r="^(?!^([sS]vatý|[sS]aint)$).*$", note=jG, n=S}
+                F    1{t=S, c=1, p=0, note=jS, g=N, n=S}
+            2. derivace (vítězná): Adam F    P:::M    Adam[k1gMnSc1]#G F#I ...
+                Adam    1{p=0, c=1, t=G, g=M, r="^(?!^([sS]vatý|[sS]aint)$).*$", note=jG, n=S}
+                F    ia{p=1, t=I}
+        
+            Díky prioritě p=1 u F ve druhé derivaci bude vybrána pouze tato derivace.
+
+            Samotný výběr probíhá tak, že procházíme pomyslným stromem od kořena( první slovo) a postupně, jak procházíme úrovně,
+            tak odstraňujeme větve, kde je menší priorita.
+            Příklad (pouze priority):
+                0 0 0 4
+                2 0 0 0
+                
+                Bude vybrána druhá derivace, protože jsme první odstřihli již při prvním slově, tudiž vyšší priorita není brána v úvahu.
+            
+    :param aTokens: Derivace reprezentované pomocí analyzovaných tokenů.
+    :type aTokens: List[List[AnalyzedToken]]
+    :return: Indexy derivací pro odstranění.
+    :rtype: List[int]
+    """
+    
+    if len(aTokens)<=1:
+        #není co filtrovat
+        return []
+
+    allIndexes=set(x for x in range(len(aTokens)))
+    derivationsLeft=copy.copy(allIndexes)   # z tohoto setu budeme postupně odebírat
+
+    
+    for iW in range(len(aTokens[0])):     
+        #pojďme najít maximální prioritu pro aktuální slovo    
+        maxP=max(aTokens[derivIndex][iW].matchingTerminal.getAttribute(Terminal.Attribute.Type.PRIORITY).value for derivIndex in derivationsLeft)        
+        
+        #odfiltrujeme derivace, které nemají na aktuálním slově maximální prioritu
+        derivationsLeft=set(derivIndex for derivIndex in derivationsLeft 
+                            if aTokens[derivIndex][iW].matchingTerminal.getAttribute(Terminal.Attribute.Type.PRIORITY).value >=maxP)
+        
+        if len(derivationsLeft)<=1:
+            break
+    
+    #Odfiltrovat se mají ty, které se nedostaly až na konec.
+    return list(set(x for x in range(len(aTokens))) - derivationsLeft)
+
 def main():
     """
     Vstupní bod programu.
@@ -452,7 +518,14 @@ def main():
                 missingCaseWords=set()
                 wNoInfo=set()
                 
-                alreadyGenerated=set()  #mnozina ntic analizovanych terminalu, ktere byly jiz generovany
+                if configAll[configManager.sectionDefault]["ALLOW_PRIORITY_FILTRATION"]:
+                    #filtr derivací na základě priorit terminálů
+                    for r in sorted(priorityDerivationFilter(aTokens), reverse=True):    #musíme jít od konce, protože se při odstranění mění indexy
+                        #odstranění derivací na základě priorit
+                        del rules[r]
+                        del aTokens[r]
+
+                alreadyGenerated=set()  #mnozina ntic analyzovanych terminalu, ktere byly jiz generovany
                 for ru, aT in zip(rules, aTokens):
 
                     aTTuple=tuple(aT)

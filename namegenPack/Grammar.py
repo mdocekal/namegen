@@ -264,6 +264,7 @@ class Terminal(object):
             FLAGS="f"   #Flagy, které musí mít skupina z morfologické analýzy.    (Speciální atribut)
             WORD_TYPE="t"    #druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
             MATCH_REGEX="r"    #Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
+            PRIORITY="p"    #Přenastavuje prioritu terminálu (výchozí 0). Ve fázi generování tvarů je možné filtrovat na základě priority. (Speciální atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
             
             def __init__(self, *args):
@@ -377,6 +378,15 @@ class Terminal(object):
                 except re.error:
                     raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT, \
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT).format(s))
+            elif cls.Type.PRIORITY==t:
+                try:
+                    v=int(aV)
+                    if v<0:
+                        #negativní hodnoty nejsou povoleny
+                        raise ValueError()
+                except ValueError:
+                    raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT, \
+                                              Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT).format(s))
             else:
                 v=WordTypeMark(aV)
             
@@ -438,6 +448,11 @@ class Terminal(object):
         if not any(a.type==self.Attribute.Type.WORD_TYPE for a in attr):
             #nebyl, přidáme neznámý
             attr=attr|set([self.Attribute(self.Attribute.Type.WORD_TYPE, WordTypeMark.UNKNOWN)])
+            
+        #zjistíme jestli byla přepsána defaultní priorita
+        if not any(a.type==self.Attribute.Type.PRIORITY for a in attr):
+            #nebyla, přidáme defaultní
+            attr=attr|set([self.Attribute(self.Attribute.Type.PRIORITY, 0)])
         
         self._attributes=frozenset(attr)
         
@@ -768,16 +783,13 @@ class Lex(object):
             elif cls.NUMBER_REGEX.match(str(w)):
                 #číslovka z číslic, volitelně zakončená tečkou
                 token=Token(w, Token.Type.NUMBER)
-            elif w[-1] == "." or (len(w)<=3 and str(w).isupper()):
-                #zkratka
-                if any(str.isdigit(c) for c in w):
-                    #obsahuje číslici
-                    #nemůže se jednat o zkratku
-                    token=Token(w, Token.Type.ANALYZE)
-                else:
-                    #slovo neobsahuje číslovku
-                    #předpokládáme iniciálovou zkratku
-                    token=Token(w, Token.Type.INITIAL_ABBREVIATION)
+            elif (w[-1] == "." and len(w)==2 and not str.isdigit(w[0])) or (len(w)==1 and str(w).isupper()):
+                #Jedná se o slovo, které má jedno písmeno (tečku nepočítáme).
+                #Slovo má na konci tečku nebo nemá a pak je písmeno velké.
+                #slovo neobsahuje číslovku.
+                # =>
+                #předpokládáme iniciálovou zkratku
+                token=Token(w, Token.Type.INITIAL_ABBREVIATION)
             else:
                 #ostatní
                 token=Token(w, Token.Type.ANALYZE)
