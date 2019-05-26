@@ -70,12 +70,12 @@ def loadFile(fileName):
 
 
             name=parts[0]
-            nameType=parts[1]
+            nameType=parts[2]
 
-            if len(parts)==3 or len(parts[2])==0:
-                res=(nameType, parts[2])
+            if len(parts[3])==0:
+                res=(nameType, parts[3])
             else:
-                res=(nameType, Morphs(parts[2]), parts[3])
+                res=(nameType, Morphs(parts[3]), parts[4])
 
             try:
                 names[name].add(res)
@@ -99,7 +99,7 @@ else:
     #both files consists of same names, let's check also other informations
     for name, firstVariants in first.items():
 
-        diffVar=firstVariants^second[name]
+        
 
         noMorphs=0
         for v in firstVariants:
@@ -114,6 +114,7 @@ else:
             numberOfNoMorphs+=1
             print(name+"\t"+"No morphs in "+[sys.argv[1],sys.argv[2]][noMorphs-1]+".")
         else:
+            diffVar=firstVariants^second[name]
             if len(diffVar)>0:
                 numberOfDiff+=len(diffVar)
 

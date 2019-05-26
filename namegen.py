@@ -11,6 +11,7 @@ namegen je program pro generování tvarů jmen osob a lokací.
 
 import sys
 import os
+import re
 from argparse import ArgumentParser
 import traceback
 from namegenPack import Errors
@@ -21,13 +22,13 @@ import namegenPack.morpho.MorphCategories
 import configparser
 
 from namegenPack.Name import *
-from _ast import Try
+from namegenPack.Filters import NamesFilter
+from _ast import Try, Or
 from namegenPack.Grammar import Token, Grammar
 import time
 import copy
 
 outputFile = sys.stdout
-
 
 
 class ConfigManagerInvalidException(Errors.ExceptionMessageCode):
@@ -42,6 +43,7 @@ class ConfigManager(object):
     """
     
     sectionDefault="DEFAULT"
+    sectionFilters="FILTERS"
     sectionDataFiles="DATA_FILES"
     sectionGrammar="GRAMMAR"
     sectionMorphoAnalyzer="MA"
@@ -86,6 +88,7 @@ class ConfigManager(object):
         result={}
 
         result[self.sectionDefault]=self.__transformDefaults()
+        result[self.sectionFilters]=self.__transformFilters()
         result[self.sectionDataFiles]=self.__transformDataFiles()
         result[self.sectionGrammar]=self.__transformGrammar()
         result[self.sectionMorphoAnalyzer]=self.__transformMorphoAnalyzer()
@@ -105,6 +108,36 @@ class ConfigManager(object):
             "ALLOW_PRIORITY_FILTRATION":self.getAbsolutePath(self.configParser[self.sectionDefault]["ALLOW_PRIORITY_FILTRATION"])=="True"
             }
 
+        return result
+    
+    
+    def __transformFilters(self):
+        """
+        Převede hodnoty pro FILTERS a validuje je.
+        
+        :returns: dict -- ve formátu jméno prametru jako klíč a k němu hodnota parametru
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+        result={"LANGUAGES":None, "REGEX_NAME":None}
+        
+        if self.configParser[self.sectionFilters]["LANGUAGES"]:
+            result["LANGUAGES"]=set(l for l in self.configParser[self.sectionFilters]["LANGUAGES"].split())
+            if "UNKNOWN" in result["LANGUAGES"]:
+                #chceme prázdný řetězec
+                result["LANGUAGES"].remove("UNKNOWN")
+                result["LANGUAGES"].add("")
+            
+        if self.configParser[self.sectionFilters]["REGEX_NAME"]:
+            try:
+                result["REGEX_NAME"]=re.compile(self.configParser[self.sectionFilters]["REGEX_NAME"])
+            except re.error:
+                #Nevalidní regex
+                        
+                raise ConfigManagerInvalidException(
+                    Errors.ErrorMessenger.CODE_INVALID_CONFIG, 
+                    "Nevalidní konfigurační soubor. Nevalidní regulární výraz v "+self.sectionFilters+" u REGEX_NAME.")
+                
+        
         return result
     
     def __transformMorphoAnalyzer(self):
@@ -321,6 +354,8 @@ def priorityDerivationFilter(aTokens):
     #Odfiltrovat se mají ty, které se nedostaly až na konec.
     return list(set(x for x in range(len(aTokens))) - derivationsLeft)
 
+
+
 def main():
     """
     Vstupní bod programu.
@@ -370,6 +405,10 @@ def main():
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_EVENTS"]+": "+e.message)
         
+        
+        namesFilter=NamesFilter(configAll[configManager.sectionFilters]["LANGUAGES"],
+                                configAll[configManager.sectionFilters]["REGEX_NAME"])
+        
         logging.info("\thotovo")
         logging.info("čtení jmen")
         #načtení jmen pro zpracování
@@ -382,7 +421,7 @@ def main():
         Word.setMorphoAnalyzer(
             namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
                 configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"], 
-                namesR.allWords(True, True)))
+                namesR.allWords(True, True, namesFilter)))
         
         logging.info("\thotovo")
         logging.info("generování tvarů")
@@ -436,6 +475,17 @@ def main():
         startOfGenMorp = time.time()
         
         for name in namesR:
+            #filtrování
+            if not namesFilter(name):
+                
+                #Na základě uživatelských filtrů nemají být pro toto jméno
+                #generovány tvary.
+                
+                if args.include_no_morphs:
+                    #uživatel chce vytisknout i slova bez tvarů
+                    print(name.printName(), file=outF) 
+                continue
+            
             morphsPrinted=False
             try:
                 if name in duplicityCheck:
@@ -564,7 +614,7 @@ def main():
                         if args.whole and len(morphs)<len(Case):
                             #Uživatel chce tisknout pouze pokud máme tvary pro všechny pády.
                             continue
-                        resAdd=str(name)+"\t"+str(name.type)+"\t"+("|".join(morphs))
+                        resAdd=str(name)+"\t"+str(name.language)+"\t"+str(name.type)+"\t"+("|".join(morphs))
                         if len(name.additionalInfo)>0:
                             resAdd+="\t"+("\t".join(name.additionalInfo))
                         completedMorphs.add(resAdd)
@@ -591,7 +641,7 @@ def main():
                                 break
                             
                 if len(wNoInfo)>0:
-                    #vypšeme slova, kdy analýza selhala
+                    #vypíšeme slova, kdy analýza selhala
                     print(str(name)+"\t"+Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_WORD_ANALYZE)+"\t"+(", ".join(str(w)+"#"+str(m) for w, m in wNoInfo)), file=sys.stderr, flush=True)
                 if len(noMorphsWords)>0 or len(missingCaseWords)>0:
                     #chyba při generování tvarů jména
