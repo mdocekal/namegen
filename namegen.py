@@ -11,7 +11,8 @@ namegen je program pro generování tvarů jmen osob a lokací.
 
 import sys
 import os
-import re
+import locale
+import regex as re
 from argparse import ArgumentParser
 import traceback
 from namegenPack import Errors
@@ -107,7 +108,15 @@ class ConfigManager(object):
         result={
             "ALLOW_PRIORITY_FILTRATION":self.getAbsolutePath(self.configParser[self.sectionDefault]["ALLOW_PRIORITY_FILTRATION"])=="True"
             }
-
+        
+        #nastavení locale
+        if self.configParser[self.sectionDefault]["LC_ALL"]:
+            try:
+                locale.setlocale(locale.LC_ALL, self.configParser[self.sectionDefault]["LC_ALL"])
+            except:
+                raise ConfigManagerInvalidException(
+                            Errors.ErrorMessenger.CODE_INVALID_CONFIG, 
+                            "Nevalidní konfigurační soubor. Nepodařilo se nastavit LC_ALL: "+self.configParser[self.sectionDefault]["LC_ALL"])
         return result
     
     
@@ -118,7 +127,7 @@ class ConfigManager(object):
         :returns: dict -- ve formátu jméno prametru jako klíč a k němu hodnota parametru
         :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
         """
-        result={"LANGUAGES":None, "REGEX_NAME":None}
+        result={"LANGUAGES":None, "REGEX_NAME":None, "ALLOWED_ALPHABETIC_CHARACTERS":None}
         
         if self.configParser[self.sectionFilters]["LANGUAGES"]:
             result["LANGUAGES"]=set(l for l in self.configParser[self.sectionFilters]["LANGUAGES"].split())
@@ -137,6 +146,8 @@ class ConfigManager(object):
                     Errors.ErrorMessenger.CODE_INVALID_CONFIG, 
                     "Nevalidní konfigurační soubor. Nevalidní regulární výraz v "+self.sectionFilters+" u REGEX_NAME.")
                 
+        if self.configParser[self.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"]:
+            result["ALLOWED_ALPHABETIC_CHARACTERS"]=set(c for c in self.configParser[self.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"].split())
         
         return result
     
@@ -407,7 +418,8 @@ def main():
         
         
         namesFilter=NamesFilter(configAll[configManager.sectionFilters]["LANGUAGES"],
-                                configAll[configManager.sectionFilters]["REGEX_NAME"])
+                                configAll[configManager.sectionFilters]["REGEX_NAME"],
+                                configAll[configManager.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"])
         
         logging.info("\thotovo")
         logging.info("čtení jmen")

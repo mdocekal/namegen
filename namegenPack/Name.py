@@ -11,6 +11,7 @@ import sys
 
 from namegenPack import Errors
 import logging
+import locale
 
 from namegenPack.morpho import MorphCategories
 from namegenPack.morpho.MorphCategories import Case, POS
@@ -188,7 +189,8 @@ class Name(object):
         return str((str(self), self._language,self._type, self.additionalInfo))
     
     def __lt__(self, other):
-        return str(self)<str(other)
+        #porovnání s ohledem na aktuální locale
+        return locale.strxfrm(str(self))<locale.strxfrm(str(other))
     
     def __eq__(self, other):
         return str(self)==str(other) and self._language==other._language and self._type == other._type
@@ -674,6 +676,7 @@ class NameReader(object):
     def _readInput(self, rInput):
         """
         Čtení vstupu.
+        
         :param rInput: Vstup
         """
         wordDatabase={} #zde budeme ukládat již vyskytující se slova
