@@ -127,7 +127,7 @@ class ConfigManager(object):
         :returns: dict -- ve formátu jméno prametru jako klíč a k němu hodnota parametru
         :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
         """
-        result={"LANGUAGES":None, "REGEX_NAME":None, "ALLOWED_ALPHABETIC_CHARACTERS":None}
+        result={"LANGUAGES":None, "REGEX_NAME":None, "ALLOWED_ALPHABETIC_CHARACTERS":None, "SCRIPT":None}
         
         if self.configParser[self.sectionFilters]["LANGUAGES"]:
             result["LANGUAGES"]=set(l for l in self.configParser[self.sectionFilters]["LANGUAGES"].split())
@@ -149,6 +149,9 @@ class ConfigManager(object):
         if self.configParser[self.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"]:
             result["ALLOWED_ALPHABETIC_CHARACTERS"]=set(c for c in self.configParser[self.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"].split())
         
+        if self.configParser[self.sectionFilters]["SCRIPT"]:
+            result["SCRIPT"]=self.configParser[self.sectionFilters]["SCRIPT"]
+            
         return result
     
     def __transformMorphoAnalyzer(self):
@@ -419,7 +422,8 @@ def main():
         
         namesFilter=NamesFilter(configAll[configManager.sectionFilters]["LANGUAGES"],
                                 configAll[configManager.sectionFilters]["REGEX_NAME"],
-                                configAll[configManager.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"])
+                                configAll[configManager.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"],
+                                configAll[configManager.sectionFilters]["SCRIPT"])
         
         logging.info("\thotovo")
         logging.info("čtení jmen")
@@ -496,6 +500,7 @@ def main():
                 if args.include_no_morphs:
                     #uživatel chce vytisknout i slova bez tvarů
                     print(name.printName(), file=outF) 
+
                 continue
             
             morphsPrinted=False
@@ -784,7 +789,7 @@ def main():
                         if nT == Name.Type.PersonGender.MALE:
                             resultStr+="\tk1gMnSc1::"
                     #přidáme jména/názvy kde se problém vyskytl
-                    resultStr+="\t"+str(nT)+"\t@\t"+", ".join(str(name) for name in names)
+                    resultStr+="\t"+str(nT)+"\t@\t"+"\t".join(str(name)+("\t"+name.additionalInfo[0] if len(name.additionalInfo)>0 else "") for name in names)   #name.additionalInfo by mělo na první pozici obsahovat URL zdroje
                     print(resultStr, file=errWFile)
   
 
