@@ -392,12 +392,17 @@ def main():
             namegenPack.Grammar.Lex.setTitles(configAll[configManager.sectionGrammar]["TITLES"])
         
         logging.info("načtení gramatik")
+        
+
         #načtení gramatik
         try:
             grammarMale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"],
                                                     configAll[configManager.sectionGrammar]["TIMEOUT"])
+            namegenPack.Grammar.Grammar.CHECK=grammarMale
+
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_MALE"]+": "+e.message)
+        
         
         try:
             grammarFemale=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"],
@@ -405,12 +410,16 @@ def main():
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_FEMALE"]+": "+e.message)
         
+        
+        
         try:
             grammarLocations=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"],
                                                     configAll[configManager.sectionGrammar]["TIMEOUT"])
             
         except Errors.ExceptionMessageCode as e:
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"]+": "+e.message)
+        
+        
         
         try:
             grammarEvents=namegenPack.Grammar.Grammar(configAll[configManager.sectionDataFiles]["GRAMMAR_EVENTS"],
@@ -420,10 +429,12 @@ def main():
             raise Errors.ExceptionMessageCode(e.code, configAll[configManager.sectionDataFiles]["GRAMMAR_EVENTS"]+": "+e.message)
         
         
+        
         namesFilter=NamesFilter(configAll[configManager.sectionFilters]["LANGUAGES"],
                                 configAll[configManager.sectionFilters]["REGEX_NAME"],
                                 configAll[configManager.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"],
                                 configAll[configManager.sectionFilters]["SCRIPT"])
+        
         
         logging.info("\thotovo")
         logging.info("čtení jmen")
@@ -482,6 +493,7 @@ def main():
         #nastaveni logování
         duplicityCheck=set()    #zde se budou ukládat jména pro zamezení duplicit
         
+        
         grammarsForTypeGuesser={Name.Type.PersonGender.FEMALE: grammarFemale,Name.Type.PersonGender.MALE:grammarMale}
         
         
@@ -496,6 +508,8 @@ def main():
                 
                 #Na základě uživatelských filtrů nemají být pro toto jméno
                 #generovány tvary.
+                
+                logging.info("Neprošlo filtrem: "+str(name))
                 
                 if args.include_no_morphs:
                     #uživatel chce vytisknout i slova bez tvarů
@@ -579,6 +593,7 @@ def main():
                     else:
                         #je cosi prohnilého ve stavu tohoto programu
                         raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
+                        
 
                 completedMorphs=set()    #pro odstranění dualit používáme set
                 noMorphsWords=set()

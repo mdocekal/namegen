@@ -815,18 +815,19 @@ class MorphoAnalyzerLibma(object):
             
         #přidáme ke slovům von, da a de
         #analýzu, že se jedná o předložky za nimiž se slova ohýbají
-        for w in ["von", "da", "de"]:
-            g=self.MAWordGroup(w)
-            g.lemma=w
-
-            g.addTagRule(POS.PREPOSITION_M.lntrf) 
-            g.addMorph(POS.PREPOSITION_M.lntrf, w)
-            try:
-                self._wordDatabase[w].addGroup(g)
-            except KeyError:
-                #slovo zatím není v databázi
-                self._wordDatabase[w]=self.MAWord()
-                self._wordDatabase[w].addGroup(g)
+        for prep in ["dalla", "de", "da", "del", "di", "dos", "el", "la", "le", "van", "von", "O’", "ben", "bin", "y", "zu"]:
+            for w in [prep,prep.capitalize()]: #generujeme variantu s velkým a malým písmenem na konci
+                g=self.MAWordGroup(w)
+                g.lemma=w
+    
+                g.addTagRule(POS.PREPOSITION_M.lntrf) 
+                g.addMorph(POS.PREPOSITION_M.lntrf, w)
+                try:
+                    self._wordDatabase[w].addGroup(g)
+                except KeyError:
+                    #slovo zatím není v databázi
+                    self._wordDatabase[w]=self.MAWord()
+                    self._wordDatabase[w].addGroup(g)
                
         #pro nás je a pouze spojka
         try:

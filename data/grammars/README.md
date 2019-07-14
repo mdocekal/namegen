@@ -18,7 +18,7 @@ Terminály jsou předdefinované. Jejich seznam je následující:
 	5	- sloveso
 	6	- příslovce
 	7	- předložka
-	7m	- vybrané předložky von,da a de
+	7m	- vybrané předložky dalla, de, da, del, di, dos, el, la, le, van, von, O’, ben, bin, y a zu
 	8	- spojka
 	9	- částice
 	10	- citoslovce
@@ -100,9 +100,9 @@ Možné atributy a jejich hodnoty:
 
 Je také možné označit atribut jako volitelný pomocí ?. Příklad:
 
-    note?="jG"
+    note?=jG
     
-Uvedený příklad by znamenal, že pokud má slovo v morfologické analýze alespoň jednu poznámku jG, pak bude vyžadována. Nicméně pokud v analýze slovo takovou poznámku nemá vůbec, pak se nebere tento argument v potaz. Toto označení dává smysl u atributů, které jsou filtrovací.
+Uvedený příklad by znamenal, že pokud má slovo v morfologické analýze alespoň jednu poznámku jG (nevezme například jS), pak bude vyžadována. Nicméně pokud v analýze slovo takovou poznámku nemá vůbec, pak se nebere tento argument v potaz (vezme i jS). Toto označení dává smysl u atributů, které jsou filtrovací.
 POZOR: Z důvodů rychlejšího zpracovávání se předpokládat pouze jeden volitelný atribut.
 
 ## Příklad

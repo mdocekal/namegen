@@ -17,6 +17,8 @@ from namegenPack.Word import Word, WordTypeMark
 import itertools
 import copy
 import time
+from grpc.framework.foundation import stream
+from pickle import FALSE
 
 class Nonterminal(object):
     """
@@ -267,30 +269,6 @@ class Terminal(object):
             PRIORITY="p"    #Přenastavuje prioritu terminálu (výchozí 0). Ve fázi generování tvarů je možné filtrovat na základě priority. (Speciální atribut)
             #Pokud přidáte nový je třeba upravit Attribute.createFrom a isFiltering
             
-            def __init__(self, *args):
-                self._voluntary=False
-
-            @property
-            def voluntary(self):
-                """
-                Určuje zda tento typ atributu je voluntary.
-                Tato vlastnost se používá při syntaktické analýze a generování tvarů. Pravidlo/tvar je
-                použito pouze tehdy, když má tento typ nebo když ani jeden z ostatních pravidel/tvarů
-                jej nemá.
-                """
-                return self._voluntary
-                
-            @voluntary.setter
-            def voluntary(self, v):
-                """
-                Nastaví voluntary flag. Popis voluntary je v getteru.
-                
-                :param v: Má být voluntary nebo ne?
-                    True znamená voluntary.
-                :type v: bool
-                """
-                self._voluntary=v
-
             @property
             def isFiltering(self):
                 """
@@ -305,15 +283,18 @@ class Terminal(object):
         Type.FILTERING_TYPES={Type.GENDER, Type.NUMBER, Type.CASE, Type.NOTE}
         """Filtrovací atributy. POZOR filtrovací atributy musí mít value typu MorphCategory!"""
         
-        def __init__(self, attrType, val):
+        def __init__(self, attrType, val, voluntary=False):
             """
             Vytvoří atribut terminálu.
             
             :param attrType: Druh attributu.
             :type attrType: self.Type
             :param val: Hodnota atributu.
+            :param voluntary: Určuje zda tento atribut je voluntary. Popis voluntary je v getteru voluntary.
+            :type voluntary: bool
             :raise InvalidGrammarException: Při nevalidní hodnotě atributu.
             """
+            self._voluntary=voluntary
             
             self._type=attrType
             if self.type.isFiltering :
@@ -328,6 +309,30 @@ class Terminal(object):
                         raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE)
             self._val=val
             
+            
+        
+        @property
+        def voluntary(self):
+            """
+            Určuje zda tento atribut je voluntary.
+            Tato vlastnost se používá při syntaktické analýze a generování tvarů. Pravidlo/tvar je
+            použito pouze tehdy, když má tento typ nebo když ani jeden z ostatních pravidel/tvarů
+            jej nemá.
+            """
+            return self._voluntary
+            
+        @voluntary.setter
+        def voluntary(self, v):
+            """
+            Nastaví voluntary flag. Popis voluntary je v getteru.
+            
+            :param v: Má být voluntary nebo ne?
+                True znamená voluntary.
+            :type v: bool
+            """
+
+            self._voluntary=v
+
         @classmethod
         def createFrom(cls, s):
             """
@@ -341,16 +346,17 @@ class Terminal(object):
             
             aT, aV= s.strip().split("=", 1)
 
+            voluntary=False #označení volitelného atributu
             try:
-                vol=False;
+                
+                
                 if aT[-1]==cls.VOLUNTARY_ATTRIBUTE_SIGN:
                     #volitelný atribut
-                    vol=True
+                    voluntary=True
                     aT=aT[:-1]
 
                 t=cls.Type(aT)
-                
-                t.voluntary=vol
+
                 
             except ValueError:
                 #neplatný argumentu
@@ -389,8 +395,8 @@ class Terminal(object):
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_ARGUMENT).format(s))
             else:
                 v=WordTypeMark(aV)
-            
-            return cls(t,v)
+
+            return cls(t,v,voluntary)
         
         @property
         def type(self):
@@ -412,9 +418,11 @@ class Terminal(object):
             
         
         def __str__(self):
-            return str(self._type.value)+"="+str(self.valueRepresentation)
+            
+            return str(self._type.value)+(self.VOLUNTARY_ATTRIBUTE_SIGN if self.voluntary else "")+"="+str(self.valueRepresentation)
                         
         def __hash__(self):
+            
             return hash((self._type, self.valueRepresentation))
         
         def __eq__(self, other):
@@ -458,7 +466,8 @@ class Terminal(object):
         
         #pojďme zjistit hodnoty filtrovacích atributů
         self._fillteringAttrVal=set(a.value for a in self._attributes if a.type.isFiltering)
-        self._fillteringAttrValWithoutVoluntary=set(a.value for a in self._attributes if a.type.isFiltering and not a.type.voluntary)
+        self._fillteringAttrValWithoutVoluntary=set(a.value for a in self._attributes if a.type.isFiltering and not a.voluntary)
+        
         
         if len(self._fillteringAttrVal)-len(self._fillteringAttrValWithoutVoluntary)>1:
             #dovolujeme pouze 1 volitelny atribut
@@ -470,6 +479,9 @@ class Terminal(object):
         #cache pro zrychlení tokenMatch
         self._matchCache={}
         
+        
+        
+                
     def getAttribute(self, t):
         """
         Vrací atribut daného druhu.
@@ -587,8 +599,6 @@ class Terminal(object):
                     #zkusme štěstí ještě pro variantu bez volitelných
                     pos=t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValuesWithoutVoluntary, 
                                                   set(), groupFlags)
-                    
-                    return self._type.toPOS() in pos
                 
                 return self._type.toPOS() in pos
             else:
@@ -606,6 +616,8 @@ class Terminal(object):
         s=str(self._type.value) if self.morph else Grammar.NON_GEN_MORPH_SIGN+str(self._type.value)
         if self._attributes:
             s+="{"+", ".join( str(a) for a in self._attributes )+"}"
+            
+        
         return s
     
     def __hash__(self):
@@ -991,13 +1003,15 @@ class AnalyzedToken(object):
                 
             for mCat, morphCategoryValues in morphsInfo.items():
                 if mCat == MorphCategories.NOTE:
-                    #nechceme použít, jelikož se jedná o nepovinný atribut
+                    #Nechceme použít, jelikož se jedná o nepovinný atribut, který není v morfologické analýze uveden vždy.
+                    #Není zde řeč o nepovinných attributech terminálů, které již mohly být vloženy výše. Zde mluvíme o tom, že
+                    #některé skupiny v morfologické analýze mohou mít tento atribut zcela vynechaný. 
                     continue
                 if len(next(iter(morphCategoryValues)).__class__)>len(morphCategoryValues):
                     #danou kategorii má cenu filtrovat jelikož analýza určila, že slovo nemá všechny
                     #hodnoty z této kategorie.
                     categories|=morphCategoryValues
-   
+                    
         return categories
 
 class InvalidGrammarException(Errors.ExceptionMessageCode):
@@ -1031,6 +1045,7 @@ class Rule(object):
         :raise InvalidGrammarException: 
              pokud je pravidlo v chybném formátu.
         """
+        
         if leftSide is None or rightSide is None:
             try:
                 self._leftSide, self._rightSide=fromString.split("->")
@@ -1601,6 +1616,8 @@ class Grammar(object):
     Separátor používány v auto. generovaných neterminálech pro oddělení původního jména s počítadlem.
     """
     
+    CHECK=None
+    
     class NotInLanguage(Errors.ExceptionMessageCode):
         """
         Řetězec není v jazyce generovaným danou gramatikou.
@@ -1676,13 +1693,14 @@ class Grammar(object):
             Errors.ExceptionMessageCode pokud nemůže přečíst vstupní soubor.
             InvalidGrammarException pokud je problém se samotnou gramtikou.
         """
+
         self._terminals=set([Terminal(Terminal.Type.EOF)])  #implicitní terminál je konec souboru
         self._nonterminals=set()
         self._rules=set()
         
         self._load(filePath)
 
-
+        
         self._simplify()
         
         #vytvoříme si tabulku pro parsování
@@ -1691,6 +1709,8 @@ class Grammar(object):
         self.timeout=timeout
         self.grammarEllapsedTime=0
         self.grammarNumOfAnalyzes=0
+        
+        self.filePath=filePath
 
     
     def _load(self,filePath):
@@ -1705,6 +1725,7 @@ class Grammar(object):
             
         """
         try:
+            
             with open(filePath, "r") as fG:
     
                 firstNonEmptyLine=""
@@ -1745,10 +1766,14 @@ class Grammar(object):
                         #první výskyt
                         nontermsOnLeft[r.leftSide]=(r.leftSide,[r])
                 
+                
+                
                 #nejprve přiřadíme výchozí hodnoty
                 self._addDefValNon(nontermsOnLeft)
+
                 #rozgenerujeme šablony
                 self._generateRules(nontermsOnLeft, Nonterminal(self._startS))
+                
                 
                 
                 if len(self._rules) == 0:
@@ -1757,6 +1782,7 @@ class Grammar(object):
                 if self._startS not in self._nonterminals:
                     #startovací symbol není v množině neterminálů
                     raise InvalidGrammarException(code=Errors.ErrorMessenger.CODE_GRAMMAR_START_SYMBOL)
+            
             
         except IOError:
             raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_COULDNT_READ_INPUT_FILE,
@@ -1806,8 +1832,7 @@ class Grammar(object):
             InvalidGrammarException pokud je problém se samotnou gramtikou.
         """
         #najdeme pravidla na jejichž levé straně je daný neterminál
-        
-       
+
         try:
             templates=nontermsToRules[s][1]
         except KeyError:
@@ -1821,6 +1846,7 @@ class Grammar(object):
             r=Rule(t.generate(s.params), self._terminals, self._nonterminals)
             
             if r not in self._rules:
+                
                 #máme nové pravidlo
                 self._rules.add(r)
             
@@ -1840,10 +1866,10 @@ class Grammar(object):
                         raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE,
                                               Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_GRAMMAR_NONTERM_NO_PAR_VALUE).format(n))
                         
+
                     self._generateRules(nontermsToRules, n)
             
-            
-    
+        
     def __str__(self):
         """
         Converts grammar to string.
@@ -1873,7 +1899,7 @@ class Grammar(object):
         :type line: str
         """
         return line.split("#",1)[0].strip()
-            
+                
     def analyse(self, tokens):
         """
         Provede syntaktickou analýzu pro dané tokeny.
@@ -1897,6 +1923,8 @@ class Grammar(object):
         # Přidáme na zásoník konec vstupu a počáteční symbol
         stack=[Symbol(Terminal(Terminal.Type.EOF), True, True), Symbol(self._startS, False, self._startS[0]!=self.NON_GEN_MORPH_SIGN)]
         position=0
+        
+        
         
         res=self.crawling(stack, tokens, position)
 

@@ -14,7 +14,7 @@ import logging
 import locale
 
 from namegenPack.morpho import MorphCategories
-from namegenPack.morpho.MorphCategories import Case, POS
+from namegenPack.morpho.MorphCategories import Case, POS, Note
 
 from typing import List, Dict, Set,Tuple
 import namegenPack.Grammar
@@ -22,6 +22,7 @@ import namegenPack.Grammar
 from namegenPack.Word import Word, WordTypeMark
 from namegenPack.Grammar import Terminal, Token
 from namegenPack.Filters import Filter
+from _ast import Not
 
 
 class Name(object):
@@ -105,11 +106,28 @@ class Name(object):
                 if self.levels[self.INDEX_OF_PERSONS_GENDER] is not None:
                     self.levels[self.INDEX_OF_PERSONS_GENDER]=self.PersonGender(self.levels[self.INDEX_OF_PERSONS_GENDER])
 
-
         def __hash__(self):
+            """
+            Vlastnost, že dva objekty pro které vrací __eq__ true mají stejný hash je splněna pouze
+            pro porovnání objektů této třídy a nemusí tedy platit pro rozšířené vyhledávání (viz __eq__).
+            """
             return hash(str(self))
-    
+
         def __eq__(self, other):
+            """
+            Implementuje i rozšířené porovnání:
+            Příklad dotazu na MainType:
+                Je x lokace?
+                    x == MainType.LOCATION
+            
+            Příklad dotazu na pohlaví:
+                Je x jméno ženy?
+                    x== PersonGender.FEMALE
+            
+            Zjištění zda je druh x plně určen pro výběr vhodné gramatiky (true není):
+                x == None
+                
+            """
             if other is None:
                 #Zjištění zda je druh x plně určen pro výběr vhodné gramatiky
                 if self.levels[self.INDEX_OF_MAIN_TYPE]==self.MainType.PERSON and \
@@ -120,7 +138,7 @@ class Name(object):
             if isinstance(other, self.__class__):
                 #druhý je také typ
                 #klasicky porovnáme
-                return self.__dict__ == other.__dict__
+                return str(self) == str(other)
             
             if isinstance(other, self.MainType):
                 #porovnání na úrorvni main type
@@ -267,63 +285,104 @@ class Name(object):
                     analyze=token.word.info
                     posCat=analyze.getAllForCategory(MorphCategories.MorphCategories.POS, {Case.NOMINATIVE})    #máme zájem jen o 1. pád
                     if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
-                        if token.word[-3:] == "ová":
-                            #muž s přijmení končícím na ová, zřejmě není
+                        if token.word[-3:] in {"ová","cká","ská"}:
+                            #muž s přijmení končícím na ová,cká a ská zřejmě není
                             #změníme typ pokud není ženský
                             changeTo=self.Type.PersonGender.FEMALE
                         break
                 elif token.type==namegenPack.Grammar.Token.Type.ANALYZE_UNKNOWN:
                     #Máme token, který by potřeboval analýzu, ale analyzátor nezná dané slovo.
-                    #Zkusme aspoň bez závislost na slovním druhu (protože ho nezjistíme) otestovat slovo na ová.
-                    if token.word[-3:] == "ová":
-                        #muž s přijmení končícím na ová, zřejmě není
+                    #Zkusme aspoň bez závislost na slovním druhu (protože ho nezjistíme) otestovat slovo na ženská koncovky.
+                    if token.word[-3:] in {"ová","cká","ská"}:
+                        #muž s přijmení končícím na ová,cká a ská, zřejmě není
                         #změníme typ pokud není ženský
                         changeTo=self.Type.PersonGender.FEMALE
                     break
                 
+        
+        
+        
+
+            aTokens=None
+            rules=None
+            if changeTo == None and grammars:
+                #příjmení nekončí na ová
+                for t, g in grammars.items():
+                    try:
+                        rules, aTokens=g.analyse(tokens)
+    
+                        if changeTo == None:
+                            #zatím odpovídá jedna gramatika
+                            changeTo=t
+                        else:
+                            #více než jedna gramatika odpovídá
+                            changeTo=None
+                            aTokens=None
+                            rules=None
+                            break
+    
+                    except namegenPack.Grammar.Grammar.NotInLanguage:
+                        continue
+    
+    
+            if changeTo is not None:
+                if self._type == None:
+                    logging.info("Pro "+str(self)+" přiřazuji "+str(changeTo)+".")
+                    if self._type is None:
+                        #Nutné vytvořit celý nový typ.
+                        #Formát pro osoby:
+                        #<Type: P=Person>:<Subtype: F/G=Fictional/Group>:<Future purposes: determine regular name and alias>:<Gender: F/M=Female/Male>
+                        self._type=self.Type("P:::"+str(changeTo))
+                    else:
+                        #Stačí jen doplnit gender
+                        self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER]=changeTo
+                
+                elif self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER] is not changeTo and aTokens is not None:
+                    #Změníme typ pouze pokud morfologická analýza říká, že daná slova opravdu mohou být G či S.
+                    #Tedy například pokud gramatika říká, že dané slovo má být příjmení, tak morfologický analyzátor
+                    #musí dané příjmení jako příjmení znát (note=jS).
+                    
+                    couldNotChange=False    #příznak, že se druh nemůže změnit
+
+                    for actDerivAnalTokens in aTokens:
+                        
+                        for aT in actDerivAnalTokens:
+
+                            #získejme prvně druh slova ve jméně
+                            
+                            wordType=aT.matchingTerminal.getAttribute(namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE)
+    
+                            if wordType.value in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
+                                #kontrolujeme jen pro jméno a příjmení
+                                
+                                if aT.token.type==namegenPack.Grammar.Token.Type.ANALYZE_UNKNOWN:
+                                    #budeme provádět změnu jen v případech, kdy máme pro všechna zkoumaná slova potřebnou analýzyu
+                                    couldNotChange=True
+                                    break
+                                
+                                #podmínky na slovo, které budou použity při generování tvarů
+                                #použijeme 
+                                conditionWord=aT.morphCategories
+                                
+                                #zjistíme jaké máme poznámky
+                                notes=aT.token.word.info.getAllForCategory(MorphCategories.MorphCategories.NOTE, conditionWord)
+                                if (Note.GIVEN_NAME if wordType.value==WordTypeMark.GIVEN_NAME else Note.SURNAME) not in notes:
+                                    #nemáme přislušnou poznámku v morfologické analýze nemůžeme tedy druh změnit
+                                    couldNotChange=True
+                                    break
+                        if couldNotChange:
+                            break 
+                                
+                    
+                    if not couldNotChange:
+                        logging.info("Pro "+str(self)+" měním "+str(self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER])+" na "+str(changeTo)+".")
+                        self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER]=changeTo
+        
         except Word.WordCouldntGetInfoException:
             #nepovedlo se získat informace o slově
             #končíme
             return
-
-        aTokens=None
-        rules=None
-        if changeTo == None and grammars:
-            #příjmení nekončí na ová
-            for t, g in grammars.items():
-                try:
-                    rules, aTokens=g.analyse(tokens)
-
-                    if changeTo == None:
-                        #zatím odpovídá jedna gramatika
-                        changeTo=t
-                    else:
-                        #více než jedna gramatika odpovídá
-                        changeTo=None
-                        aTokens=None
-                        rules=None
-                        break
-
-                except namegenPack.Grammar.Grammar.NotInLanguage:
-                    continue
-
-
-        if changeTo is not None:
-            if self._type == None:
-                logging.info("Pro "+str(self)+" přiřazuji "+str(changeTo)+".")
-                if self._type is None:
-                    #Nutné vytvořit celý nový typ.
-                    #Formát pro osoby:
-                    #<Type: P=Person>:<Subtype: F/G=Fictional/Group>:<Future purposes: determine regular name and alias>:<Gender: F/M=Female/Male>
-                    self._type=self.Type("P:::"+str(changeTo))
-                else:
-                    #Stačí jen doplnit gender
-                    self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER]=changeTo
-            
-            elif self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER] is not changeTo:
-                logging.info("Pro "+str(self)+" měním "+str(self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER])+" na "+str(changeTo)+".")
-                self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER]=changeTo
-
+        
         return (rules,aTokens)
 
     @property
