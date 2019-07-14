@@ -17,8 +17,6 @@ from namegenPack.Word import Word, WordTypeMark
 import itertools
 import copy
 import time
-from grpc.framework.foundation import stream
-from pickle import FALSE
 
 class Nonterminal(object):
     """
