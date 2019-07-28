@@ -17,10 +17,12 @@ class MorphCategoryException(Errors.ExceptionMessageCode):
     Bázová vyjímka pro morfologické kategorie.
     """
 
+
 class MorphCategoryInvalidException(MorphCategoryException):
     """
     Nevalidní morfologická kategorie. Používá se při vytváření enumu z dané hodnoty.
     """
+
     def __init__(self, value):
         """
         Konstruktor pro vyjímku nevalidní kategorie.
@@ -30,11 +32,13 @@ class MorphCategoryInvalidException(MorphCategoryException):
         """
         self.code = Errors.ErrorMessenger.CODE_MORPH_ENUM_INVALID_CATEGORY
         self.message = Errors.ErrorMessenger.getMessage(self.code).format(value)
-        
+
+
 class MorphCategoryInvalidValueException(MorphCategoryException):
     """
     Nevalidní hodnota morfologické kategorie. Používá se při vytváření enumu z dané hodnoty.
     """
+
     def __init__(self, category, value):
         """
         Konstruktor pro vyjímku nevalidní hodnoty.
@@ -47,11 +51,12 @@ class MorphCategoryInvalidValueException(MorphCategoryException):
         self.code = Errors.ErrorMessenger.CODE_MORPH_ENUM_INVALID_VALUE
         self.message = Errors.ErrorMessenger.getMessage(self.code).format(category, value)
 
+
 class MorphCategory(Enum):
     """
     Bázová třída pro morfologickou kategorii.
     """
-    
+
     @staticmethod
     def category():
         """
@@ -68,19 +73,19 @@ class MorphCategory(Enum):
         V lntrf formátu i s označením kategorie.
         Příklad:    k1
         """
-        return self.category().lntrf+self.lntrfValue
-    
+        return self.category().lntrf + self.lntrfValue
+
     @property
     def lntrfValue(self):
         """
         V lntrf formátu, pouze hodnota.
         """
         return self._mappingLntrf[self]
-    
+
     def __str__(self):
         return self.lntrfValue
-    
-    @classmethod    
+
+    @classmethod
     def fromLntrf(cls, val):
         """
         Vytvoří z lntrf formátu.
@@ -97,43 +102,44 @@ class MorphCategory(Enum):
             return cls._mappingLntrfInverse[val]
         except KeyError:
             raise MorphCategoryInvalidValueException(cls.category().lntrf, val)
-        
-MorphCategory._mappingLntrf={e:str(e.value) for e in MorphCategory}
+
+
+MorphCategory._mappingLntrf = {e: str(e.value) for e in MorphCategory}
 """Zobrazení sloužící pro konverzi s LNTRF."""
-MorphCategory._mappingLntrfInverse={v: k for k, v in MorphCategory._mappingLntrf.items()}
+MorphCategory._mappingLntrfInverse = {v: k for k, v in MorphCategory._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
 
-        
+
 class MorphCategories(Enum):
     """
     Morfologické kategorie.
     """
-    
-    POS=0
+
+    POS = 0
     """slovní druh"""
-    
-    GENDER=1
+
+    GENDER = 1
     """rod"""
-    
-    NUMBER=2
+
+    NUMBER = 2
     """číslo"""
-    
-    CASE=3
+
+    CASE = 3
     """pád"""
-    
-    NEGATION=4
+
+    NEGATION = 4
     """negace"""
-    
-    DEGREE_OF_COMPARISON=5
+
+    DEGREE_OF_COMPARISON = 5
     """stupeň"""
-    
-    PERSON=6
+
+    PERSON = 6
     """osoba"""
-    
-    STYLISTIC_FLAG=7
+
+    STYLISTIC_FLAG = 7
     """stylistický příznak"""
-    
-    NOTE=8
+
+    NOTE = 8
     """poznámka"""
 
     @property
@@ -142,8 +148,8 @@ class MorphCategories(Enum):
         V lntrf formátu.
         """
         return self._lntrfMap[self]
-        
-    @classmethod    
+
+    @classmethod
     def fromLntrf(cls, val):
         """
         Vytvoří z lntrf formátu.
@@ -158,7 +164,7 @@ class MorphCategories(Enum):
             return cls._lntrfMapInverse[val]
         except KeyError:
             raise MorphCategoryInvalidException(val)
-        
+
     def createCategoryFromLntrf(self, val) -> MorphCategory:
         """
         Vytvoří MorphCategory z předané validní hodnoty aktuální morfologické kategorie.
@@ -172,23 +178,24 @@ class MorphCategories(Enum):
         :rtype: MorphCategory
         :raise MorphCategoryInvalidValueException: On invalid value.
         """
- 
+
         return self._lntrfCatMap[self](val)
 
-MorphCategories._lntrfMap={
-            MorphCategories.POS:"k",
-            MorphCategories.GENDER:"g",
-            MorphCategories.NUMBER:"n",
-            MorphCategories.CASE:"c",
-            MorphCategories.NEGATION:"e",
-            MorphCategories.DEGREE_OF_COMPARISON:"d",
-            MorphCategories.PERSON:"p",
-            MorphCategories.STYLISTIC_FLAG:"w",
-            MorphCategories.NOTE:";",
-            }
+
+MorphCategories._lntrfMap = {
+    MorphCategories.POS: "k",
+    MorphCategories.GENDER: "g",
+    MorphCategories.NUMBER: "n",
+    MorphCategories.CASE: "c",
+    MorphCategories.NEGATION: "e",
+    MorphCategories.DEGREE_OF_COMPARISON: "d",
+    MorphCategories.PERSON: "p",
+    MorphCategories.STYLISTIC_FLAG: "w",
+    MorphCategories.NOTE: ";",
+}
 """Zobrazení pro lntrf konverzi."""
 
-MorphCategories._lntrfMapInverse={v: k for k, v in MorphCategories._lntrfMap.items()}
+MorphCategories._lntrfMapInverse = {v: k for k, v in MorphCategories._lntrfMap.items()}
 """Inverzní zobrazení k _lntrfMap."""
 
 
@@ -196,300 +203,317 @@ class POS(MorphCategory):
     """
     Slovní druhy.
     """
-    NOUN=1
+    NOUN = 1
     """podstatné jméno"""
-    
-    ADJECTIVE=2
+
+    ADJECTIVE = 2
     """přídavné jméno"""
-    
-    PRONOUN=3
+
+    PRONOUN = 3
     """zájméno"""
-    
-    NUMERAL=4
+
+    NUMERAL = 4
     """číslovka"""
-    
-    VERB=5
+
+    VERB = 5
     """sloveso"""
 
-    ADVERB=6
+    ADVERB = 6
     """příslovce"""
 
-    PREPOSITION=7
+    PREPOSITION = 7
     """předložka"""
-    
-    PREPOSITION_M="m"
+
+    PREPOSITION_M = "m"
     """Speciální druh předložky, za kterou se v češtině slova ve jméně ohýbají. (da, von ...)"""
 
-    CONJUNCTION=8
+    CONJUNCTION = 8
     """spojka"""
-    
-    PARTICLE=9
+
+    PARTICLE = 9
     """částice"""
 
-    INTERJECTION=10
+    INTERJECTION = 0
     """citoslovce"""
-    
-    ABBREVIATION="A"
+
+    ABBREVIATION = "A"
     """zkratka"""
-    
+
     @staticmethod
     def category():
         return MorphCategories.POS
 
-POS._mappingLntrf={e:str(e.value) for e in POS}
-"""Zobrazení sloužící pro konverzi s LNTRF."""        
-POS._mappingLntrfInverse={v: k for k, v in POS._mappingLntrf.items()}
+
+POS._mappingLntrf = {e: str(e.value) for e in POS}
+"""Zobrazení sloužící pro konverzi s LNTRF."""
+POS._mappingLntrfInverse = {v: k for k, v in POS._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
+
 
 class Gender(MorphCategory):
     """
     Rod
     """
-    
-    MASCULINE_ANIMATE="M"
+
+    MASCULINE_ANIMATE = "M"
     """mužský životný"""
-    
-    MASCULINE_INANIMATE="I"
+
+    MASCULINE_INANIMATE = "I"
     """mužský neživotný"""
-    
-    NEUTER="N"
+
+    NEUTER = "N"
     """střední"""
-    
-    FEMINE="F"
+
+    FEMINE = "F"
     """ženský"""
-    
-    FAMILY="R"
+
+    FAMILY = "R"
     """rodina (příjmení) [asi něco navíc v libma?]"""
-    
-    
+
     @staticmethod
     def category():
         return MorphCategories.GENDER
-    
-Gender._mappingLntrf={e:str(e.value) for e in Gender}
-"""Zobrazení sloužící pro konverzi s LNTRF."""   
-Gender._mappingLntrfInverse={v: k for k, v in Gender._mappingLntrf.items()}
+
+
+Gender._mappingLntrf = {e: str(e.value) for e in Gender}
+"""Zobrazení sloužící pro konverzi s LNTRF."""
+Gender._mappingLntrfInverse = {v: k for k, v in Gender._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
+
 
 class Number(MorphCategory):
     """
     Číslo
     """
-    
-    SINGULAR="S"
+
+    SINGULAR = "S"
     """jednotné"""
-    
-    PLURAL="P"
+
+    PLURAL = "P"
     """množné"""
-    
-    DUAL="D"
+
+    DUAL = "D"
     """duál"""
-    
-    R="R"
+
+    R = "R"
     """hromadné označení členů rodiny (Novákovi)"""
-    
+
     @staticmethod
     def category():
         return MorphCategories.NUMBER
-    
-Number._mappingLntrf={e:str(e.value) for e in Number}
-"""Zobrazení sloužící pro konverzi z LNTRF."""  
-Number._mappingLntrfInverse={v: k for k, v in Number._mappingLntrf.items()}
+
+
+Number._mappingLntrf = {e: str(e.value) for e in Number}
+"""Zobrazení sloužící pro konverzi z LNTRF."""
+Number._mappingLntrfInverse = {v: k for k, v in Number._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
-            
+
+
 class Case(MorphCategory):
     """
     Pád
     """
-    
-    NOMINATIVE=1
+
+    NOMINATIVE = 1
     """1. pád: Nominativ s pádovými otázkami (kdo, co)"""
-    
-    GENITIVE=2
+
+    GENITIVE = 2
     """2. pád: Genitiv (koho, čeho)"""
-    
-    DATIVE=3
+
+    DATIVE = 3
     """3. pád: Dativ (komu, čemu)"""
-    
-    ACCUSATIVE=4
+
+    ACCUSATIVE = 4
     """4. pád: Akuzativ (koho, co)"""
-    
-    VOCATIVE=5
+
+    VOCATIVE = 5
     """5. pád: Vokativ (oslovujeme, voláme)"""
-    
-    LOCATIVE=6
+
+    LOCATIVE = 6
     """6. pád: Lokál (kom, čem)"""
-    
-    INSTRUMENTAL=7
+
+    INSTRUMENTAL = 7
     """7. pád: Instrumentál (kým, čím)"""
-    
-    
+
     @staticmethod
     def category():
         return MorphCategories.CASE
-Case._mappingLntrf={e:str(e.value) for e in Case}
-"""Zobrazení sloužící pro konverzi z LNTRF."""  
-Case._mappingLntrfInverse={v: k for k, v in Case._mappingLntrf.items()}
+
+
+Case._mappingLntrf = {e: str(e.value) for e in Case}
+"""Zobrazení sloužící pro konverzi z LNTRF."""
+Case._mappingLntrfInverse = {v: k for k, v in Case._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
-  
+
+
 class Negation(MorphCategory):
     """
     Negace
     """
-    
-    AFFIRMATIVE="A"
+
+    AFFIRMATIVE = "A"
     """afirmace"""
-    
-    NEGATED="N"
+
+    NEGATED = "N"
     """negace"""
-   
+
     @staticmethod
     def category():
         return MorphCategories.NEGATION
-Negation._mappingLntrf={e:str(e.value) for e in Negation}
-"""Zobrazení sloužící pro konverzi z LNTRF.""" 
-Negation._mappingLntrfInverse={v: k for k, v in Negation._mappingLntrf.items()}
+
+
+Negation._mappingLntrf = {e: str(e.value) for e in Negation}
+"""Zobrazení sloužící pro konverzi z LNTRF."""
+Negation._mappingLntrfInverse = {v: k for k, v in Negation._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
+
 
 class DegreeOfComparison(MorphCategory):
     """
     Stupeň
     """
-    
-    POSITIVE=1
+
+    POSITIVE = 1
     """pozitiv (příklad: velký)"""
-    
-    COMPARATIVE=2
+
+    COMPARATIVE = 2
     """komparativ (příklad: větší)"""
-    
-    SUPERLATIVE=3
+
+    SUPERLATIVE = 3
     """superlativ (příklad: největší)"""
-   
-    
+
     @staticmethod
     def category():
         return MorphCategories.DEGREE_OF_COMPARISON
-DegreeOfComparison._mappingLntrf={e:str(e.value) for e in DegreeOfComparison}
-"""Zobrazení sloužící pro konverzi z LNTRF."""     
-DegreeOfComparison._mappingLntrfInverse={v: k for k, v in DegreeOfComparison._mappingLntrf.items()}
+
+
+DegreeOfComparison._mappingLntrf = {e: str(e.value) for e in DegreeOfComparison}
+"""Zobrazení sloužící pro konverzi z LNTRF."""
+DegreeOfComparison._mappingLntrfInverse = {v: k for k, v in DegreeOfComparison._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
+
 
 class Person(MorphCategory):
     """
     Osoba
     """
-    
-    FIRST=1
+
+    FIRST = 1
     """první osoba"""
-    
-    SECOND=2
+
+    SECOND = 2
     """druhá osoba"""
-    
-    THIRD=3
+
+    THIRD = 3
     """třetí osoba"""
-    
-    ANY="X"
+
+    ANY = "X"
     """první nebo druhá nebo třetí"""
 
     @staticmethod
     def category():
         return MorphCategories.PERSON
-Person._mappingLntrf={e:str(e.value) for e in Person}
+
+
+Person._mappingLntrf = {e: str(e.value) for e in Person}
 """Zobrazení sloužící pro konverzi z LNTRF."""
-Person._mappingLntrfInverse={v: k for k, v in Person._mappingLntrf.items()}
+Person._mappingLntrfInverse = {v: k for k, v in Person._mappingLntrf.items()}
 """Inverzní zobrazení k _mappingLntrf."""
+
 
 class StylisticFlag(MorphCategory):
     """
     Stylistický příznak.
     """
-    ARCHAISM="A"
+    ARCHAISM = "A"
     """archaismus"""
-    
-    POETIC="B"
+
+    POETIC = "B"
     """básnicky"""
-    
-    ONLY_IN_CORPUSCLES="C"
+
+    ONLY_IN_CORPUSCLES = "C"
     """pouze v korpusech"""
-    
-    EXPRESSIVELY="E"
+
+    EXPRESSIVELY = "E"
     """expresivně"""
-    
-    COLLOQUIALLY="H"
+
+    COLLOQUIALLY = "H"
     """hovorově"""
-    
-    BOOK="K"
+
+    BOOK = "K"
     """knižně"""
-    
-    REGIONALLY="O"
+
+    REGIONALLY = "O"
     """oblastně"""
-    
-    RATHER="R"
+
+    RATHER = "R"
     """řidčeji"""
-    
-    OBSOLETE="Z"
+
+    OBSOLETE = "Z"
     """zastarale"""
 
     @staticmethod
     def category():
         return MorphCategories.STYLISTIC_FLAG
-    
-StylisticFlag._mappingLntrf={e:str(e.value) for e in StylisticFlag}
-"""Zobrazení sloužící pro konverzi z LNTRF."""    
-StylisticFlag._mappingLntrfInverse={v: k for k, v in StylisticFlag._mappingLntrf.items()}
-"""Inverzní zobrazení k _mappingLntrf."""   
+
+
+StylisticFlag._mappingLntrf = {e: str(e.value) for e in StylisticFlag}
+"""Zobrazení sloužící pro konverzi z LNTRF."""
+StylisticFlag._mappingLntrfInverse = {v: k for k, v in StylisticFlag._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
+
 
 class Note(MorphCategory):
     """
     Poznámka.
     """
-    
-    LOCATION="jL"
+
+    LOCATION = "jL"
     """Vyjadřuje místo"""
-    
-    GIVEN_NAME="jG"
+
+    GIVEN_NAME = "jG"
     """Vyjadřuje křestní jméno."""
-    
-    SURNAME="jS"
+
+    SURNAME = "jS"
     """Vyjadřuje príjmení."""
-    
-    CHARACTER_AS_NOUN="iP"
+
+    CHARACTER_AS_NOUN = "iP"
     """
     Nenašel jsem v dokumentaci. Jen odvozuji na základě pozorování.
     Písmeno jako podstatné jméno."""
-    
-    
 
     @staticmethod
     def category():
         return MorphCategories.NOTE
-    
-Note._mappingLntrf={e:str(e.value) for e in Note}
-"""Zobrazení sloužící pro konverzi z LNTRF."""    
-Note._mappingLntrfInverse={v: k for k, v in Note._mappingLntrf.items()}
-"""Inverzní zobrazení k _mappingLntrf."""   
+
+
+Note._mappingLntrf = {e: str(e.value) for e in Note}
+"""Zobrazení sloužící pro konverzi z LNTRF."""
+Note._mappingLntrfInverse = {v: k for k, v in Note._mappingLntrf.items()}
+"""Inverzní zobrazení k _mappingLntrf."""
+
 
 class Flag(Enum):
     """
     Flagy
     """
-    
-    GENERAL_WORD="GW"
+
+    GENERAL_WORD = "GW"
     """Jedná se o obecné slovo. Začíná malým písmenem a je bez poznámky."""
-    
-    NOT_GENERAL_WORD="NGW"
+
+    NOT_GENERAL_WORD = "NGW"
     """Negace GENERAL_WORD."""
 
 
-MorphCategories._lntrfCatMap={
-            MorphCategories.POS: POS.fromLntrf,
-            MorphCategories.GENDER: Gender.fromLntrf,
-            MorphCategories.NUMBER: Number.fromLntrf,
-            MorphCategories.CASE: Case.fromLntrf,
-            MorphCategories.NEGATION: Negation.fromLntrf,
-            MorphCategories.DEGREE_OF_COMPARISON: DegreeOfComparison.fromLntrf,
-            MorphCategories.PERSON: Person.fromLntrf,
-            MorphCategories.STYLISTIC_FLAG: StylisticFlag.fromLntrf,
-            MorphCategories.NOTE: Note.fromLntrf
-            }
+MorphCategories._lntrfCatMap = {
+    MorphCategories.POS: POS.fromLntrf,
+    MorphCategories.GENDER: Gender.fromLntrf,
+    MorphCategories.NUMBER: Number.fromLntrf,
+    MorphCategories.CASE: Case.fromLntrf,
+    MorphCategories.NEGATION: Negation.fromLntrf,
+    MorphCategories.DEGREE_OF_COMPARISON: DegreeOfComparison.fromLntrf,
+    MorphCategories.PERSON: Person.fromLntrf,
+    MorphCategories.STYLISTIC_FLAG: StylisticFlag.fromLntrf,
+    MorphCategories.NOTE: Note.fromLntrf
+}
 """Zobrazení pro lntrf konverzi. Pro tvorbu MorphCategory z lntrf hodnoty s ohledem na aktuální použitou hodnotu z MorphCategories."""
