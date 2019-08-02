@@ -733,14 +733,15 @@ class NameReader(object):
 
     """
 
-    def __init__(self, inputFile=None):
+    def __init__(self, inputFile=None, shouldSort:bool=True):
         """
         Konstruktor
 
         :param inputFile: Cesta ke vstupnímu souboru se jmény.
             Pokud je None čte z stdin
         :type inputFile: string | None
-
+        :param shouldSort: Příznak zda si má po přečtení uložit jména v sežazeném pořadí vzestupně.
+        :type shouldSort: bool
         """
         self.names = []
         self._errorCnt = 0  # počet chybných nenačtených jmen
@@ -751,12 +752,16 @@ class NameReader(object):
             with open(inputFile, "r") as rInput:
                 self._readInput(rInput)
 
+        if shouldSort:
+            self.names = sorted(self.names)
+
     def _readInput(self, rInput):
         """
         Čtení vstupu.
-        
+
         :param rInput: Vstup
         """
+
         wordDatabase = {}  # zde budeme ukládat již vyskytující se slova
         for line in rInput:
             line = line.strip()
@@ -834,4 +839,4 @@ class NameReader(object):
         """
         Iterace přes všechna jména. V seřazeném pořadí.
         """
-        return iter(sorted(self.names))
+        return iter(self.names)

@@ -551,7 +551,6 @@ class Terminal(object):
         :type t: Token
         :return: Vrací True, pokud odpovídá. Jinak false.
         :rtype: bool
-        :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
 
         try:
@@ -570,7 +569,6 @@ class Terminal(object):
         :type t: Token
         :return: Vrací True, pokud odpovídá. Jinak false.
         :rtype: bool
-        :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
 
         mr = self.getAttribute(self.Attribute.Type.MATCH_REGEX)
@@ -583,26 +581,42 @@ class Terminal(object):
             return True
 
         # Zjistíme zda-li se jedná o token, který potenciálně potřebuje analyzátor.
-
-        if t.type in Lex.TOKEN_TYPES_THAT_NEEDS_MA:
-            # potřebujeme analýzu
+        if t.type in Lex.TOKEN_TYPES_THAT_CAN_USE_MA:
+            # chceme analýzu
             # Musíme zjistit jaký druh terminálu máme
-            if self._type.isPOSType:
-                groupFlags = self.getAttribute(self.Attribute.Type.FLAGS)
-                groupFlags = set() if groupFlags is None else groupFlags.value
-                # jedná se o typ terminálu používající analyzátor
-                pos = t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues,
-                                                    set(), groupFlags)
 
-                # máme všechny možné slovní druhy, které prošly atributovým filtrem
-                if len(pos) == 0 and self.hasVoluntaryAttr:
-                    # zkusme štěstí ještě pro variantu bez volitelných
-                    pos = t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValuesWithoutVoluntary,
+
+            if self._type.isPOSType:
+                try:
+                    groupFlags = self.getAttribute(self.Attribute.Type.FLAGS)
+                    groupFlags = set() if groupFlags is None else groupFlags.value
+                    # jedná se o typ terminálu používající analyzátor
+                    pos = t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValues,
                                                         set(), groupFlags)
 
-                return self._type.toPOS() in pos
+                    # máme všechny možné slovní druhy, které prošly atributovým filtrem
+                    if len(pos) == 0 and self.hasVoluntaryAttr:
+                        # zkusme štěstí ještě pro variantu bez volitelných
+                        pos = t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValuesWithoutVoluntary,
+                                                            set(), groupFlags)
+
+                    return self._type.toPOS() in pos
+                except Word.WordCouldntGetInfoException:
+                    # Vracíme False, protože některé tokeny sice vyžádají analýzu,
+                    # ale jen z důvodů, že si nejsou jistí jestli s něčím nekolidují, takže kolizi neznáme.
+                    # Jako například řimská číslovka V s předložkou V.
+                    # Naopak tokeny pro něž je naopak analýza nutná (Token.Type.ANALYZE) byly již ve fázi lexikální
+                    # analýzy označeny za Token.Type.ANALYZE_UNKNOWN a tudíž se sem ani nedostaly.
+
+                    return False
             else:
                 # pro tento terminál se nepoužívá analyzátor
+
+                if t.type == Token.Type.ROMAN_NUMBER_INITIAL_ABBREVIATION:
+                    # jedná se o speciální druh tokenu, který zahrnuje dva druhy tokenu a to římskou číslici a
+                    # a iniciálovou zkratku. Lex. anal. o tom nebyl schopen rozhodnout přesně.
+
+                    return self._type.value in {Token.Type.ROMAN_NUMBER.value, Token.Type.INITIAL_ABBREVIATION.value}
 
                 return t.type.value == self._type.value
         else:
@@ -638,6 +652,7 @@ class Token(object):
         """
         ANALYZE = 1  # komplexní typ určený pouze morfologickou analýzou slova
         ANALYZE_UNKNOWN = 2  # Přestože by měl mít token analýzu, tak se ji nepodařilo získat.
+        ROMAN_NUMBER_INITIAL_ABBREVIATION = 3 # Římská číslovka či iniciálová zkratka.
         NUMBER = Terminal.Type.NUMBER.value  # číslice (pouze z číslovek) Příklady: 12., 12
         ROMAN_NUMBER = Terminal.Type.ROMAN_NUMBER.value  # římská číslice Je třeba zohlednit i analýzu kvůli shodě s
         # předložkou V
@@ -729,7 +744,8 @@ class Lex(object):
     ROMAN_NUMBER_REGEX = re.compile(r"^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$", re.IGNORECASE)
     NUMBER_REGEX = re.compile(r"^[0-9]+\.?$", re.IGNORECASE)
 
-    TOKEN_TYPES_THAT_NEEDS_MA = {Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER, Token.Type.INITIAL_ABBREVIATION}
+    TOKEN_TYPES_THAT_CAN_USE_MA = {Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER, Token.Type.INITIAL_ABBREVIATION,
+                                   Token.Type.ROMAN_NUMBER_INITIAL_ABBREVIATION}
 
     @classmethod
     def setTitles(cls, titles: Set[str]):
@@ -789,15 +805,21 @@ class Lex(object):
             w = name[wCnt]
             wCnt += 1
 
-            if cls.ROMAN_NUMBER_REGEX.match(str(w)):
+            romanNumberFlag=cls.ROMAN_NUMBER_REGEX.match(str(w))
+            initialAbberFlag=str(w).isupper() and not str.isdigit(w[0]) and  (len(w) == 1 or (len(w) == 2 and w[-1] == "."))
+
+            if romanNumberFlag and initialAbberFlag:
+                # může se jednat o římskou čislovku a zároven o iniciálovou zkratku
+                token = Token(w, Token.Type.ROMAN_NUMBER_INITIAL_ABBREVIATION)
+            elif romanNumberFlag:
                 # římská číslovka
                 token = Token(w, Token.Type.ROMAN_NUMBER)
             elif cls.NUMBER_REGEX.match(str(w)):
                 # číslovka z číslic, volitelně zakončená tečkou
                 token = Token(w, Token.Type.NUMBER)
-            elif (w[-1] == "." and len(w) == 2 and not str.isdigit(w[0])) or (len(w) == 1 and str(w).isupper()):
-                # Jedná se o slovo, které má jedno písmeno (tečku nepočítáme).
-                # Slovo má na konci tečku nebo nemá a pak je písmeno velké.
+            elif initialAbberFlag:
+                # Jedná se o slovo, které má jedno velké písmeno (tečku nepočítáme).
+                # Slovo má na konci volitelnou tečku.
                 # slovo neobsahuje číslovku.
                 # =>
                 # předpokládáme iniciálovou zkratku
@@ -806,8 +828,7 @@ class Lex(object):
                 # ostatní
                 token = Token(w, Token.Type.ANALYZE)
 
-            # podíváme se, zdali máme analýzu tam, kde ji potřebujeme
-            if token.type in cls.TOKEN_TYPES_THAT_NEEDS_MA:
+                # podíváme se, zdali máme analýzu když ji potřebujeme
                 try:
                     _ = token.word.info
                     # analýzu máme
@@ -1670,7 +1691,6 @@ class Grammar(object):
 
             :param key: Terminal/token pro výběr.
             :type key: Terminal | Token
-            :raise WordCouldntGetInfoException: Problém při analýze slova.
             """
             if isinstance(key, Token):
                 # Nutné zjistit všechny terminály, které odpovídají danému tokenu.
@@ -1921,7 +1941,6 @@ class Grammar(object):
             Pokud vrací None došlo k timeoutu.
         :rtype: (list(list(Rule)), list(list(AnalyzedToken))) | None
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
-        :raise WordCouldntGetInfoException: Problém při analýze slova.
         :raise TimeoutException: Při provádění syntaktické analýzy, nad daným řetězcem, došlo k timeoutu.
         """
 
@@ -1959,7 +1978,6 @@ class Grammar(object):
         :return: Dvojici s listem listu pravidel určujících všechny možné derivace a list listů analyzovaných tokenů.
         :rtype: (list(list(Rule)), list(list(AnalyzedToken)))
         :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
-        :raise WordCouldntGetInfoException: Problém při analýze slova.
         :raise TimeoutException: Při provádění syntaktické analýzy, nad daným řetězcem, došlo k timeoutu.
         """
         if self.timeout is not None:
@@ -1994,8 +2012,9 @@ class Grammar(object):
 
                 # vybereme všechna možná pravidla pro daný token na vstupu a symbol na zásobníku
 
-                actRules = self._table[s.val][
-                    token]  # díky použité třídě ParsingTableSymbolRow si můžeme dovolit použít přímo token
+                actRules = self._table[s.val][token]
+
+                # díky použité třídě ParsingTableSymbolRow si můžeme dovolit použít přímo token
 
                 if not actRules:
                     # v gramatice neexistuje vhodné pravidlo

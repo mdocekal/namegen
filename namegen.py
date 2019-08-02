@@ -384,13 +384,73 @@ def priorityDerivationFilter(aTokens: List[List[namegenPack.Grammar.AnalyzedToke
         # odfiltrujeme derivace, které nemají na aktuálním slově maximální prioritu
         derivationsLeft = set(derivIndex for derivIndex in derivationsLeft
                               if aTokens[derivIndex][iW].matchingTerminal.getAttribute(
-                                Terminal.Attribute.Type.PRIORITY).value >= maxP)
+                                    Terminal.Attribute.Type.PRIORITY).value >= maxP)
 
         if len(derivationsLeft) <= 1:
             break
 
     # Odfiltrovat se mají ty, které se nedostaly až na konec.
     return list(set(x for x in range(len(aTokens))) - derivationsLeft)
+
+
+def correspondence(names):
+    # Předpokládáme, že jsou jména seřazena vzestupně.
+    # Hledá korespondence typu: Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
+    # Tvoříme vlastně rozklad na třídy ekvivalence, dle relace ekvivalence definované výše uvedenou korespondencí.
+
+    classes = []
+    i = 0
+    while i < len(names):
+        actName = names[i]  # Aktuální jméno k němuž hledáme korespondency.
+        classes.append(set([actName]))
+
+        # Hledáme korespondence.
+        i += 1
+        for i in range(i, len(names)):
+            # Vždy postupujeme jen dopředu.
+            # Není nutné chodit zpět jelikož jsme v seřazené posloupnosti jmen a průchod od předcozího jména
+            # By musel už korespondenci nalézt.
+
+            curCheckingName = names[i]
+
+            if 2 < len(actName) == len(curCheckingName) and actName[0] == curCheckingName[0] and \
+                    actName[-1] == curCheckingName[-1]:
+                # Jména jsou stejně dlouhé mají stejná první a poslední slova,
+                # ted se pojďme podívat ještě na korespondence typu: Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
+
+                # prohledáváme prostřední slova
+                constraintAllCor = True  # všechny prostřední slova musí koresponovat
+                constraintAtLeastOneAbber = False  # je mezi nimi alespoň jedno slovo připomínající zkratku.
+                for wI in range(1, len(actName) - 1):
+                    if actName[wI][0] == curCheckingName[wI][0]:
+
+                        # máme shodu na první písmeno
+                        if len(actName[wI]) == 2 and actName[wI][-1] == "." and actName[wI][-2].islower():
+                            # actName je zkratka korespondující s curCheckingName
+                            constraintAtLeastOneAbber = True
+                        elif len(curCheckingName[wI]) == 2 and \
+                                curCheckingName[wI][-1] == "." and curCheckingName[wI][-2].islower():
+                            # curCheckingName je zkratka korespondující s actName
+                            constraintAtLeastOneAbber = True
+                        elif actName[wI] != curCheckingName[wI]:
+                            # neshodují se a nejedná se o zkratku
+                            constraintAllCor = False
+                    else:
+                        # neshodují se
+                        constraintAllCor = False
+                        break
+
+                if constraintAllCor and constraintAtLeastOneAbber:
+                    classes[-1].add(curCheckingName)
+            else:
+                break
+
+    # mrkneme na všechny třídy s alespon dvěma prvky
+    for c in classes:
+        if len(c) > 1:
+            for n in c:
+                print(n)
+            print("----------------")
 
 
 def main():
@@ -461,6 +521,14 @@ def main():
         # načtení jmen pro zpracování
         namesR = NameReader(args.input)
         logging.info("\thotovo")
+
+
+        # TODO: DELETE
+        """
+        start_time = time.time()
+        correspondence(namesR.names)
+        print("--- %s seconds ---" % (time.time() - start_time))
+        """
         logging.info("analýza slov")
 
         # přiřazení morfologického analyzátoru
@@ -519,7 +587,6 @@ def main():
         startOfGenMorp = time.time()
 
         for name in namesR:
-            tokens = None
 
             # filtrování
             if not namesFilter(name):
@@ -537,8 +604,8 @@ def main():
 
             morphsPrinted = False
 
-            wNoInfo = set() # Zde budou uložena slova nemající analýzu, která by ji měla mít.+
-            tokens=[]
+            wNoInfo = set()  # Zde budou uložena slova nemající analýzu, která by ji měla mít.
+            tokens = []
             try:
                 if name in duplicityCheck:
                     # již jsme jednou generovali
@@ -548,18 +615,22 @@ def main():
                 duplicityCheck.add(name)
 
                 tokens = namegenPack.Grammar.Lex.getTokens(name)
-
-
-                for t in tokens:
+                wordsMarks = None
+                for tokenPos, t in enumerate(tokens):
                     if t.type == Token.Type.ANALYZE_UNKNOWN:
+                        try:
+                            m = wordsMarks[tokenPos]
+                        except TypeError:
+                            # Nemáme zatím odhad
+                            wordsMarks = name.simpleWordsTypesGuess(tokens)
+                            m = wordsMarks[tokenPos]
                         # Vybíráme ty tokeny, pro které není dostupná analýza a měla by být.
-                        wNoInfo.add(t.word)
+                        wNoInfo.add((t.word, m))
 
-                if (configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"] and len(wNoInfo) == 0) \
+                if (configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"] or len(wNoInfo) == 0) \
                         and len(wNoInfo) != len(name.words):
                     # Nechceme vůbec používat grammatiku na názvy/jména, které obsahují slova, které morfologický
                     # analyzátor nezná nebo jméno/název je složen pouze z takovýchto slov.
-
 
                     # zpochybnění odhad typu jména
                     # protože guess type používá také gramatky
@@ -570,7 +641,7 @@ def main():
                     else:
                         rules, aTokens = None, None
 
-                    if name.type == None:   #Používáme rozšířené porovnání implementované v Name.__eq__.
+                    if name.type == None:  # Používáme rozšířené porovnání implementované v Name.__eq__.
                         # Nemáme dostatečnou informaci o druhu jména, jdeme dál.
                         print(Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_NAME_WITHOUT_TYPE).format(
                             str(name)), file=sys.stderr, flush=True)
@@ -676,23 +747,19 @@ def main():
                                     noMorphsWords.add((x.matchingTerminal, e.word))
                                     break
 
-                    if len(wNoInfo) > 0:
-                        # vypíšeme slova, kdy analýza selhala
-                        print(str(name) + "\t" + Errors.ErrorMessenger.getMessage(
-                            Errors.ErrorMessenger.CODE_WORD_ANALYZE) + "\t" + (
-                                  ", ".join(str(w) + "#" + str(m) for w, m in wNoInfo)), file=sys.stderr, flush=True)
                     if len(noMorphsWords) > 0 or len(missingCaseWords) > 0:
                         # chyba při generování tvarů jména
 
                         if len(noMorphsWords) > 0:
                             print(Errors.ErrorMessenger.getMessage(
                                 Errors.ErrorMessenger.CODE_NAME_NO_MORPHS_GENERATED).format(str(name), ", ".join(
-                                    str(w) + " " + str(m) for m, w in noMorphsWords)), file=sys.stderr, flush=True)
+                                str(w) + " " + str(m) for m, w in noMorphsWords)), file=sys.stderr, flush=True)
 
                         for aTerm, c in missingCaseWords:
                             print(str(name) + "\t" + Errors.ErrorMessenger.getMessage(
-                                Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE) + "\t" + str(c.value) + "\t" + str(
-                                    aTerm.token.word) + "\t" + str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
+                                Errors.ErrorMessenger.CODE_WORD_MISSING_MORF_FOR_CASE) + "\t" + str(
+                                c.value) + "\t" + str(
+                                aTerm.token.word) + "\t" + str(aTerm.matchingTerminal), file=sys.stderr, flush=True)
 
                     # vytiskneme
                     for m in completedMorphs:
@@ -735,19 +802,17 @@ def main():
                 print(str(name) + "\t" + e.message, file=sys.stderr, flush=True)
 
             if len(wNoInfo) > 0:
-                wordsMarks = name.simpleWordsTypesGuess(tokens)
                 print(str(name) + "\t" + Errors.ErrorMessenger.getMessage(
                     Errors.ErrorMessenger.CODE_WORD_ANALYZE) + "\t" + (
-                          ", ".join(str(w) + "#" + str(wordsMarks[name.words.index(w)]) for w in wNoInfo)),
+                          ", ".join(str(w) + "#" + str(m) for w, m in wNoInfo)),
                       file=sys.stderr, flush=True)
 
-                for w in wNoInfo:
+                for w, m in wNoInfo:
                     # přidáme informaci o druhu slova ve jméně a druh jména
                     try:
-                        errorWords[(name.type, wordsMarks[name.words.index(w)], w)].add(name)
+                        errorWords[(name.type, m, w)].add(name)
                     except KeyError:
-                        errorWords[(name.type, wordsMarks[name.words.index(w)], w)] = {name}
-
+                        errorWords[(name.type, m, w)] = {name}
 
             if args.include_no_morphs and not morphsPrinted:
                 # uživatel chce vytisknout i slova bez tvarů

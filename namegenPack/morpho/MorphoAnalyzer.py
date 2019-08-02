@@ -955,8 +955,8 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
 
         for w in words:
             if len(w) >= 2 and w.isupper() or len(w)==2 and w[-1]==".":
-                # určíme všechna slova obsahující pouze velká písmena, která jsou dlouhá alespoň dva znaky
-                # nebo
+                # Určíme všechna slova obsahující pouze velká písmena, která jsou dlouhá alespoň dva znaky jako zkratku.
+                # a
                 # Všechna jednopísmenná slova zakončená tečku označíme za možnou zkratku.
                 g = self.MAWordGroup(w)
                 g.lemma = w
@@ -1003,14 +1003,13 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
             pass
 
         # vynecháváme, protože v našem případě nemůžou být písmena podstatným jménem
-        for c in string.ascii_lowercase:
+        for c in string.ascii_letters:
             try:
                 ma = self._wordDatabase[c]
 
                 for group in ma.groups:
-                    if group.rules[0][MorphCategories.NOTE] == Note.CHARACTER_AS_NOUN:
+                    if Note.CHARACTER_AS_NOUN in group.rules[0][MorphCategories.NOTE]:
                         ma.delGroup(group)
-                        break  # předpokládáme pouze jednu skupinu
 
             except KeyError:
                 pass

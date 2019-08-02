@@ -73,7 +73,7 @@ class Word(object):
 
     def __init__(self, w):
         """
-        Kontruktor slova.
+        Konstruktor slova.
         
         :param w: Řetězcová reprezentace slova.
         :type w: String
@@ -155,6 +155,14 @@ class Word(object):
 
     def __repr__(self):
         return self._w
+
+    def __hash__(self):
+        return hash(self._w)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return str(self)==str(other)
+        return False
 
     def __str__(self):
         return self._w
