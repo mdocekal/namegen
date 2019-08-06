@@ -121,7 +121,7 @@ NUM(c=1,n,g) -> ε
 NEXT -> !CONJ S
 NEXT -> ε
 
-!CONJ -> 8{t=8}
+!CONJ -> 8{t=8,r="^(\p{Ll}+)$"}
 
 #Skupina přídavných jmen
 # i s volitelným příslovcem
@@ -170,8 +170,8 @@ LOC2_CONTINUE(c=1,n,g) ->ε
 !AFTER_PREP -> 7A{t=7A} !AFTER_PREP
 !AFTER_PREP -> t{t=T} !AFTER_PREP
 !AFTER_PREP -> ia{t=I} !AFTER_PREP
-!AFTER_PREP -> a{t=A} !AFTER_PREP
-!AFTER_PREP -> 1{t=L} 8{t=8} 1{t=L} !AFTER_PREP
+!AFTER_PREP -> !ABBRE !AFTER_PREP
+!AFTER_PREP -> 1{t=L} 8{t=8,r="^(\p{Ll}+)$"} 1{t=L} !AFTER_PREP
 !AFTER_PREP -> r{t=R} !AFTER_PREP_ENDING
 !AFTER_PREP_ENDING -> !AFTER_PREP
 !AFTER_PREP_ENDING -> ε

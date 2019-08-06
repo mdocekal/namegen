@@ -801,6 +801,7 @@ class Name(object):
             if aToken.matchingTerminal.getAttribute(
                     namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value == wordType:
                 # získáme příslušná pravidla
+
                 cateFilters = aToken.morphCategories  # podmínky na původní slovo
 
                 rules = {r for r, w in aToken.token.word.morphs(cateFilters, cateFilters) if

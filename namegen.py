@@ -774,7 +774,10 @@ def main():
 
                         # sjednotíme všechny derivace
                         for aT in aTokens:
-                            for w, rules in Name.getWordsOfType(wordType, aT):
+                            # pouze známá
+                            aTokensKnown=[ aTok for aTok in aT if aTok.token.type != Token.Type.ANALYZE_UNKNOWN]
+
+                            for w, rules in Name.getWordsOfType(wordType, aTokensKnown):
                                 try:
                                     wordRules[wordType][str(w)] = wordRules[wordType][str(w)] | rules
                                 except KeyError:
@@ -787,7 +790,8 @@ def main():
 
             except Word.WordException as e:
                 if isinstance(e, Word.WordCouldntGetInfoException):
-                    print(str(name) + "\t" + e.message, file=sys.stderr, flush=True)
+                    traceback.print_exc()
+                    print(str(name) + "asd\t" + e.message, file=sys.stderr, flush=True)
 
             except namegenPack.Grammar.Grammar.NotInLanguage:
                 errorsGrammerCnt += 1

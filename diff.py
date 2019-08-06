@@ -18,7 +18,7 @@ class Morphs(object):
 
     def parseCase(self, c):
         words=[]
-        for w in re.split('-|–|,|\s',c):
+        for w in re.split("-|–|,|\s|"+u'\u200b',c):
             variants=set()
             for variant in w.split("/"):
                 try:

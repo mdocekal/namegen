@@ -1013,15 +1013,20 @@ class AnalyzedToken(object):
 
             # nejprve zkusím s volitelnými atributy
 
+            morphsInfo = {}
             # jedná se o typ terminálu používající analyzátor
-            morphsInfo = self._token.word.info.getAll(categories, set(), groupFlags)  # hovorové nechceme
-
-            if len(morphsInfo) == 0:
-                # zkusme štěstí ještě pro variantu bez volitelných atributů
-                categories = self.matchingTerminal.fillteringAttrValuesWithoutVoluntary.copy()
-                categories.add(self.matchingTerminal.type.toPOS())
-
+            try:
                 morphsInfo = self._token.word.info.getAll(categories, set(), groupFlags)
+            except Word.WordCouldntGetInfoException:
+                #asi nemáme analýzu vůbec
+                pass
+            else:
+                if len(morphsInfo) == 0:
+                    # zkusme štěstí ještě pro variantu bez volitelných atributů
+                    categories = self.matchingTerminal.fillteringAttrValuesWithoutVoluntary.copy()
+                    categories.add(self.matchingTerminal.type.toPOS())
+
+                    morphsInfo = self._token.word.info.getAll(categories, set(), groupFlags)
 
             # Například pokud víme, že máme přídavné jméno rodu středního v jednotném čísle
             # a morf. analýza nám řekne, že přídavné jméno může být pouze prvního stupně, tak tuto informaci zařadíme
