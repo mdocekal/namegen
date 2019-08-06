@@ -193,6 +193,7 @@ class Terminal(object):
         V = "5"  # sloveso
         D = "6"  # příslovce
         R = "7"  # předložka
+        RA = "7A"  # zkracená předložka nad -> n.
         RM = "7m"  # předložka za níž se ohýbají slova (von, da, de)
         J = "8"  # spojka
         T = "9"  # částice
@@ -230,7 +231,7 @@ class Terminal(object):
                 # a to pouze typy terminálu, které vyjadřují slovní druhy
                 return None
 
-    Type.POSTypes = {Type.N, Type.A, Type.P, Type.C, Type.V, Type.D, Type.R, Type.RM, Type.J, Type.T, Type.I,
+    Type.POSTypes = {Type.N, Type.A, Type.P, Type.C, Type.V, Type.D, Type.R, Type.RA, Type.RM, Type.J, Type.T, Type.I,
                      Type.ABBREVIATION}
     """Typy, které jsou POS"""
 
@@ -242,6 +243,7 @@ class Terminal(object):
         Type.V: POS.VERB,  # sloveso
         Type.D: POS.ADVERB,  # příslovce
         Type.R: POS.PREPOSITION,  # předložka
+        Type.RA: POS.PREPOSITION_ABBREVIATION,  # zkracená předložka nad -> n.
         Type.RM: POS.PREPOSITION_M,  # předložka za níž se ohýbají slova
         Type.J: POS.CONJUNCTION,  # spojka
         Type.T: POS.PARTICLE,  # částice
@@ -585,7 +587,6 @@ class Terminal(object):
             # chceme analýzu
             # Musíme zjistit jaký druh terminálu máme
 
-
             if self._type.isPOSType:
                 try:
                     groupFlags = self.getAttribute(self.Attribute.Type.FLAGS)
@@ -597,7 +598,8 @@ class Terminal(object):
                     # máme všechny možné slovní druhy, které prošly atributovým filtrem
                     if len(pos) == 0 and self.hasVoluntaryAttr:
                         # zkusme štěstí ještě pro variantu bez volitelných
-                        pos = t.word.info.getAllForCategory(MorphCategories.POS, self.fillteringAttrValuesWithoutVoluntary,
+                        pos = t.word.info.getAllForCategory(MorphCategories.POS,
+                                                            self.fillteringAttrValuesWithoutVoluntary,
                                                             set(), groupFlags)
 
                     return self._type.toPOS() in pos
@@ -652,7 +654,7 @@ class Token(object):
         """
         ANALYZE = 1  # komplexní typ určený pouze morfologickou analýzou slova
         ANALYZE_UNKNOWN = 2  # Přestože by měl mít token analýzu, tak se ji nepodařilo získat.
-        ROMAN_NUMBER_INITIAL_ABBREVIATION = 3 # Římská číslovka či iniciálová zkratka.
+        ROMAN_NUMBER_INITIAL_ABBREVIATION = 3  # Římská číslovka či iniciálová zkratka.
         NUMBER = Terminal.Type.NUMBER.value  # číslice (pouze z číslovek) Příklady: 12., 12
         ROMAN_NUMBER = Terminal.Type.ROMAN_NUMBER.value  # římská číslice Je třeba zohlednit i analýzu kvůli shodě s
         # předložkou V
@@ -685,16 +687,8 @@ class Token(object):
         :param tokenType: Druh tokenu.
         :type tokenType: self.Type
         """
-        self._word = word
+        self.word = word
         self._type = tokenType
-
-    @property
-    def word(self):
-        """
-        Slovo ze vstupu, které má přiřazeno tento token.
-        """
-
-        return self._word
 
     @property
     def type(self):
@@ -717,14 +711,14 @@ class Token(object):
         self._type = t
 
     def __str__(self):
-        return str(self._type) + "(" + str(self._word) + ")"
+        return str(self._type) + "(" + str(self.word) + ")"
 
     def __hash__(self):
-        return hash((self._type, self._word))
+        return hash((self._type, self.word))
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self._type == other._type and self._word == other._word
+            return self._type == other._type and self.word == other.word
 
         return False
 
@@ -805,8 +799,9 @@ class Lex(object):
             w = name[wCnt]
             wCnt += 1
 
-            romanNumberFlag=cls.ROMAN_NUMBER_REGEX.match(str(w))
-            initialAbberFlag=str(w).isupper() and not str.isdigit(w[0]) and  (len(w) == 1 or (len(w) == 2 and w[-1] == "."))
+            romanNumberFlag = cls.ROMAN_NUMBER_REGEX.match(str(w))
+            initialAbberFlag = str(w).isupper() and not str.isdigit(w[0]) and (
+                        len(w) == 1 or (len(w) == 2 and w[-1] == "."))
 
             if romanNumberFlag and initialAbberFlag:
                 # může se jednat o římskou čislovku a zároven o iniciálovou zkratku
@@ -832,6 +827,17 @@ class Lex(object):
                 try:
                     _ = token.word.info
                     # analýzu máme
+
+                    # Je tato analýza slova zásvilá na jméně, ve kterém se vyskytuje?
+                    newWord = Word.createNameDependantWord(str(token.word), name, wCnt-1)
+                    if newWord is not None:
+                        # createNameDependantWord vrací None pokud nemá daná kombinace jména a slovo na jméně
+                        # závislou analýzu. Nyní je jasná, že jí má. Přiřadíme tedy na jméně závislé slovo tokenu.
+                        # Toto slovo je pak svázáno se svým jménem a lze je pak dále bezpečně používát v cache u
+                        # gramatik (má hash a eq svázané se jménem).
+                        token.word = newWord
+
+
                 except Word.WordCouldntGetInfoException:
                     # bohužel analýza není, musíme změnit druh tokenu
                     token.type = Token.Type.ANALYZE_UNKNOWN
@@ -928,6 +934,7 @@ class AnalyzedToken(object):
                    and self._matchingTerminal == other._matchingTerminal
 
         return False
+
     @property
     def token(self):
         """

@@ -19,6 +19,7 @@ Terminály jsou předdefinované. Jejich seznam je následující:
 	6	- příslovce
 	7	- předložka
 	7m	- vybrané předložky dalla, de, da, del, di, dos, el, la, le, van, von, O’, ben, bin, y a zu
+	7A  - zkrácená předložka nad -> n.
 	8	- spojka
 	9	- částice
 	10	- citoslovce

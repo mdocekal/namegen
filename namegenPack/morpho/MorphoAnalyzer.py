@@ -12,8 +12,9 @@ import logging
 import math
 import string
 from abc import ABC, abstractmethod
+from copy import copy
 from subprocess import Popen, PIPE
-from typing import Set, Dict, Tuple
+from typing import Set, Dict, Tuple, Optional
 
 from namegenPack.morpho.MorphCategories import *
 from ..Errors import ExceptionMessageCode, ErrorMessenger
@@ -73,7 +74,8 @@ class MARule(collections.Mapping):
 
                     if isinstance(other[morphCat], frozenset) and isinstance(morphCatVal, frozenset):
                         # více hodnotové atributy
-                        if (len(morphCatVal) > 0 or len(other[morphCat]) > 0) and len(morphCatVal & other[morphCat]) == 0:
+                        if (len(morphCatVal) > 0 or len(other[morphCat]) > 0) and len(
+                                morphCatVal & other[morphCat]) == 0:
                             # Kategorie mají prázdný průnik a nejsou obě prázdné.
                             return False
                     else:
@@ -180,7 +182,7 @@ class MARule(collections.Mapping):
                 # podstané jméno zjistím rod, číslo, pád
                 pos += self[MorphCategories.GENDER].lntrf \
                        + self[MorphCategories.NUMBER].lntrf \
-                       + self[MorphCategories.CASE].lntrf \
+                       + self[MorphCategories.CASE].lntrf
 
             elif self[MorphCategories.POS] == POS.ADJECTIVE:
                 # přídavné jméno zjistím negaci,rod, číslo, pád, stupeň
@@ -233,9 +235,9 @@ class MARule(collections.Mapping):
                 # citoslovce, nic
                 pass
             """
-            #nakonec přidáme stylistický příznak, pokud existuje.
+            # nakonec přidáme stylistický příznak, pokud existuje.
             if MorphCategories.STYLISTIC_FLAG in self:
-                pos+=self[MorphCategories.STYLISTIC_FLAG].lntrf
+                pos += self[MorphCategories.STYLISTIC_FLAG].lntrf
 
             return pos
         except KeyError:
@@ -342,16 +344,90 @@ class MorphoAnalyzer(ABC):
     """
 
     @abstractmethod
-    def analyze(self, word: str) -> MorphoAnalyze:
+    def isNameDependant(self, word: str, name=None) -> bool:
         """
-        Získání morfologické analýzy slova.
-        
+        Zjistí zdali daná kombinace slova a jména má na jméně závislou analýzu.
+
         :param word: slovo pro analýzu
         :type word: str
-        :return: Analýza slova. None při neúspěchu.
-        :rtype: MorphoAnalyze 
+        :param name: Celé jméno v němž je předané slovo obsaženo.
+        :type name: Name
+        :return: True -> Slovo má na jméně závislou analýzu.
+                False -> nemá
+        :rtype: bool
         """
         pass
+
+    @abstractmethod
+    def analyze(self, word: str, name=None, wordPos: Optional[int]=None) -> MorphoAnalyze:
+        """
+        Získání morfologické analýzy slova.
+
+        :param word: slovo pro analýzu
+        :type word: str
+        :param name: Pokud je tento parametr neprázdný pak provede analýzu slova závislou na předaném jménu.
+        :type name: Name
+        :param wordPos: Pozice slova ve jméně.
+        :type wordPos: Optional[int]
+        :return: Analýza slova. None při neúspěchu.
+        :rtype: MorphoAnalyze
+        """
+        pass
+
+
+class EQRelationForPrepAndItsAbbre(object):
+    """
+    Implementace relace ekvivalence:
+        Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
+    """
+
+    def __init__(self, name):
+        """
+        Vytvoření objektu implementujícího relaci ekvivalence.
+
+        :param name: Relace je tvořena pro toto jméno.
+        :type name: Name
+        """
+        self.name = name
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if len(self.name) == len(other.name) and self.name[0] == other.name[0] and \
+                    self.name[-1] == other.name[-1]:
+                # Jména jsou stejně dlouhé mají stejná první a poslední slova,
+                # ted se pojďme podívat ještě na korespondence typu:
+                # Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
+
+                # prohledáváme prostřední slova
+                constraintAllCor = True  # všechny prostřední slova musí koresponovat
+                constraintAtLeastOneAbber = False  # je mezi nimi alespoň jedno slovo připomínající zkratku.
+                for wI in range(1, len(self.name) - 1):
+                    if self.name[wI][0] == other.name[wI][0]:
+
+                        # máme shodu na první písmeno
+                        if len(self.name[wI]) == 2 and self.name[wI][-1] == "." and self.name[wI][-2].islower():
+                            # actName je zkratka korespondující s curCheckingName
+                            constraintAtLeastOneAbber = True
+                        elif len(other.name[wI]) == 2 and \
+                                other.name[wI][-1] == "." and other.name[wI][-2].islower():
+                            # curCheckingName je zkratka korespondující s actName
+                            constraintAtLeastOneAbber = True
+                        elif self.name[wI] != other.name[wI]:
+                            # neshodují se a nejedná se o zkratku
+                            constraintAllCor = False
+                    else:
+                        # neshodují se
+                        constraintAllCor = False
+                        break
+
+                return constraintAllCor and constraintAtLeastOneAbber
+
+        return False
+
+    def __hash__(self):
+        # hashujeme 1. a poslední slovo ve jménu, protože ta se musí shodovat přesně.
+        # Stejně, tak hashujeme společně s nimi délku jména, která musí být taktéž shodná.
+        return hash((str(self.name[0]) + str(self.name[-1]), str(len(self.name))))
 
 
 class MorphoAnalyzerException(ExceptionMessageCode):
@@ -365,7 +441,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
     """
     Obálka pro Morfologický analyzátor postavený na knihovně libma
     .. _ma: http://knot.fit.vutbr.cz/wiki/index.php/Morfologický_slovník_a_morfologický_analyzátor_pro_češtinu
-    
+
     """
 
     class MAWordGroup(object):
@@ -373,7 +449,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         Třída reprezentující skupinu slov k nějakému slovu.
         Obsahuje lemma a vzor daného slova. Také značko-pravidla pro dané slovo
         a různé tvary společně s jejich značko pravidly.
-        
+
         Libma dělí analýzu slova na více skupin. Tato třída reprezentuje jednu ze skupin.
         Zkrácený příklad pro slovo Velké (skupina začíná <s>):
         ma><s> Velké (Sedláčková_nF)
@@ -381,19 +457,19 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
           <c>k1gFnPc1
           <c>k1gFnPc4
           ...
-          <f>[k1gFnSc7] Velkou 
-          <f>[k1gFnSc4] Velkou 
-          <f>[k1gFnSc5] Velká 
-          <f>[k1gFnSc1] Velká 
-          <f>[k1gFnSc6] Velké 
-          <f>[k1gFnSc3] Velké 
+          <f>[k1gFnSc7] Velkou
+          <f>[k1gFnSc4] Velkou
+          <f>[k1gFnSc5] Velká
+          <f>[k1gFnSc1] Velká
+          <f>[k1gFnSc6] Velké
+          <f>[k1gFnSc3] Velké
           ...
         <s> Velké (Široký_nM)
           <l>Velký
           <c>k1gMnPc4
-          <f>[k1gMnPc5] Velcí 
-          <f>[k1gMnPc1] Velcí 
-          <f>[k1gMnPc4] Velké 
+          <f>[k1gMnPc5] Velcí
+          <f>[k1gMnPc1] Velcí
+          <f>[k1gMnPc4] Velké
           ...
         <s> Velké (velký)
           <l>velký
@@ -401,15 +477,15 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
           <c>k2eAgFnPc4d1
           <c>k2eAgFnPc5d1
           ...
-          <f>[k2eNgNnPc4d3wH] nejnevětši 
+          <f>[k2eNgNnPc4d3wH] nejnevětši
           ...
 
         """
 
         def __init__(self, word):
             """
-            Vytvoření skupiny pro slovo. 
-            
+            Vytvoření skupiny pro slovo.
+
             :param word: Slovo pro nějž je tato skupina vytvořena.
             :type word: str
             """
@@ -463,7 +539,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         def word(self, value):
             """
             Nastavení slova pro nějž je tato skupina vytvořena.
-            
+
             :param value: Slovo pro nějž je tato skupina vytvořena.
             :type value: str
             """
@@ -473,7 +549,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
             """
             Přidání tvaru.
             !!!NA ZÁKLADĚ POKYNŮ NEJSOU PŘÍJMÁNY VŠECHNY HOVOROVÉ TVARY
-            
+
             :param tagRule: Značko pravidlo pro tvar (příklad k1gFnSc7)
             :type tagRule: str
             :param morph: Tvar slova.
@@ -503,12 +579,12 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
                 else:
                     self._morphs.append((rule, morph))
 
-        def getMorphs(self, valFilter: Set[MorphCategory] = None, notValFilter: Set[MorphCategory] = None)\
+        def getMorphs(self, valFilter: Set[MorphCategory] = None, notValFilter: Set[MorphCategory] = None) \
                 -> Set[Tuple[MARule, str]]:
             """
             Získání tvarů.
-            
-            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
+
+            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené
                 hodnoty, které musí mít pravidlo tvaru, aby se bral v úvahu daný tvar.
                 Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
                 Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
@@ -551,20 +627,20 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         def convTagRule(tagRule):
             """
             Převod značko pravidla ze str do MARule
-            
+
             :param tagRule: Značko pravidlo (příklad k1gFnPc1)
             :type tagRule: str
             :return: Převedené pravidlo z morfologické analýzy.
             :rtype: MARule
             """
             # Příklad převodu: k1gFnPc1;jL
-            #    
+            #
             #    {"k":"1","g":"F","n":"P","c":"1","note":"jL"}
 
             # !!! Pro kategorie s více hodnotami se používá frozenset. Dále v kodu se s tím počítá. !!!
             res = dict()
             notes = None
-            rule = tagRule.split(MorphCategories.NOTE.lntrf)    # dělíme řetězec dle značky poznámky
+            rule = tagRule.split(MorphCategories.NOTE.lntrf)  # dělíme řetězec dle značky poznámky
 
             if len(rule) > 1:
                 # Pravidlo obsahuje alespoň jednu poznámku.
@@ -595,7 +671,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
                         # tak to vynecháme
                         pass
 
-                if len(tmpVals) > 0:   # Jen neprázdné.
+                if len(tmpVals) > 0:  # Jen neprázdné.
                     res[mCategory] = frozenset(tmpVals)
 
             return MARule(res)
@@ -603,10 +679,10 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         def addTagRuleConv(self, tagRule: MARule):
             """
             Přidání značko pravidla, které již bylo zkonvertováno pomocí convTagRule.
-            
+
             NEPŘÍJMÁ StylisticFlag.COLLOQUIALLY
-            
-            :param tagRule: Značko pravidlo 
+
+            :param tagRule: Značko pravidlo
             :type tagRule: MARule
             """
             if MorphCategories.NOTE in tagRule:
@@ -623,9 +699,9 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         def addTagRule(self, tagRule):
             """
             Přidání značko pravidla.
-            
+
             NEPŘÍJMÁ StylisticFlag.COLLOQUIALLY
-            
+
             :param tagRule: Značko pravidlo (příklad k1gFnPc1)
             :type tagRule: str
             """
@@ -637,8 +713,8 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
                 -> Dict[MorphCategories, Set[MorphCategory]]:
             """
             Vrácení všech možných hodnot mluvnických kategorií.
-            
-            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
+
+            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené
                 hodnoty, které musí mít dané pravidlo, aby se bralo v úvahu.
                 Tedy není-li v daném pravidle vůbec zmíněná kategorie obsažena, tak pravidlo neprojde přes filtr.
                 Příklad: Chci získat všechny rody jakých může nabývat slovo pokud je podstatným jménem.
@@ -687,10 +763,10 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
                               notValFilter: Set[MorphCategory] = None) -> Set[MorphCategory]:
             """
             Vrácení všech možných hodnot mluvnické kategorie.
-            
+
             :param morphCategory: Mluvnická kategorie.
             :type morphCategory: MorphCategories
-            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
+            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené
                 hodnoty, které musí mít dané pravidlo, aby se bralo v úvahu.
                 Tedy není-li v daném pravidle vůbec zminěná kategorie obsažena, tak pravidlo neprojde přes filtr.
                 Příklad: Chci získat všechny rody jakých může nabývat slovo pokud je podstatným jménem.
@@ -763,7 +839,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         def addGroup(self, group):
             """
             Přidání skupiny z morfoligické analýzy.
-            
+
             :param group: Skupina z analýzy obsahující vzor, lemma, tvary, značko-pravidla
             :type group: MorphoAnalyzerLibma.MAWordGroup
             """
@@ -772,7 +848,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         def delGroup(self, group):
             """
             Smaže danou skupinu.
-            
+
             :param group: Skupina, které bude smazána.
             :type group:MorphoAnalyzerLibma.MAWordGroup
             """
@@ -784,8 +860,8 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
             """
             Vrácení všech možných hodnot mluvnických kategorií. Ve všech skupinách
             získaných při analýze slova.
-            
-            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
+
+            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené
                 hodnoty, které musí mít dané pravidlo, aby se bralo v úvahu.
                 Tedy není-li v daném pravidle vůbec zmíněná kategorie obsažena, tak pravidlo neprojde přes filtr.
                 Příklad: Chci získat všechny rody jakých může nabývat slovo pokud je podstatným jménem.
@@ -826,10 +902,10 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
             """
             Vrácení všech možných hodnot dané mluvnické kategorie. Ve všech skupinách
             získaných při analýze slova.
-            
+
             :param morphCategory: Mluvnická kategorie.
             :type morphCategory: MorphCategories
-            :param valFilter: (Volitelný) Filter, který určuje pevně stanovené 
+            :param valFilter: (Volitelný) Filter, který určuje pevně stanovené
                 hodnoty, které musí mít dané pravidlo, aby se bralo v úvahu.
                 Tedy není-li v daném pravidle vůbec zminěná kategorie obsažena, tak pravidlo neprojde přes filtr.
                 Příklad: Chci získat všechny rody jakých může nabývat slovo pokud je podstatným jménem.
@@ -863,8 +939,8 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
                       wordFilter: Set[MorphCategory] = None, groupFlags: Set[Flag] = None) -> Set[Tuple[MARule, str]]:
             """
             Získání tvarů.
-            
-            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené 
+
+            :param valFilter: (Volitelný) Filtr, který určuje pevně stanovené
                 hodnoty, které musí mít pravidlo tvaru, aby se bral v úvahu daný tvar.
                 Tedy není-li v daném pravidle tvaru vůbec zminěná kategorie obsažena, tak tvar neprojde přes filtr.
                 Příklad: Chci získat všechny tvary, které jsou podstatným jménem, tak
@@ -908,7 +984,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         def groups(self):
             """
             Skupiny z morfologické analýzy.
-            
+
             :rtype: List(MAWordGroup)
             """
 
@@ -921,15 +997,47 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
             s += "----------"
             return s
 
+    def prepareNameDependentAnalysis(self, names):
+        """
+        Přípraví analýzou závislou na jménu.
+
+        :param names: Předpokládáme, že jsou jména seřazena vzestupně.
+        :type names: List[Name]
+
+        """
+
+        """
+        Přiřadí k aktuálnímu slovníku, vztaženému ke jménu, druh pro každou potenciální zkratku předložky, který říká,
+        že zkratka může právě být zkratkou předložky.
+
+        Pracuje na základě hledání korespondencí.
+        Hledá korespondence typu: Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
+        Pokud existují takováto jména, pak při na jménu závislé analýze přiřadí příslušné flagy ke zkratkám.
+        
+        """
+
+        # Tvoříme vlastně rozklad na třídy ekvivalence, dle relace ekvivalence definované výše uvedenou korespondencí.
+        self._prepAbberEqClasses = {}
+        for n in names:
+            if len(n) > 2:
+                try:
+                    self._prepAbberEqClasses[EQRelationForPrepAndItsAbbre(n)].add(n)
+                except KeyError:
+                    self._prepAbberEqClasses[EQRelationForPrepAndItsAbbre(n)] = {n}
+
+        # odfiltrujeme všechny třídy s méně jak 2 položkami
+        self._prepAbberEqClasses = {eqR: names for eqR, names in self._prepAbberEqClasses.items() if len(names) > 1}
+
     def __init__(self, pathToMa, words, hint=None):
         """
         Provede vytvoření objektu Morfologického analyzátoru.
         Spustí nad všemy slovy z words morfologický analyzátor s parametry:
             -F vrací všechny možné tvary.
             -m Na výstup se vypíše flektivní analýza zadaného slova.
+            -n Přidá poznámku.
         Výsledek si poté načte a bude sloužit jako databáze, která bude použita pro získávání informací
         o slovech.
-        
+
         :param pathToMa: Cesta/ příkaz pro spuštění morfologického analyzátoru.
         :type pathToMa: str
         :param words: Slova, která budou předložena analyzátoru a vysledek budou sloužit jako databáze
@@ -952,9 +1060,14 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         words = list(words)
         self.__commWithMA(words)
 
+        # Rozklad na třídy ekvivalence.
+        # Ve formě dict.
+        # Ekvivalence je typu: Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
+        # Tedy je ekvivalentní ke svým zkraceným formám.
+        self._prepAbberEqClasses = {}
 
         for w in words:
-            if len(w) >= 2 and w.isupper() or len(w)==2 and w[-1]==".":
+            if len(w) >= 2 and w.isupper() or len(w) == 2 and w[-1] == ".":
                 # Určíme všechna slova obsahující pouze velká písmena, která jsou dlouhá alespoň dva znaky jako zkratku.
                 # a
                 # Všechna jednopísmenná slova zakončená tečku označíme za možnou zkratku.
@@ -964,9 +1077,9 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
                 g.addTagRule(POS.ABBREVIATION.lntrf)
                 g.addMorph(POS.ABBREVIATION.lntrf, w)
                 try:
-                    wordAnalyze=self._wordDatabase[w]
+                    wordAnalyze = self._wordDatabase[w]
                     if POS.ABBREVIATION not in wordAnalyze.getAllForCategory(MorphCategories.POS):
-                        #Zatím není možnou zkratkou, tak přidáme.
+                        # Zatím není možnou zkratkou, tak přidáme.
                         wordAnalyze.addGroup(g)
                 except KeyError:
                     # slovo zatím není v databázi vůbec
@@ -977,7 +1090,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
         # analýzu, že se jedná o předložky za nimiž se slova ohýbají
         for prep in ["dalla", "de", "da", "del", "di", "dos", "el", "la", "le", "van", "von", "O’", "ben", "bin", "y",
                      "zu"]:
-            for w in [prep, prep.capitalize()]:  # generujeme variantu s velkým a malým písmenem na konci
+            for w in [prep, prep.capitalize()]:  # generujeme variantu s velkým a malým písmenem na začátku
                 g = self.MAWordGroup(w)
                 g.lemma = w
 
@@ -1014,12 +1127,10 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
             except KeyError:
                 pass
 
-
-
     def __commWithMA(self, words):
         """
         Pošle ma slova, která mají být analyzována.
-        
+
         :param words: Slova pro analýzu
         :type words:List[str]
         :raise MorphoAnalyzerException: Chyba analyzátoru.
@@ -1058,75 +1169,81 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
     def _parseMaOutput(self, output):
         """
         Provede analýzu výstupu z ma a uloží získané informace do databáze.
-        
+
         :param output: Výstup z analyzátoru.
         :type output: str
         :return: Počet získaných slov. (i nezpracovaných ma>--not found)
         :rtype: int
+        :raise MorphoAnalyzerException: Pokud se nepodaří analyzovat vstup.
         """
 
         actWordGroup = None  # obsahuje data k aktuálně parsované skupině
         cntUnWords = 0
         wordsInDBAtStart = len(self._wordDatabase)
-        for line in output.splitlines():
-            if line == "ma>--not found":
-                # máme další slovo, ale nezpracované
-                cntUnWords += 1
-                continue
+        for lineNumber, line in enumerate(output.splitlines()):
+            try:
+                if line == "ma>--not found":
+                    # máme další slovo, ale nezpracované
+                    cntUnWords += 1
+                    continue
 
-            # rozdělení řádku
-            parts = line.strip().split()
+                # rozdělení řádku
+                parts = line.strip().split()
+                if parts[0][-3:] == "<s>":
+                    # začínáme číst novou skupinu slova
+                    # <s> vstupní slovo (vzor 1)
 
-            if parts[0][-3:] == "<s>":
-                # začínáme číst novou skupinu slova
-                # <s> vstupní slovo (vzor 1)
+                    # byla předešlá skupina k něčemu dobrá?
+                    if actWordGroup is not None and len(actWordGroup.rules) == 0:
+                        # ne nebyla, tak ji odstraníme
+                        self._wordDatabase[actWordGroup.word].delGroup(actWordGroup)
 
-                # byla předešlá skupina k něčemu dobrá?
-                if actWordGroup is not None and len(actWordGroup.rules) == 0:
-                    # ne nebyla, tak ji odstraníme
-                    self._wordDatabase[actWordGroup.word].delGroup(actWordGroup)
+                    # vytvoříme skupinu
+                    actWordGroup = self.MAWordGroup(parts[1])
 
-                # vytvoříme skupinu
-                actWordGroup = self.MAWordGroup(parts[1])
+                    try:
+                        # vložíme skupinu do analýzy slova
+                        self._wordDatabase[parts[1]].addGroup(actWordGroup)
+                    except KeyError:
+                        # nové slovo
+                        # vytvoříme objekt pro uložení morfologické analýzy slova
+                        self._wordDatabase[parts[1]] = self.MAWord()
+                        # a znovu vložíme
+                        self._wordDatabase[parts[1]].addGroup(actWordGroup)
 
-                try:
-                    # vložíme skupinu do analýzy slova
-                    self._wordDatabase[parts[1]].addGroup(actWordGroup)
-                except KeyError:
-                    # nové slovo
-                    # vytvoříme objekt pro uložení morfologické analýzy slova
-                    self._wordDatabase[parts[1]] = self.MAWord()
-                    # a znovu vložíme
-                    self._wordDatabase[parts[1]].addGroup(actWordGroup)
+                elif parts[0][:3] == "<c>":
+                    # značko pravidlo, které sedí pro dané slovo
 
-            elif parts[0][:3] == "<c>":
-                # značko pravidlo, které sedí pro dané slovo
+                    if isinstance(self._hint, dict) or isinstance(self._hint, set):
+                        # aplikujeme nápovědu
+                        convRule = self.MAWordGroup.convTagRule(parts[0][3:])
 
-                if isinstance(self._hint, dict) or isinstance(self._hint, set):
-                    # aplikujeme nápovědu
-                    convRule = self.MAWordGroup.convTagRule(parts[0][3:])
+                        hint = self._hint[actWordGroup.word] if isinstance(self._hint, dict) else self._hint
+                        if all(f.category() not in convRule or convRule[f.category()] == f for f in hint):
+                            actWordGroup.addTagRuleConv(convRule)
+                    else:
+                        actWordGroup.addTagRule(parts[0][3:])
+                elif parts[0][:3] == "<l>":
+                    # lemma slova
+                    if parts[0][3:][0].islower():
+                        # malé první písmeno u lematu
+                        # nastavujeme jako obecné slovo
+                        # pokud se dále ukáže, že má tato skupina poznámku, pak bude
+                        # tento flag odstraněn samotným objektem třídy MAWordGroup.
+                        actWordGroup.addFlag(Flag.GENERAL_WORD)
 
-                    hint = self._hint[actWordGroup.word] if isinstance(self._hint, dict) else self._hint
-                    if all(f.category() not in convRule or convRule[f.category()] == f for f in hint):
-                        actWordGroup.addTagRuleConv(convRule)
-                else:
-                    actWordGroup.addTagRule(parts[0][3:])
-            elif parts[0][:3] == "<l>":
-                # lemma slova
-                if parts[0][3:][0].islower():
-                    # malé první písmeno u lematu
-                    # nastavujeme jako obecné slovo
-                    # pokud se dále ukáže, že má tato skupina poznámku, pak bude
-                    # tento flag odstraněn samotným objektem třídy MAWordGroup.
-                    actWordGroup.addFlag(Flag.GENERAL_WORD)
+                elif parts[0][:3] == "<f>":
+                    # Přidání tvaru slova
+                    # pouze pokud je relevantní k znočko pravidlům, které sedí na dané slovo.
+                    # Tento požadavek si můžeme dovolit, jelikoř v tuto dobu by měly být zpracovány
+                    # všechny <c> řádky.
 
-            elif parts[0][:3] == "<f>":
-                # Přidání tvaru slova
-                # pouze pokud je relevantní k znočko pravidlům, které sedí na dané slovo.
-                # Tento požadavek si můžeme dovolit, jelikoř v tuto dobu by měly být zpracovány
-                # všechny <c> řádky.
+                    actWordGroup.addMorph((parts[0][3:])[1:-1], parts[1], True)
 
-                actWordGroup.addMorph((parts[0][3:])[1:-1], parts[1], True)
+            except IndexError:
+                raise MorphoAnalyzerException(ErrorMessenger.CODE_MA_CAN_NOT_READ_OUTPUT,
+                                              ErrorMessenger.getMessage(ErrorMessenger.CODE_MA_CAN_NOT_READ_OUTPUT)
+                                              .format(lineNumber) + "\n\t" + line)
 
         # byla předešlá skupina k něčemu dobrá?
         if actWordGroup is not None and len(actWordGroup.rules) == 0:
@@ -1135,18 +1252,71 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
 
         return cntUnWords + len(self._wordDatabase) - wordsInDBAtStart
 
-    def analyze(self, word):
+    def isNameDependant(self, word: str, name) -> bool:
         """
-        Získání kompletních znalostí o slově. Slovo by mělo být 
-        jedním ze slov předaných v konstruktoru.
-        
+        Zjistí zdali daná kombinace slova a jména má na jméně závislou analýzu.
+
         :param word: slovo pro analýzu
         :type word: str
+        :param name: Celé jméno v němž je předané slovo obsaženo.
+        :type name: Name
+        :return: True -> Slovo má na jméně závislou analýzu.
+                False -> nemá
+        :rtype: bool
+        """
+
+        return EQRelationForPrepAndItsAbbre(name) in self._prepAbberEqClasses and \
+            POS.ABBREVIATION in self._wordDatabase[word].getAllForCategory(MorphCategories.POS)
+
+    def analyze(self, word, name=None, wordPos: Optional[int] = None):
+        """
+        Získání kompletních znalostí o slově. Slovo by mělo být
+        jedním ze slov předaných v konstruktoru.
+
+        :param word: slovo pro analýzu
+        :type word: str
+        :param name: Pokud je tento parametr neprázdný pak provede analýzu slova závislou na předaném jménu.
+        :type name: Optional[Name]
+        :param wordPos: Pozice slova ve jméně.
+        :type wordPos: Optional[int]
         :return: Analýza slova. None pokud není slovo v databázi.
-        :rtype: MAWord 
+        :rtype: MAWord
+        :raise ValueError: Může někdy hodit tuto vyjímku pokud není dané slovo v poskytnutém jméně, je-li ovšem jméno
+            vůbec poskytnuto.
         """
 
         try:
-            return self._wordDatabase[word]
+            wordAnalyze = self._wordDatabase[word]
         except KeyError:
             return None
+
+        if name is not None:
+            eqR = EQRelationForPrepAndItsAbbre(name)
+
+            if eqR in self._prepAbberEqClasses and \
+                    POS.ABBREVIATION in self._wordDatabase[word].getAllForCategory(MorphCategories.POS):
+                # Máme na jménu závislou analýzu pro toto slovo.
+
+                # Budeme zkoušet zdali neexistuje prvek v ekv. třídě,
+                # který má slovo na stejné pozici a je předložkou.
+
+                if wordPos is not None and \
+                        any((POS.PREPOSITION in self._wordDatabase[str(n[wordPos])].getAllForCategory(MorphCategories.POS))
+                            for n in self._prepAbberEqClasses[eqR]):
+                    # Vytvoříme se prázdnou novou analýzu slova, protože jsme si na základě získaného kontextu
+                    # jistější o tom, že je to zkratka předložky a jiné možnosti tedy zamítneme.
+                    wordAnalyze = self.MAWord()
+                else:
+                    # zkopírujeme co o slovu již víme
+                    wordAnalyze = copy(wordAnalyze)
+
+                # Přidáme možnost ke zkratkám, že se může jednat o zkratku předložky.
+                g = self.MAWordGroup(word)
+                g.lemma = word
+
+                g.addTagRule(POS.PREPOSITION_ABBREVIATION.lntrf)
+                g.addMorph(POS.PREPOSITION_ABBREVIATION.lntrf, word)
+
+                wordAnalyze.addGroup(g)
+
+        return wordAnalyze

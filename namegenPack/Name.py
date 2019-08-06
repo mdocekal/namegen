@@ -9,8 +9,9 @@ Modul se třídami pro reprezentaci jména/názvu.
 import locale
 import logging
 import sys
+from builtins import str
 from enum import Enum
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Set, Tuple, Union
 
 import namegenPack.Grammar
 from namegenPack import Errors
@@ -19,6 +20,67 @@ from namegenPack.Grammar import Terminal, Token
 from namegenPack.Word import Word, WordTypeMark
 from namegenPack.morpho import MorphCategories
 from namegenPack.morpho.MorphCategories import Case, POS, Note
+from namegenPack.morpho.MorphoAnalyzer import MARule
+
+
+class NameMorph(object):
+    """
+    Tvar jména pro nějaký pád.
+    Lze použít pro výpis pádu daného jména.
+    """
+
+    UNKNOWN_ANALYZE_FLAG = "E"
+
+    def __init__(self, forName, wordsMorphs: List[Set[Tuple[str, Union[MARule, None]]]],
+                 wordsTypes: List[Tuple[WordTypeMark, bool]]):
+        """
+        Vytvoření tvaru jména pro dané jméno.
+
+        :param forName: Vytvořený tvar patří k tomuto jménu.
+        :type forName:vName
+        :param wordsMorphs: Vygenerované tvary slov společně s jejich značko pravidly.
+        Slovo může mít i více tvarů pro konkrétní pád, proto máme list množin.
+        Pravidla, obsahující značky, budou uvedeny posplu s vygenervanými tvary slov.
+        :type wordsMorphs: List[Set[Tuple[str, Union[MARule, None]]]]
+        :param wordsTypes: List dvojic s druhy slov ve jméně společně s informací zdali se má
+            uvést příznak informující i chybějící analýze.
+            Uvádí se u daného tvaru.
+            Počet musí být stejný jako počet slov (počet položek v listu morphs).
+            Dvojice: (word type, příznak (E)) U příznaku True znamená přidání UNKNOWN_ANALYZE_FLAG. False
+            nepřidává nic.
+        :type wordsTypes: List[Tuple[WordTypeMark, bool]]
+        """
+
+        self.forName = forName
+        self.wordsMorphs = wordsMorphs
+        self.wordsTypes = wordsTypes
+
+    def __str__(self):
+        morph = ""
+
+        for i, (wordMorphs, wordType) in enumerate(zip(self.wordsMorphs, self.wordsTypes)):
+
+            actMorphsTags = ""
+
+            #druh slova jméno, příjmení...
+            if wordType[0] != WordTypeMark.UNKNOWN:
+                actMorphsTags = "#" + str(wordType[0].value) + (self.UNKNOWN_ANALYZE_FLAG if wordType[1] else "")
+
+            #slovo / možné varianty slova s lntrf značko pravidly a druhem slova
+            morph += "/".join(wordMorph +
+                              ("[" + morphRule.lntrfWithoutNote + "]" if morphRule is not None else "") +
+                              actMorphsTags
+                              for wordMorph, morphRule in wordMorphs)
+
+            # přidání oddělovače slov
+            if i < len(self.forName.separators):
+                putSep = self.forName.separators[i]
+                # přidáváme mezeru nulové délky, pokud neni separator
+                morph += putSep if len(putSep) > 0 else u'\u200b'
+
+
+
+        return morph
 
 
 class Name(object):
@@ -230,6 +292,33 @@ class Name(object):
     def __getitem__(self, key):
         return self._words[key]
 
+    def index(self, word: Word, all=False):
+        """
+        Najde pozici, na které se slovo ve jméně nachází.
+        Hledá první shodu (od 0), pokud je all=False.
+
+        :param word: Slovo jehož pozici hledáme.
+        :type word: Word
+        :param all: Pokud je true, pak hledá všechny výskyty.
+        :type all: bool
+        :return: Index slova ve jméně. Nebo list indexů všech výskytů.
+        :rtype: Union[int, List[int]]
+        :raise ValueError: Když není slovo přítomno.
+        """
+
+        indexesSoFar=[]
+        for i, w in enumerate(self):
+            if w == word:
+                if all:
+                    indexesSoFar.append(i)
+                else:
+                    return i
+        if len(indexesSoFar)>0:
+            return indexesSoFar
+        else:
+            raise ValueError("Word {} is not in name {}.".format(word, self))
+
+
     def printName(self):
         """
         Převede jméno do string. Pokud má jméno nějaké přídavné informace, tak je také přidá.
@@ -406,11 +495,24 @@ class Name(object):
     def words(self):
         """
         Slova tvořící jméno.
+
         @return: Slova ve jméně
         @rtype: List[Word]
         """
 
         return self._words
+
+    @words.setter
+    def words(self, newWords:List[Word]):
+        """
+        Přiřadí nové slova do jména.
+        Používat obezřetně. Dojde opravdu jen k náhradě slov, sepárotory zůstavají.
+
+        :param newWords: Nová slova ve jméně.
+        :type newWords:List[Word]
+        """
+
+        self._words=newWords
 
     @property
     def separators(self):
@@ -597,8 +699,8 @@ class Name(object):
         :param missingCaseToken: Volitelný atribut, který lze použít pro získání tokenú/slov, u kterých se nepodařilo
             získat tvar v nějakém z pádů.
         :type missingCaseToken: Set[Tuple[AnalyzedToken, Case]]
-        :return:  Vygenerované tvary.
-        :rtype: list[str]
+        :return:  Vygenerované tvary pro každý pád. Seřazeno od 1. pádu do 7..
+        :rtype: List[NameMorph]
         :raise Word.WordNoMorphsException: Pokud se nepodaří získat tvary u nějakého slova.
         :raise WordCouldntGetInfoException: Vyjímka symbolizující, že se nepovedlo získat mluvnické kategorie ke slovu.
         """
@@ -631,63 +733,54 @@ class Name(object):
 
         for c in [Case.NOMINATIVE, Case.GENITIVE, Case.DATIVE, Case.ACCUSATIVE, Case.VOCATIVE, Case.LOCATIVE,
                   Case.INSTRUMENTAL]:  # pády
-            morph = ""
-            sepIndex = 0
+            wordsTypes=[]
+            wordsWithRules=[]
             for i, (word, aToken) in enumerate(zip(self._words, analyzedTokens)):
+
                 if aToken.morph and isinstance(genMorphsForWords[i], set):
                     # ohýbáme
-                    notMatch = True
 
                     morphsThatWeAlreadyHaves = set()
+
+                    morphsWithRules=set()
+
                     for maRule, wordMorph in genMorphsForWords[i]:
                         # najdeme tvar slova pro daný pád
                         try:
                             if maRule[MorphCategories.MorphCategories.CASE] == c:
-
                                 actMorph = wordMorph + "[" + maRule.lntrfWithoutNote + "]"
-                                wordType = aToken.matchingTerminal.getAttribute(
-                                    namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE)
-                                if wordType != WordTypeMark.UNKNOWN:
-                                    actMorph += "#" + str(wordType.value)
 
                                 if actMorph in morphsThatWeAlreadyHaves:
                                     # Díky tomu, že nezohledňujeme poznámku při výpisu,
                                     # tak můžeme dostávat tvary, které vypadají totožně a není
                                     # nutné je tedy vypisovat.
                                     continue
-                                else:
-                                    morphsThatWeAlreadyHaves.add(actMorph)
 
-                                if not notMatch:
-                                    # můžeme mít více tvarů daného slova
-                                    # toto je jeden z dalších tvarů
-                                    morph += "/"
-                                morph += actMorph
+                                morphsThatWeAlreadyHaves.add(actMorph)
+                                morphsWithRules.add((wordMorph, maRule))
 
-                                notMatch = False
 
                         except KeyError:
                             # pravděpodobně nemá pád vůbec
                             pass
 
-                    if notMatch and missingCaseToken is not None:
-                        # nepovedlo se získat některý pád
-                        missingCaseToken.add((aToken, c))
+                    if len(morphsWithRules)==0:
+                        # nepovedlo se získat aktuální pád pro aktuální slovo
+                        if missingCaseToken is not None:
+                            missingCaseToken.add((aToken, c))
+                    else:
+                        wordsWithRules.append(morphsWithRules)
+                        wordsTypes.append((aToken.matchingTerminal.getAttribute(
+                            namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value, False))
                 else:
                     # neohýbáme
-                    morph += str(word) + "#" + str(aToken.matchingTerminal.getAttribute(
-                        namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value)
-                    if aToken.token.type == Token.Type.ANALYZE_UNKNOWN:
-                        morph += "E"
-                # přidání oddělovače slov
-                if sepIndex < len(self._separators):
-                    putSep = self._separators[sepIndex]
-                    # přidáváme mezeru nulové délky, pokud neni separator
-                    morph += (putSep if len(putSep) > 0 else u'\u200b')
-                sepIndex += 1
+                    wordsWithRules.append({(str(word), None)})
+                    wordsTypes.append((aToken.matchingTerminal.getAttribute(
+                        namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
+                               aToken.token.type == Token.Type.ANALYZE_UNKNOWN))
 
-            if len(morph) > 0:
-                morphs.append(morph)
+            if len(wordsWithRules) > 0:
+                morphs.append(NameMorph(self, wordsWithRules, wordsTypes))
 
         return morphs
 
@@ -840,3 +933,4 @@ class NameReader(object):
         Iterace přes všechna jména. V seřazeném pořadí.
         """
         return iter(self.names)
+

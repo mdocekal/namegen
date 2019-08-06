@@ -22,6 +22,7 @@ import namegenPack.Grammar
 import namegenPack.morpho.MorphCategories
 import namegenPack.morpho.MorphoAnalyzer
 from namegenPack.Filters import NamesFilter
+from namegenPack.Generators import GenerateAbbreFormOfPrep, GenerateNope
 from namegenPack.Name import *
 
 outputFile = sys.stdout
@@ -42,6 +43,7 @@ class ConfigManager(object):
     sectionDefault = "DEFAULT"
     sectionFilters = "FILTERS"
     sectionDataFiles = "DATA_FILES"
+    sectionGenerators = "GENERATORS"
     sectionGrammar = "GRAMMAR"
     sectionMorphoAnalyzer = "MA"
 
@@ -81,7 +83,9 @@ class ConfigManager(object):
         """
 
         return {self.sectionDefault: self.__transformDefaults(), self.sectionFilters: self.__transformFilters(),
-                self.sectionDataFiles: self.__transformDataFiles(), self.sectionGrammar: self.__transformGrammar(),
+                self.sectionDataFiles: self.__transformDataFiles(),
+                self.sectionGenerators: self.__transformGenerators(),
+                self.sectionGrammar: self.__transformGrammar(),
                 self.sectionMorphoAnalyzer: self.__transformMorphoAnalyzer()}
 
     def __transformDefaults(self):
@@ -93,8 +97,8 @@ class ConfigManager(object):
         """
 
         result = {
-            "ALLOW_PRIORITY_FILTRATION": self.getAbsolutePath(
-                self.configParser[self.sectionDefault]["ALLOW_PRIORITY_FILTRATION"]) == "True"
+            "ALLOW_PRIORITY_FILTRATION":
+                self.configParser[self.sectionDefault]["ALLOW_PRIORITY_FILTRATION"].lower() == "true"
         }
 
         # nastavení locale
@@ -144,6 +148,38 @@ class ConfigManager(object):
 
         return result
 
+    def __transformGenerators(self):
+        """
+        Převede hodnoty pro generování a validuje je.
+
+        :returns: dict -- ve formátu jméno prametru jako klíč a k němu hodnota parametru
+        :raise ConfigManagerInvalidException: Pokud je konfigurační soubor nevalidní.
+        """
+
+        result = {
+            "ABBRE_FORM_OF_PREPOSITIONS":
+                self.configParser[self.sectionGenerators]["ABBRE_FORM_OF_PREPOSITIONS"].lower() == "true",
+            "ABBRE_FORM_OF_PREPOSITIONS_USE_ON": set()
+        }
+
+        for nameT in self.configParser[self.sectionGenerators]["ABBRE_FORM_OF_PREPOSITIONS_USE_ON"].split():
+            try:
+                if nameT == "M":    #obecně muži
+                    result["ABBRE_FORM_OF_PREPOSITIONS_USE_ON"].add(Name.Type.PersonGender.MALE)
+                elif nameT == "F":    #obecně ženy
+                    result["ABBRE_FORM_OF_PREPOSITIONS_USE_ON"].add(Name.Type.PersonGender.FEMALE)
+                else:
+                    result["ABBRE_FORM_OF_PREPOSITIONS_USE_ON"].add(Name.Type(nameT))
+            except ValueError:
+                # Nevalidní druh terminálu
+                raise ConfigManagerInvalidException(
+                    Errors.ErrorMessenger.CODE_INVALID_CONFIG,
+                    "Nevalidní konfigurační soubor. ABBRE_FORM_OF_PREPOSITIONS_USE_ON: " + nameT)
+
+
+
+        return result
+
     def __transformMorphoAnalyzer(self):
         """
         Převede hodnoty pro MA a validuje je.
@@ -169,7 +205,7 @@ class ConfigManager(object):
         result = {
             "TITLES": self._readTitles(self.getAbsolutePath(self.configParser[self.sectionGrammar]["TITLES"])),
             "PARSE_UNKNOWN_ANALYZE": True if self.configParser[self.sectionGrammar][
-                                                 "PARSE_UNKNOWN_ANALYZE"] == "True" else False,
+                                                 "PARSE_UNKNOWN_ANALYZE"].lower() == "true" else False,
             "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH": set(),
             "TIMEOUT": None,
         }
@@ -372,14 +408,13 @@ def priorityDerivationFilter(aTokens: List[List[namegenPack.Grammar.AnalyzedToke
         # není co filtrovat
         return []
 
-    allIndexes = set(x for x in range(len(aTokens)))
-    derivationsLeft = copy.copy(allIndexes)  # z tohoto setu budeme postupně odebírat
+    derivationsLeft = set(x for x in range(len(aTokens)))  # z tohoto setu budeme postupně odebírat
 
     for iW in range(len(aTokens[0])):
         # pojďme najít maximální prioritu pro aktuální slovo
         maxP = max(
-            aTokens[derivIndex][iW].matchingTerminal.getAttribute(Terminal.Attribute.Type.PRIORITY).value for derivIndex
-            in derivationsLeft)
+            aTokens[derivIndex][iW].matchingTerminal.getAttribute(Terminal.Attribute.Type.PRIORITY).value
+            for derivIndex in derivationsLeft)
 
         # odfiltrujeme derivace, které nemají na aktuálním slově maximální prioritu
         derivationsLeft = set(derivIndex for derivIndex in derivationsLeft
@@ -391,66 +426,6 @@ def priorityDerivationFilter(aTokens: List[List[namegenPack.Grammar.AnalyzedToke
 
     # Odfiltrovat se mají ty, které se nedostaly až na konec.
     return list(set(x for x in range(len(aTokens))) - derivationsLeft)
-
-
-def correspondence(names):
-    # Předpokládáme, že jsou jména seřazena vzestupně.
-    # Hledá korespondence typu: Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
-    # Tvoříme vlastně rozklad na třídy ekvivalence, dle relace ekvivalence definované výše uvedenou korespondencí.
-
-    classes = []
-    i = 0
-    while i < len(names):
-        actName = names[i]  # Aktuální jméno k němuž hledáme korespondency.
-        classes.append(set([actName]))
-
-        # Hledáme korespondence.
-        i += 1
-        for i in range(i, len(names)):
-            # Vždy postupujeme jen dopředu.
-            # Není nutné chodit zpět jelikož jsme v seřazené posloupnosti jmen a průchod od předcozího jména
-            # By musel už korespondenci nalézt.
-
-            curCheckingName = names[i]
-
-            if 2 < len(actName) == len(curCheckingName) and actName[0] == curCheckingName[0] and \
-                    actName[-1] == curCheckingName[-1]:
-                # Jména jsou stejně dlouhé mají stejná první a poslední slova,
-                # ted se pojďme podívat ještě na korespondence typu: Bernstadt auf dem Eigen <->  Bernstadt a. d. Eigen
-
-                # prohledáváme prostřední slova
-                constraintAllCor = True  # všechny prostřední slova musí koresponovat
-                constraintAtLeastOneAbber = False  # je mezi nimi alespoň jedno slovo připomínající zkratku.
-                for wI in range(1, len(actName) - 1):
-                    if actName[wI][0] == curCheckingName[wI][0]:
-
-                        # máme shodu na první písmeno
-                        if len(actName[wI]) == 2 and actName[wI][-1] == "." and actName[wI][-2].islower():
-                            # actName je zkratka korespondující s curCheckingName
-                            constraintAtLeastOneAbber = True
-                        elif len(curCheckingName[wI]) == 2 and \
-                                curCheckingName[wI][-1] == "." and curCheckingName[wI][-2].islower():
-                            # curCheckingName je zkratka korespondující s actName
-                            constraintAtLeastOneAbber = True
-                        elif actName[wI] != curCheckingName[wI]:
-                            # neshodují se a nejedná se o zkratku
-                            constraintAllCor = False
-                    else:
-                        # neshodují se
-                        constraintAllCor = False
-                        break
-
-                if constraintAllCor and constraintAtLeastOneAbber:
-                    classes[-1].add(curCheckingName)
-            else:
-                break
-
-    # mrkneme na všechny třídy s alespon dvěma prvky
-    for c in classes:
-        if len(c) > 1:
-            for n in c:
-                print(n)
-            print("----------------")
 
 
 def main():
@@ -516,6 +491,12 @@ def main():
                                   configAll[configManager.sectionFilters]["ALLOWED_ALPHABETIC_CHARACTERS"],
                                   configAll[configManager.sectionFilters]["SCRIPT"])
 
+        # Inicializace generátorů.
+        # Je to dělané jako funktor, aby to bylo do budoucna případně snadněji rozšířitelné. Podobně jako filtry.
+        generateNewNames = \
+            GenerateAbbreFormOfPrep(configAll[configManager.sectionGenerators]["ABBRE_FORM_OF_PREPOSITIONS_USE_ON"])  \
+                if configAll[configManager.sectionGenerators]["ABBRE_FORM_OF_PREPOSITIONS"] else GenerateNope()
+
         logging.info("\thotovo")
         logging.info("čtení jmen")
         # načtení jmen pro zpracování
@@ -523,20 +504,18 @@ def main():
         logging.info("\thotovo")
 
 
-        # TODO: DELETE
-        """
-        start_time = time.time()
-        correspondence(namesR.names)
-        print("--- %s seconds ---" % (time.time() - start_time))
-        """
+
         logging.info("analýza slov")
 
         # přiřazení morfologického analyzátoru
         # Tento analyzátor je nastaven tak, že z ma ignoruje všechny hovorové tvary.
-        Word.setMorphoAnalyzer(
-            namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
+        mAnalyzer=namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
                 configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"],
-                namesR.allWords(True, True, namesFilter)))
+                namesR.allWords(True, True, namesFilter))
+        # připravíme analýzu závislou na jménu
+        mAnalyzer.prepareNameDependentAnalysis(namesR.names)
+
+        Word.setMorphoAnalyzer(mAnalyzer)
 
         logging.info("\thotovo")
         logging.info("generování tvarů")
@@ -615,17 +594,12 @@ def main():
                 duplicityCheck.add(name)
 
                 tokens = namegenPack.Grammar.Lex.getTokens(name)
-                wordsMarks = None
+
+                wordsMarks = name.simpleWordsTypesGuess(tokens)
                 for tokenPos, t in enumerate(tokens):
                     if t.type == Token.Type.ANALYZE_UNKNOWN:
-                        try:
-                            m = wordsMarks[tokenPos]
-                        except TypeError:
-                            # Nemáme zatím odhad
-                            wordsMarks = name.simpleWordsTypesGuess(tokens)
-                            m = wordsMarks[tokenPos]
                         # Vybíráme ty tokeny, pro které není dostupná analýza a měla by být.
-                        wNoInfo.add((t.word, m))
+                        wNoInfo.add((t.word, wordsMarks[tokenPos]))
 
                 if (configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"] or len(wNoInfo) == 0) \
                         and len(wNoInfo) != len(name.words):
@@ -659,12 +633,12 @@ def main():
                         # rules a aTokens může obsahovat více než jednu možnou derivaci
                         if name.type == Name.Type.MainType.LOCATION:
                             rules, aTokens = grammarLocations.analyse(tokens)
-                        elif name.type == Name.Type.MainType.EVENTS:
-                            rules, aTokens = grammarEvents.analyse(tokens)
                         elif name.type == Name.Type.PersonGender.MALE:
                             rules, aTokens = grammarMale.analyse(tokens)
                         elif name.type == Name.Type.PersonGender.FEMALE:
                             rules, aTokens = grammarFemale.analyse(tokens)
+                        elif name.type == Name.Type.MainType.EVENTS:
+                            rules, aTokens = grammarEvents.analyse(tokens)
                         else:
                             # je cosi prohnilého ve stavu tohoto programu
                             raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
@@ -683,6 +657,8 @@ def main():
                             del aTokens[r]
 
                     alreadyGenerated = set()  # mnozina ntic analyzovanych terminalu, ktere byly jiz generovany
+
+                    generatedNamesThatShouldBeInDuplicityCheckSet=set()
                     for ru, aT in zip(rules, aTokens):
 
                         aTTuple = tuple(aT)
@@ -723,19 +699,38 @@ def main():
                             if args.whole and len(morphs) < len(Case):
                                 # Uživatel chce tisknout pouze pokud máme tvary pro všechny pády.
                                 continue
-                            resAdd = str(name) + "\t" + str(name.language) + "\t" + str(name.type) + "\t" + (
-                                "|".join(morphs))
-                            if len(name.additionalInfo) > 0:
-                                resAdd += "\t" + ("\t".join(name.additionalInfo))
-                            completedMorphs.add(resAdd)
-                            if args.verbose:
-                                logging.info(str(name) + "\tDerivace:")
-                                for r in ru:
-                                    logging.info("\t\t" + str(r))
-                                logging.info("\tTerminály:")
-                                for a in aT:
-                                    if a.token.word is not None:
-                                        logging.info("\t\t" + str(a.token.word) + "\t" + str(a.matchingTerminal))
+
+                            # Aplikujeme generování nových jmen z existujících.
+
+                            generatedNames = generateNewNames(morphs)
+                            generatedNamesNotDuplicit = []
+
+                            for genName, genNameMorphs in generatedNames:
+                                if genName not in duplicityCheck:
+                                    generatedNamesNotDuplicit.append((genName, genNameMorphs))
+
+                                    # Přidáme nově vygenerovaná jména, abychom je znovu nemuseli případně dále procházet.
+                                    generatedNamesThatShouldBeInDuplicityCheckSet.add(genName)
+
+
+                            generatedNames=generatedNamesNotDuplicit
+
+                            #vypíšeme všechna jména (generovaná + původní jméno)
+                            for nameToWrite, morphsToWrite in [(name, morphs)]+generatedNames:
+
+                                resAdd = str(nameToWrite) + "\t" + str(nameToWrite.language) + "\t" + str(nameToWrite.type) + "\t" + (
+                                    "|".join(str(m) for m in morphsToWrite))
+                                if len(nameToWrite.additionalInfo) > 0:
+                                    resAdd += "\t" + ("\t".join(nameToWrite.additionalInfo))
+                                completedMorphs.add(resAdd)
+                                if args.verbose:
+                                    logging.info(str(nameToWrite) + "\tDerivace:")
+                                    for r in ru:
+                                        logging.info("\t\t" + str(r))
+                                    logging.info("\tTerminály:")
+                                    for a in aT:
+                                        if a.token.word is not None:
+                                            logging.info("\t\t" + str(a.token.word) + "\t" + str(a.matchingTerminal))
 
                         except Word.WordNoMorphsException as e:
                             # chyba při generování tvarů slova
@@ -767,6 +762,10 @@ def main():
 
                     if len(completedMorphs) > 0:
                         morphsPrinted = True
+
+                    # Přidáme nově vygenerovaná jména, abychom je znovu nemuseli případně dále procházet.
+                    for gn in generatedNamesThatShouldBeInDuplicityCheckSet:
+                        duplicityCheck.add(gn)
 
                     # zjistíme, zda-li uživatel nechce vypsat nějaké typy jmen do souborů
 
@@ -921,3 +920,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

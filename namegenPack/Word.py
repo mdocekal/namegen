@@ -22,6 +22,7 @@ class WordTypeMark(Enum):
     EVENT = "E"  # Událost: Příklad: Osvobození Československa
     ROMAN_NUMBER = "R"  # Římská číslice. Příklad: IV
     PREPOSITION = "7"  # Předložka.
+    PREPOSITION_ABBREVIATION = "7A"  # Například Nové Město n. Moravě
     CONJUCTION = "8"  # Spojka.
     NUMBER = "4"  # Číslovka. Příklad: 2
     DEGREE_TITLE = "T"  # Titul. Příklad: prof.
@@ -71,14 +72,43 @@ class Word(object):
     ma = None
     """Morfologický analyzátor."""
 
-    def __init__(self, w):
+    def __init__(self, w, name=None, wordPos: int = None):
         """
         Konstruktor slova.
         
         :param w: Řetězcová reprezentace slova.
         :type w: String
+        :param name: Jméno ze kterého pochází toto slovo.
+            Pokud je toto jméno předáno, pak se vytvoří na jméně závislé slovo. Tento druh slova se využívá v případech,
+            kdy chceme na jméně zásvilou morfologickou analýzu.
+        :type name: Optional[Name]
+        :param wordPos: Pozice slova ve jméně.
+        :type wordPos: Optional[int]
         """
         self._w = w
+        self.name = name
+        self.wordPos = wordPos
+
+    @classmethod
+    def createNameDependantWord(cls, w, name=None, wordPos: int = None):
+        """
+        Vytvoří na jméně závislé slovo, ale jen pokud má na jméně závislou analýzu.
+
+        :param w: Řetězcová reprezentace slova.
+        :type w: String
+        :param name: Jméno ze kterého pochází toto slovo.
+            Pokud je toto jméno předáno, pak se vytvoří na jméně závislé slovo. Tento druh slova se využívá v případech,
+            kdy chceme na jméně zásvilou morfologickou analýzu.
+        :type name: Optional[Name]
+        :param wordPos: Pozice slova ve jméně.
+        :type wordPos: int
+        :return: Na jméně závislé slovo nebo None.
+        :rtype: Union[None, Word]
+        """
+
+        if cls.ma.isNameDependant(w, name):
+            return cls(w, name, wordPos)
+        return None
 
     @classmethod
     def setMorphoAnalyzer(cls, ma: MorphoAnalyzer):
@@ -107,7 +137,7 @@ class Word(object):
                                                        Errors.ErrorMessenger.CODE_WORD_ANALYZE) + "\t" + self._w)
 
         # získání analýzy
-        a = self.ma.analyze(self._w)
+        a = self.ma.analyze(self._w, self.name, self.wordPos)
         if a is None:
             raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
                                                    Errors.ErrorMessenger.getMessage(
@@ -154,14 +184,15 @@ class Word(object):
         return tmp
 
     def __repr__(self):
-        return self._w
+        return self._w + ("" if self.name is None else (" -> " + str(self.name))) + \
+               ("" if self.wordPos is None else ("[" + str(self.wordPos)+"]"))
 
     def __hash__(self):
-        return hash(self._w)
+        return hash((self._w, self.name, self.wordPos))
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return str(self)==str(other)
+            return str(self) == str(other) and self.name == other.name and self.wordPos == other.wordPos
         return False
 
     def __str__(self):

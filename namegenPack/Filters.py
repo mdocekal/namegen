@@ -1,6 +1,6 @@
 """
 Created on 24. 5. 2019
-Modul se třídami (funktory) pro filtrování.
+Modul se třídami (funktory) pro filtrování jmen.
 
 :author:     Martin Dočekal
 :contact:    xdocek09@stud.fit.vubtr.cz

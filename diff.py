@@ -91,40 +91,41 @@ firstName=os.path.basename(sys.argv[1])
 second=loadFile(sys.argv[2])
 secondName=os.path.basename(sys.argv[2])
 
-diff=set(first.keys())^set(second.keys())
-if len(diff):
-    print("Names that aren't in both files:")
-    for name in diff:
-        print("\t"+name)
+numberOfDiff=0
+numberOfNoMorphs=0
 
-else:
-    numberOfDiff=0
-    numberOfNoMorphs=0
-    #both files consists of same names, let's check also other informations
-    for name, firstVariants in first.items():
+for name in set(first.keys())|set(second.keys()):
 
-        
-
-        noMorphs=0
-        for v in firstVariants:
+    noMorphs=0
+    try:
+        for v in first[name]:
             if len(v)==2 or len(v[1].cases)==0:
                 noMorphs=1
                 break
+    except KeyError:
+        print(name+"\t"+"is not in "+sys.argv[1]+".")
+        continue
+
+    try:
         for v in second[name]:
             if len(v)==2 or len(v[1].cases)==0:
-                noMorphs= 0 if noMorphs>0 else 1
+                noMorphs= 0 if noMorphs>0 else 2
                 break
-        if noMorphs>0:
-            numberOfNoMorphs+=1
-            print(name+"\t"+"No morphs in "+[sys.argv[1],sys.argv[2]][noMorphs-1]+".")
-        else:
-            for fileName, diffX, diffY in [(firstName,firstVariants,second[name]),(secondName,second[name],firstVariants)]:  
-                diffVar=diffX - diffY
-                if len(diffVar)>0:
-                    numberOfDiff+=len(diffVar)
-    
-                    for x in diffVar:
-                        print(fileName+"\t"+str(x))
+    except KeyError:
+        print(name + "\t" + "is not in " + sys.argv[2] + ".")
+        continue
 
-    print("Number of no morphs at one and some morphs at other:\t"+str(numberOfNoMorphs))
-    print("Number of different name variants:\t"+str(numberOfDiff))
+    if noMorphs>0:
+        numberOfNoMorphs+=1
+        print(name+"\t"+"No morphs in "+[sys.argv[1],sys.argv[2]][noMorphs-1]+".")
+    else:
+        for fileName, diffX, diffY in [(sys.argv[1],first[name],second[name]),(sys.argv[2],second[name],first[name])]:
+            diffVar=diffX - diffY
+            if len(diffVar)>0:
+                numberOfDiff+=len(diffVar)
+
+                for x in diffVar:
+                    print(fileName+"\t"+str(x))
+
+print("Number of no morphs at one and some morphs at other:\t"+str(numberOfNoMorphs))
+print("Number of different name variants:\t"+str(numberOfDiff))

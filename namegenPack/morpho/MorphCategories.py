@@ -224,6 +224,9 @@ class POS(MorphCategory):
     PREPOSITION = 7
     """předložka"""
 
+    PREPOSITION_ABBREVIATION = "%"
+    """zkrácená předložka"""
+
     PREPOSITION_M = "m"
     """Speciální druh předložky, za kterou se v češtině slova ve jméně ohýbají. (da, von ...)"""
 
