@@ -595,11 +595,23 @@ def main():
 
                 tokens = namegenPack.Grammar.Lex.getTokens(name)
 
-                wordsMarks = name.simpleWordsTypesGuess(tokens)
+
+                wordsMarks=[]
                 for tokenPos, t in enumerate(tokens):
                     if t.type == Token.Type.ANALYZE_UNKNOWN:
                         # Vybíráme ty tokeny, pro které není dostupná analýza a měla by být.
-                        wNoInfo.add((t.word, wordsMarks[tokenPos]))
+
+                        # Musíme přidat druh jména získaný pomocí simpleWordsTypesGuess, protože nemůžeme použít
+                        # bud použít syntaktickou analýzu (PARSE_UNKNOWN_ANALYZE=FALSE)
+                        # a i kdybychom ji použít mohli, tak v případě, kdy nebude název v jazyce generovaným danou
+                        # gramtikou, tak nedostaneme požadovaná značení.
+                        try:
+                            wNoInfo.add((t.word, wordsMarks[tokenPos]))
+                        except IndexError:
+                            # Nemáme analýzu druhu slov pomocí simpleWordsTypesGuess
+                            wordsMarks = name.simpleWordsTypesGuess(tokens)
+                            wNoInfo.add((t.word, wordsMarks[tokenPos]))
+
 
                 if (configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"] or len(wNoInfo) == 0) \
                         and len(wNoInfo) != len(name.words):
