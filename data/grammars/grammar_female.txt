@@ -6,7 +6,7 @@ S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 1{t=S,r="^.*(ová|cká|ská)$",c=1,n=S,g=
 S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 2{t=G,r="^(?!^([sS]vatá|[sS]aint|.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jG} NOUN_GROUP_START PREP_GROUP !T_GROUP #Chceme i indiánská jména: Sedící sova
 S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 2{t=S,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} NOUN_GROUP_START PREP_GROUP !T_GROUP
 
-SAINT -> 1{t=T,r="^([sS]vatá|sS]aint)$",c=1,n=S,g=F,note?=jG} #Svatá ...
+SAINT -> 1{t=T,r="^([sS]vatá|[sS]aint)$",c=1,n=S,g=F,note?=jG} #Svatá ...
 SAINT -> ε
 
 NOUN_GROUP_START -> NOUN_GROUP

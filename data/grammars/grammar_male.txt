@@ -3,7 +3,7 @@ S
 #	1. Baron z Aucklandu
 S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 1{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vatý|[sS]aint)$).*$"} AFTER_GIVEN_NAME
 S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 2{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vatý|[sS]aint)$).*$"} AFTER_GIVEN_NAME	#Chceme i indiánská jména: Sedící býk
-SAINT -> 1{t=T,c=1,n=S,g=M,r="^([sS]vatý|sS]aint)$"} #Svatý ...
+SAINT -> 1{t=T,c=1,n=S,g=M,r="^([sS]vatý|[sS]aint)$"} #Svatý ...
 SAINT -> ε
 
 #tento neterminál předpokládá, že předním je právě jedno křestní jméno
