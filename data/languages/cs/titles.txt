@@ -1,0 +1,247 @@
+#akademické
+
+Dr. #(Doctor)
+Prof. #(Professor)
+F.R.Eng. # First year engineering
+AA or A.A. # Associate of Arts
+AS or A.S. # Associate of Science
+BEP # Brevet d'études professionnelles (France)
+CAP # Certificat d'aptitude professionnelle (France)
+Dip.Arts # Diploma of Arts
+Dip.Lang.Stud. # Diploma of Language Studies
+Dip.Lang # Diploma of Languages
+Dip.Soc.Sc. # Diploma of Social Sciences
+Dip.Ed # Diploma of Education
+Dip.Mus. # Diploma of Music
+BA # Bachelor of Arts
+B.A. # Bachelor of Arts
+AB # Bachelor of Arts
+A.B. # Bachelor of Arts
+B.Arts # Bachelor of Arts
+BSA # Bachelor of Science And Arts
+BAcy # Bachelor of Accountancy
+B.Acy. # Bachelor of Accountancy
+BAcc # Bachelor of Accounting
+B.Acc. # Bachelor of Accounting
+B.An.Vet.Bio.Sc. # Bachelor of Animal and Veterinary Bioscience
+B.App.Sc. # Bachelor of Applied Science
+B.A.Sc. # Bachelor of Applied Science
+BArch # Bachelor of Architecture
+B.Arch. # Bachelor of Architecture
+BBA # Bachelor of Business Administration
+B.B.A. # Bachelor of Business Administration
+BCE # Bachelor of Civil Engineering
+B.C.E. # Bachelor of Civil Engineering
+BComm # Bachelor of Commerce
+B.Comm. # Bachelor of Commerce
+BCom # Bachelor of Commerce
+B.Com. # Bachelor of Commerce
+B.Comm. # Bachelor of Communications
+BCA # Bachelor of Computer Application
+BDH # Bachelor of Dental Hygiene
+B.D.H # Bachelor of Dental Hygiene
+BDM # Bachelor of Dental Medicine
+B.D.M. # Bachelor of Dental Medicine
+BDSc # Bachelor of Dental Science
+B.D.Sc. # Bachelor of Dental Science
+BDS # Bachelor of Dental Surgery
+B.D.S. # Bachelor of Dental Surgery
+BChD # Bachelor of Dental Surgery
+B.Ch.D. # Bachelor of Dental Surgery
+BDent # Bachelor of Dentistry
+B.Dent. # Bachelor of Dentistry
+BDes # Bachelor of Design
+B.Des. # Bachelor of Design
+B.Des.Comp. # Bachelor of Design Computing
+B.Des.Arch. # Bachelor of Design in Architecture
+BEd # Bachelor of Education
+B.Ed. # Bachelor of Education
+BEng # Bachelor of Engineering
+B.Eng. # Bachelor of Engineering
+BE # Bachelor of Engineering
+B.E # Bachelor of Engineering
+BEC # Bachelor of Electronic Commerce
+B.E-COM. # Bachelor of Electronic Commerce
+BEE # Bachelor of Electrical Engineering
+B.E.E. # Bachelor of Electrical Engineering
+BFA # Bachelor of Fine Arts
+B.F.A. # Bachelor of Fine Arts
+B.Hlth.Sci # Bachelor of Health Sciences
+BIT # Bachelor of Information Technology
+B.I.T. # Bachelor of Information Technology
+BIGS # Bachelor of International and Global Studies
+B.I.G.S. # Bachelor of International and Global Studies
+LLB # Bachelor of Law
+LL.B. # Bachelor of Law
+BLAS # Bachelor of Liberal Arts and Sciences
+B.L.A.S. # Bachelor of Liberal Arts and Sciences
+BLib # Bachelor of Library Science
+B.Lib. # Bachelor of Library Science
+BLS # Bachelor of Library Science
+B.L.S. # Bachelor of Library Science
+BLit # Bachelor of Literature
+B.Lit. # Bachelor of Literature
+BMath # Bachelor of Mathematics
+B.Math # Bachelor of Mathematics
+BME # Bachelor of Mechanical Engineering
+B.M.E. # Bachelor of Mechanical Engineering
+B.Med.Sc. # Bachelor of Medical Science
+MB # Bachelor of Medicine
+M.B. # Bachelor of Medicine
+B.M. # Bachelor of Music
+B.Mus.Studies # Bachelor of Music Studies
+BN. # Bachelor of Nursing
+B.N. # Bachelor of Nursing
+B.Pharm. # Bachelor of Pharmacy
+B.Ph. # Bachelor of Philosophy
+B.P.E.S.S. # Bachelor of Political, Economic and Social Sciences
+B.Res.Ec. # Bachelor of Resource Economics
+BS # Bachelor of Science
+B.S. # Bachelor of Science
+BSc # Bachelor of Science
+B.Sc. # Bachelor of Science
+BSDH # Bachelor of Science in Dental Hygiene
+B.S.D.H # Bachelor of Science in Dental Hygiene
+BS.EOH # Bachelor of Science in Environmental and Occupational Health
+BSN # Bachelor of Science in Nursing
+BSLS # Bachelor of Socio-Legal Studies
+B.S.L.S. # Bachelor of Socio-Legal Studies
+BS # Bachelor of Surgery
+B.S. # Bachelor of Surgery
+BTech # Bachelor of Technology
+B.Tech. # Bachelor of Technology
+B.V.Sc. # Bachelor of Veterinary Science
+BVA # Bachelor of Visual Arts
+B.V.A. # Bachelor of Visual Arts
+M.Arch. # Master of Architecture (Professional Degree) or Master of Science in Architecture (Research Degree)
+M.S. # Master of Architecture (Professional Degree) or Master of Science in Architecture (Research Degree)
+MA # Master of Arts
+M.A. # Master of Arts
+A.M. # Master of Arts
+MBA # Master of Business Administration
+M.B.A. # Master of Business Administration
+MChem # Master of Chemistry
+MCom # Master of Commerce
+M.Com # Master of Commerce
+MCA # Master of Computer Application
+MDiv # Master of Divinity
+M.Div. # Master of Divinity
+M.Ed. # Master of Education (Master of Science in Education)
+M.S.Ed. # Master of Education (Master of Science in Education)
+MSEd. # Master of Education (Master of Science in Education)
+MEM # Master of Emergency Management
+M.E.M. # Master of Emergency Management
+MEDM # Master of Emergency and Disaster Management
+M.E.D.M. # Master of Emergency and Disaster Management
+M.E. # Master of Engineering
+MEng # Master of Engineering
+M.Eng. # Master of Engineering
+MFA # Master of Fine Arts
+M.F.A. # Master of Fine Arts
+MSc.HM # Master of Health or Healthcare Management
+MHM # Master of Health or Healthcare Management
+MSc.HI # Master of Health Infromatics
+MHI # Master of Health Infromatics
+MIA # Master of International Affairs
+M.I.A. # Master of International Affairs
+MIS # Master of International Studies
+M.I.S. # Master of International Studies
+LLM # Master of Laws
+LL.M. # Master of Laws
+MLS # Master of Library Science
+MLA # Master of Liberal Arts
+MLIS # Master of Library and Information Science
+M.M. # Master of Music
+MPS # Master of Professional Studies
+MPA # Master of Public Administration
+M.P.A. # Master of Public Administration
+MPH # Master of Public Health
+M.P.H. # Master of Public Health
+MS # Master of Science
+M.S. # Master of Science
+MSc # Master of Science
+M.Sc. # Master of Science
+MSI # Master of Science in Information
+M.S.I. # Master of Science in Information
+MSW # Master of Social Work
+M.S.W. # Master of Social Work
+MSF # Master of Strategic Foresight
+M.S.F. # Master of Strategic Foresight
+MSEEM # Master of Sustainable Energy and Environmental Management
+MTech # Master of Technology
+M.Tech. # Master of Technology
+ThM # Master of Theology
+Th.M. # Master of Theology
+DAc # Doctor of Acupuncture
+D.Ac. # Doctor of Acupuncture
+DAc. # Doctor of Acupuncture
+AuD # Doctor of Audiology
+Au.D. # Doctor of Audiology
+DBS # Doctor of Biblical Studies
+D.B.S. # Doctor of Biblical Studies
+DB # Doctor of Biblical Studies
+DC # Doctor of Chiropractic
+D.C. # Doctor of Chiropractic
+DDS # Doctor of Dental Surgery
+D.D.S. # Doctor of Dental Surgery
+DD # Doctor of Divinity
+D.D. # Doctor of Divinity
+EdD # Doctor of Education
+Ed.D. # Doctor of Education
+JD # Doctor of Jurisprudence (Juris Doctor)
+J.D. # Doctor of Jurisprudence (Juris Doctor)
+ImD # Doctor of Immortality
+Im.D. # Doctor of Immortality
+LP.D. # Doctor of Law and Policy
+DLP # Doctor of Law and Policy
+DMD # Doctor of Medical Dentistry
+D.M.D. # Doctor of Medical Dentistry
+MD # Doctor of Medicine
+M.D. # Doctor of Medicine
+DMin # Doctor of Ministry
+Dr.mph. # Doctor of Metaphysics
+D.M.A. # Doctor of Musical Arts
+ND # Doctor of Naturopathy
+N.D. # Doctor of Naturopathy
+DNP # Doctor of Nursing Practice
+D.N.P. # Doctor of Nursing Practice
+OD # Doctor of Optometry
+O.D. # Doctor of Optometry
+DO # Doctor of Osteopathy
+D.O. # Doctor of Osteopathy
+PharmD # Doctor of Pharmacy
+Pharm.D. # Doctor of Pharmacy
+PhD # Doctor of Philosophy
+Ph.D. # Doctor of Philosophy
+DPhil # Doctor of Philosophy
+D.Phil. # Doctor of Philosophy
+DPh # Doctor of Philosophy
+D.Ph. # Doctor of Philosophy
+DPT # Doctor of Physical Therapy
+D.P.T. # Doctor of Physical Therapy
+DPT # Doctor of Practical Theology
+D.P.T. # Doctor of Practical Theology
+PsyD # Doctor of Psychology
+Psy.D. # Doctor of Psychology
+DrPH # Doctor of Public Health
+Dr. sc. rel. # Doctor of Religious Sciences
+D.R.S. # Doctor of Religious Sciences
+DSc # Doctor of Science
+D.Sc. # Doctor of Science
+ScD # Doctor of Science
+D.Th. # Doctor of Theology
+Th.D. # Doctor of Theology
+ThD # Doctor of Theology
+DVM # Doctor of Veterinary Medicine
+D.V.M. # Doctor of Veterinary Medicine
+
+Bc. BcA. Ing. ing. Ing.arch. ing.arch. Mgr. MgA. Dr. Dr.h.c. dr.h.c. dr.h.c.mult. PaedDr. MgArt. MgA.  MUDr. MDDR. MVDr. JUDr. RNDr. PhDr. PharmDr. ThDr. CSc. DrSc. Ph.D. Th.D. doc. Doc. prof. Prof. BBA MBA B.A. M.A. BSc. MSc. Mmed. M.D. Dipl.-Ing. EngD. 
+ak.soch. ak.sochař akad.soch. akad.sochař ak.mal. ak.malíř akad.mal. akad.malíř JUC. MUC. PhC. RNC.
+#vojenské
+voj. svob. des. čet. rtn. rtm. nrtm. šrtm. pprap. prap. nprap. šprap. ppor. por. npor. kpt. mjr. pplk. plk. brig. gen. genmjr. genpor. arm.
+
+#náboženské/církevní
+Sv. St. sv. st.
+
+#jiné
+Mr. Mrs. Ms.

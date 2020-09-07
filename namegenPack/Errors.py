@@ -67,7 +67,7 @@ class ErrorMessenger(object):
     CODE_GRAMMAR_NONTERM_W_SAME_NAME_DIFF_PAR = 31
     CODE_GRAMMAR_COULDNT_GENERATE_RULE = 32
     CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE = 33
-
+    CODE_UNKNOWN_LANGUAGE = 34
 
     CODE_ALL_VALUES_NOT_COVERED = 99
     CODE_UNKNOWN_ERROR = 100
@@ -111,6 +111,7 @@ class ErrorMessenger(object):
         CODE_GRAMMAR_COULDNT_GENERATE_RULE: "Nelze vygenerovat pravidlo:\n\t{}\nnejsou známi hodnoty všech parametrů.",
         CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE: "Neterminál {} nemá korespondující pravidlo.",
         CODE_ALL_VALUES_NOT_COVERED: "Nejsou pokryty všechny hodnoty.",
+        CODE_UNKNOWN_LANGUAGE: "Jméno {} je v neznámém jazyce.",
         CODE_UNKNOWN_ERROR: "Neznámá chyba.",
     }
 

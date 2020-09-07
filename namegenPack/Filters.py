@@ -71,7 +71,7 @@ class NameLanguagesFilter(Filter):
         :rtype: bool
         """
 
-        return o.language in self._languages
+        return o.language.code in self._languages
 
 
 class NameRegexFilter(Filter):

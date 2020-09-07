@@ -17,6 +17,7 @@ import namegenPack.Grammar
 from namegenPack import Errors
 from namegenPack.Filters import Filter
 from namegenPack.Grammar import Terminal, Token
+from namegenPack.Language import Language
 from namegenPack.Word import Word, WordTypeMark
 from namegenPack.morpho import MorphCategories
 from namegenPack.morpho.MorphCategories import Case, POS, Note
@@ -213,14 +214,14 @@ class Name(object):
         def __str__(self):
             return ":".join("" if x is None else str(x) for x in self.levels)
 
-    def __init__(self, name, language: str, nType, addit=None, wordDatabase=None):
+    def __init__(self, name, language: Language, nType, addit=None, wordDatabase=None):
         """
         Konstruktor jména.
 
         :param name: Řetězec se jménem.
         :type name: String
         :param language: Jazyk tohoto jména.
-        :type language: str
+        :type language: Language
         :param nType: Druh jména.
         :type nType: str
         :param addit: Přídavné info ke jménu
@@ -318,7 +319,6 @@ class Name(object):
         else:
             raise ValueError("Word {} is not in name {}.".format(word, self))
 
-
     def printName(self):
         """
         Převede jméno do string. Pokud má jméno nějaké přídavné informace, tak je také přidá.
@@ -327,7 +327,7 @@ class Name(object):
 
         res = str(self)
 
-        res += "\t" + str(self._language)
+        res += "\t" + ("Unknown" if self._language is None else self._language.code)
 
         res += "\t" + str(self._type)
 
@@ -338,7 +338,7 @@ class Name(object):
 
         return res
 
-    def guessType(self, grammars=None, tokens: List[namegenPack.Grammar.Token] = None):
+    def guessType(self, tokens: List[namegenPack.Grammar.Token] = None):
         """
         Provede odhad typu jména. Jedná se o jisté zpochybnění zda-li se jedná o mužské, či ženské jméno.
         Jména lokací a událostí nezpochybňujě.
@@ -346,10 +346,6 @@ class Name(object):
         Pokud není typ jména uveden odhadne jej, ovšem pevně předpokládá, že se jedná o jméno osoby.
         (Dle zadání má být automaticky předpokládána osoba, kde se může stát, že typ není uveden.)
 
-        :param grammars: Aktivuje pokročilé určování typů jména na základě gramatik.
-            Klíč je pohlaví osoby jména(self.PersonGender) a hodnota je příslušná gramatika. Pokud jméno patří právě do jednoho jazyka
-            generovaným jednou z poskytnutých gramatik, tak mu je přiřazen příslušný typ.
-        :type grammars: None, Dict[Grammar]
         :param tokens: Tokeny odpovídající tomuto jménu. Tento volitelný parametr je zde zaveden pro zrychlení výpočtu, aby nebylo nutné v některých případech
             provádět vícekrát lexikální analýzu. Pokud bude vynechán nic se neděje jen si provede lexikální analýzu sám.
         :type tokens: List[Token]
@@ -363,13 +359,15 @@ class Name(object):
             # zbochybňujeme jen jména a osob
             return
         if not tokens:
-            tokens = namegenPack.Grammar.Lex.getTokens(self)
+            tokens = self.language.lex.getTokens(self)
 
         # zkusíme zpochybnit typ jména
         changeTo = None
         # najdeme první podstatné nebo přídavné jméno od konce (příjmení)
         # Příjmení jak se zdá může být i přídavné jméno (`Internetová jazyková příručka <http://prirucka.ujc.cas.cz/?id=320#nadpis3>`_.)
 
+        grammars = {Name.Type.PersonGender.FEMALE: self.language.gFemale,
+                    Name.Type.PersonGender.MALE: self.language.gMale}
         try:
             for token in reversed(tokens):
                 if token.type == namegenPack.Grammar.Token.Type.ANALYZE:
@@ -600,7 +598,7 @@ class Name(object):
         """
 
         if not tokens:
-            tokens = namegenPack.Grammar.Lex.getTokens(self)
+            tokens = self.language.lex.getTokens(self)
 
         types = []
         logging.info(str(self) + "\tPoužívám zjednodušené určování druhu slov.")
@@ -827,10 +825,14 @@ class NameReader(object):
 
     """
 
-    def __init__(self, inputFile=None, shouldSort:bool=True):
+    def __init__(self, languages: Dict[str, Language], langDef: str, inputFile=None, shouldSort:bool=True):
         """
         Konstruktor
 
+        :param languages: All suported languages.
+        :type languages: Dict[str, Language]
+        :param langDef: The default language for unknown.
+        :type langDef: str
         :param inputFile: Cesta ke vstupnímu souboru se jmény.
             Pokud je None čte z stdin
         :type inputFile: string | None
@@ -841,19 +843,21 @@ class NameReader(object):
         self._errorCnt = 0  # počet chybných nenačtených jmen
 
         if inputFile is None:
-            self._readInput(sys.stdin)
+            self._readInput(sys.stdin, languages, langDef)
         else:
             with open(inputFile, "r") as rInput:
-                self._readInput(rInput)
+                self._readInput(rInput, languages, langDef)
 
         if shouldSort:
             self.names = sorted(self.names)
 
-    def _readInput(self, rInput):
+    def _readInput(self, rInput, languages: Dict[str, Language], langDef: str):
         """
         Čtení vstupu.
 
         :param rInput: Vstup
+        :param languages: All suported languages.
+        :param langDef: The default language for unknown.
         """
 
         wordDatabase = {}  # zde budeme ukládat již vyskytující se slova
@@ -873,7 +877,15 @@ class NameReader(object):
                     additInfo = parts[3:]
                 # Přidáváme wordDatabase pro ušetření paměti
                 # <jméno>\TAB<jazyk>\TAB<typeflag>\TAB<url>
-                self.names.append(Name(parts[0], parts[1], parts[2], additInfo, wordDatabase))
+
+                lang = langDef if parts[1] == "" else parts[1]
+
+                try:
+                    lang = languages[lang]
+                except KeyError:
+                    lang = None
+
+                self.names.append(Name(parts[0], lang, parts[2], additInfo, wordDatabase))
             except Name.NameCouldntCreateException as e:
                 # problém při vytváření jména
                 print(e.message, file=sys.stderr)

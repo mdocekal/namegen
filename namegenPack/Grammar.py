@@ -727,13 +727,6 @@ class Lex(object):
     """
     Lexikální analyzátor pro jména.
     """
-    __TITLES = set()
-    """Banka titulů je načtena na začátku z konfiguračního souboru. Pro přiřazení použijte
-    metodu setTitles"""
-
-    __TITLES_PREFIXES = set()
-    """Banka prefixů titulů. Příklady titulových prefixů pro titul  Ing.arch.:
-        Ing."""
 
     ROMAN_NUMBER_REGEX = re.compile(r"^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$", re.IGNORECASE)
     NUMBER_REGEX = re.compile(r"^[0-9]+\.?$", re.IGNORECASE)
@@ -741,33 +734,34 @@ class Lex(object):
     TOKEN_TYPES_THAT_CAN_USE_MA = {Token.Type.ANALYZE, Token.Type.ROMAN_NUMBER, Token.Type.INITIAL_ABBREVIATION,
                                    Token.Type.ROMAN_NUMBER_INITIAL_ABBREVIATION}
 
-    @classmethod
-    def setTitles(cls, titles: Set[str]):
+    def __init__(self, titles: Set[str]):
         """
-        Nastaví řetězce, které mají být brány za tituly.
-        Zabezpečuje, aby byly brány i různé varianty u titulů typu:
-            Ing.arch.
-            Varianty: Ing.arch.    Ing. arch.
-        
+        Inicializace lexikalního analyzátoru.
+
         :param titles: Množina titulů.
+            Řetězce, které mají být brány za tituly.
+            Zabezpečuje, aby byly brány i různé varianty u titulů typu:
+                Ing.arch.
+                Varianty: Ing.arch.    Ing. arch.
         :type titles: Set[str]
         """
-        cls.__TITLES = titles
+
+        self.__titles = titles
 
         # Přidáme i všechny prefixy, tak abysme později lépe detekovali získanou část titulu.
         # Příklady titulových prefixů pro titul  Ing.arch.:
         # Ing.
 
+        self.__titles_prefixes = set()
         for t in titles:
 
             pref = ""
             for i, c in enumerate(t):
                 pref += c
                 if c == "." and i != len(t) - 1:  # i!=len(t)-1 poslední ne
-                    cls.__TITLES_PREFIXES.add(pref)
+                    self.__titles_prefixes.add(pref)
 
-    @classmethod
-    def getTokens(cls, name):
+    def getTokens(self, name):
         """
         Získání tokenů pro sémantický analyzátor.
 
@@ -782,7 +776,7 @@ class Lex(object):
         while wCnt < len(name):
 
             # prvně zjistíme tituly
-            wT = cls.isTitle(name, wCnt)
+            wT = self.isTitle(name, wCnt)
             for _ in range(wT):
                 # zjistíme všechna slova, která tvoří titul
                 # Návratové hodnoty isTitle
@@ -799,7 +793,7 @@ class Lex(object):
             w = name[wCnt]
             wCnt += 1
 
-            romanNumberFlag = cls.ROMAN_NUMBER_REGEX.match(str(w))
+            romanNumberFlag = self.ROMAN_NUMBER_REGEX.match(str(w))
             initialAbberFlag = str(w).isupper() and not str.isdigit(w[0]) and (
                         len(w) == 1 or (len(w) == 2 and w[-1] == "."))
 
@@ -809,7 +803,7 @@ class Lex(object):
             elif romanNumberFlag:
                 # římská číslovka
                 token = Token(w, Token.Type.ROMAN_NUMBER)
-            elif cls.NUMBER_REGEX.match(str(w)):
+            elif self.NUMBER_REGEX.match(str(w)):
                 # číslovka z číslic, volitelně zakončená tečkou
                 token = Token(w, Token.Type.NUMBER)
             elif initialAbberFlag:
@@ -837,7 +831,6 @@ class Lex(object):
                         # gramatik (má hash a eq svázané se jménem).
                         token.word = newWord
 
-
                 except Word.WordCouldntGetInfoException:
                     # bohužel analýza není, musíme změnit druh tokenu
                     token.type = Token.Type.ANALYZE_UNKNOWN
@@ -848,8 +841,7 @@ class Lex(object):
 
         return tokens
 
-    @classmethod
-    def isTitle(cls, name, pos):
+    def isTitle(self, name, pos):
         """
         Zjistí zdali se na aktuální pozici vyskytuje titul.
         
@@ -865,9 +857,9 @@ class Lex(object):
 
         pos += 1
 
-        if str(w) in cls.__TITLES or (str(w) in cls.__TITLES_PREFIXES and pos < len(name)):
+        if str(w) in self.__titles or (str(w) in self.__titles_prefixes and pos < len(name)):
             # jedná se o titul nebo o jeho potencionální část
-            if str(w) in cls.__TITLES_PREFIXES and pos < len(name):
+            if str(w) in self.__titles_prefixes and pos < len(name):
                 # může se jednat o část delšího titulu
                 # musíme se tedy podívat dopředu
 
@@ -875,19 +867,19 @@ class Lex(object):
                 # Ing.Arch. kvůli existenci titulu Ing.
 
                 lookAhead = pos
-                lastEvaluatedAsTitle = lookAhead if str(w) in cls.__TITLES else None
+                lastEvaluatedAsTitle = lookAhead if str(w) in self.__titles else None
                 actTitlePrefix = str(w) + str(name[lookAhead])
 
                 lookAhead += 1
 
-                while str(actTitlePrefix) in cls.__TITLES_PREFIXES and lookAhead < len(name):
-                    if actTitlePrefix in cls.__TITLES:
+                while str(actTitlePrefix) in self.__titles_prefixes and lookAhead < len(name):
+                    if actTitlePrefix in self.__titles:
                         lastEvaluatedAsTitle = lookAhead
                     actTitlePrefix += str(name[lookAhead])
 
                     lookAhead += 1
 
-                if actTitlePrefix in cls.__TITLES:
+                if actTitlePrefix in self.__titles:
                     lastEvaluatedAsTitle = lookAhead - 1
 
                 if lastEvaluatedAsTitle is not None:
@@ -895,7 +887,7 @@ class Lex(object):
                     # můsíme označit všechny slova, ze kterých se skládá jako tituly
                     return lastEvaluatedAsTitle - pos + 2
 
-            elif str(w) in cls.__TITLES:
+            elif str(w) in self.__titles:
                 # slovo je titulem nebo jeho částí
                 return 1
 
@@ -1659,8 +1651,6 @@ class Grammar(object):
     """
     Separátor používány v auto. generovaných neterminálech pro oddělení původního jména s počítadlem.
     """
-
-    CHECK = None
 
     class NotInLanguage(Errors.ExceptionMessageCode):
         """
