@@ -49,11 +49,12 @@ Terminály jsou předdefinované. Jejich seznam je následující:
 	8	- spojka
 	9	- částice
 	10	- citoslovce
-	t	- titul (Slovo s tečkou na konci o délce větší než 2 [včetně tečky])
+	t	- titul (Slovo z předem definované množiny)
 	r	- římská číslice (od I do XXXIX)
 	a	- zkratka
 	ia	- Iniciálová zkratka. (Slovo s tečkou na konci o délce 2 [včetně tečky])
 	n	- číslo (pouze z číslic) Příklady: 12., 12
+	*   - libovolný token
 
 Terminálům můžeme přiřazovat atributy. Uvádějí se bezprostředně za terminál do složených závorek. Uvedeme si příklad:
 
@@ -93,6 +94,7 @@ Možné atributy a jejich hodnoty:
     	T	Titul. Příklad: prof.
     	I	Iniciálová zkratka. Příklad H. ve jméně John H. White
     	A	Zkratka. Příklad jr. (junior) ve jméně Jan jr.
+    	M	Přívlastek. Příklad: mladší
     	U	Neznámé
     r - Regulární výraz, který určuje podobu slova.
     	Hodnota musí být vepsána v uvozovkách.

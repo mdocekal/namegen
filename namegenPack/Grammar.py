@@ -204,6 +204,8 @@ class Terminal(object):
         ROMAN_NUMBER = "r"  # římská číslice
         NUMBER = "n"  # číslovka (pouze z číslic) Příklady: 12., 12
         INITIAL_ABBREVIATION = "ia"  # Iniciálová zkratka.
+        ANY = "*"   # jakýkoliv token
+
         X = "x"  # neznámé
 
         @property
@@ -578,7 +580,8 @@ class Terminal(object):
             # kontrola na regex match neprošla
             return False
 
-        if t.type == Token.Type.ANALYZE_UNKNOWN and self.type in self.UNKNOWN_ANALYZE_TERMINAL_MATCH:
+        if t.type == Token.Type.ANALYZE_UNKNOWN and \
+                (self.type in self.UNKNOWN_ANALYZE_TERMINAL_MATCH or self._type == self.Type.ANY):
             # tento druh tokenu sedí na každý termínal druhu z self.UNKNOWN_ANALYZE_TERMINAL_MATCH
             return True
 
@@ -602,7 +605,12 @@ class Terminal(object):
                                                             self.fillteringAttrValuesWithoutVoluntary,
                                                             set(), groupFlags)
 
-                    return self._type.toPOS() in pos
+                    if self._type == self.Type.ANY:
+                        # Any will do
+                        return len(pos) > 0
+                    else:
+                        return self._type.toPOS() in pos
+
                 except Word.WordCouldntGetInfoException:
                     # Vracíme False, protože některé tokeny sice vyžádají analýzu,
                     # ale jen z důvodů, že si nejsou jistí jestli s něčím nekolidují, takže kolizi neznáme.
@@ -613,6 +621,9 @@ class Terminal(object):
                     return False
             else:
                 # pro tento terminál se nepoužívá analyzátor
+                if self._type == self.Type.ANY:
+                    # příjmáme všechno
+                    return True
 
                 if t.type == Token.Type.ROMAN_NUMBER_INITIAL_ABBREVIATION:
                     # jedná se o speciální druh tokenu, který zahrnuje dva druhy tokenu a to římskou číslici a
@@ -623,6 +634,11 @@ class Terminal(object):
                 return t.type.value == self._type.value
         else:
             # Jedná se o jednoduchý token bez nutnosti morfologické analýzy.
+
+            if self._type == self.Type.ANY:
+                # příjmáme všechno
+                return True
+
             return t.type.value == self._type.value  # V tomto případě požívá terminál a token stejné hodnoty u typů
 
     def __str__(self):

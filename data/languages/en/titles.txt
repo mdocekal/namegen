@@ -244,10 +244,9 @@ St. #(Saint)
 # social
 Esq. #(Esquire)
 Hon. #(Honorable)
+Rt. #(Right)
 Rt. Hon. #(Right Honorable)
 Msgr. #(Monsignor)
-Sr. #(Senior)
-Jr. #(Junior)
 Mr.
 Mrs.
 Ms.

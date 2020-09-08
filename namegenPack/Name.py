@@ -238,7 +238,7 @@ class Name(object):
             wordDatabase = {}
 
         self._language = language
-        self._type = nType
+        self._type = None if len(nType) == 0 else nType
         self.additionalInfo = addit
         try:
             # nejprve převedeme a validujeme druh jména
@@ -543,8 +543,8 @@ class Name(object):
 
         # Procházíme jméno a hledáme slova s jejich oddělovači.
         # Vynacháváme oddělovače na konci a začátku.
-        for c in name:
-            if c.isspace() or c == '-' or c == '–' or c == ',':
+        for offsetC, c in enumerate(name):
+            if Name.isSeparator(c):
                 # separátor
 
                 if len(actWord) > 0:
@@ -568,6 +568,11 @@ class Name(object):
                     # budeme delit
                     separatorOccured = True
                     parsingNumeric = False
+                elif c == "." and not parsingNumeric and (offsetC+1 < len(name) and not Name.isSeparator(name[offsetC+1])):
+                    # tečka na konci slova, které není číslicí a nestoji před separátorem
+                    actWord += c
+                    separatorOccured = True
+                    c = ""
 
                 if separatorOccured:
                     # již se má načítat další slovo
@@ -585,6 +590,19 @@ class Name(object):
             words.append(actWord)
 
         return words, separators
+
+    @staticmethod
+    def isSeparator(c: str) -> bool:
+        """
+        Checks if character c is separator.
+
+        :param c: The char you want to check.
+        :type c: str
+        :return: True separator. False otherwise.
+        :rtype: bool
+        """
+
+        return c.isspace() or c == '-' or c == '–' or c == ','
 
     def simpleWordsTypesGuess(self, tokens: List[namegenPack.Grammar.Token] = None):
         """
@@ -777,7 +795,8 @@ class Name(object):
                         namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
                                aToken.token.type == Token.Type.ANALYZE_UNKNOWN))
 
-            if len(wordsWithRules) > 0:
+            if len(wordsWithRules) == len(self._words):
+                # máme tvar pro všechna slova
                 morphs.append(NameMorph(self, wordsWithRules, wordsTypes))
 
         return morphs
@@ -862,7 +881,7 @@ class NameReader(object):
 
         wordDatabase = {}  # zde budeme ukládat již vyskytující se slova
         for line in rInput:
-            line = line.strip()
+            line = line[:-1].lstrip()
             parts = line.split("\t")  # <jméno>\TAB<jazyk>\TAB<typeflag>\TAB<url>
 
             if len(parts) < 3:
