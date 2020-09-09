@@ -126,10 +126,6 @@ class ConfigManager(object):
 
         if self.configParser[self.sectionFilters]["LANGUAGES"]:
             result["LANGUAGES"] = set(l for l in self.configParser[self.sectionFilters]["LANGUAGES"].split())
-            if "UNKNOWN" in result["LANGUAGES"]:
-                # chceme prázdný řetězec
-                result["LANGUAGES"].remove("UNKNOWN")
-                result["LANGUAGES"].add("")
 
         if self.configParser[self.sectionFilters]["REGEX_NAME"]:
             try:
@@ -442,6 +438,11 @@ def equGen(names: List[Name], languages: Dict[str, Language]) -> List[Name]:
     for name in names:
         newWords = []
         shouldGenerate = False
+
+        if name.language is None:
+            # unknown language we must skip it
+            continue
+
         for word in name:
             word = str(word)
 
@@ -532,6 +533,9 @@ def main():
             Terminal.UNKNOWN_ANALYZE_TERMINAL_MATCH = configAll[configManager.sectionGrammar][
                 "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH"]
 
+        # get output
+        outF = open(args.output, "w") if args.output else sys.stdout
+
         logging.info("načtení jazyků")
 
         languages = {}
@@ -571,6 +575,27 @@ def main():
                             langDef=configAll[configManager.sectionDataFiles]["DEFAULT_LANGUAGE"],
                             inputFile=args.input,
                             shouldSort=False)
+        logging.info("\thotovo")
+
+        logging.info("Filtrace jmen")
+        filteredNames = []
+        for name in namesR:
+
+            if namesFilter(name):
+                filteredNames.append(name)
+            else:
+                # Na základě uživatelských filtrů nemají být pro toto jméno
+                # generovány tvary.
+
+                logging.info("Neprošlo filtrem: " + str(name))
+
+                if args.include_no_morphs:
+                    # uživatel chce vytisknout i slova bez tvarů
+                    print(name.printName(), file=outF)
+
+                continue
+
+        namesR.names = filteredNames
         logging.info("\thotovo")
 
         logging.info("Rozgenerování ekvivalentních vstupů")
@@ -652,32 +677,19 @@ def main():
         # nastaveni logování
         duplicityCheck = set()  # zde se budou ukládat jména pro zamezení duplicit
 
-        # get output
-        outF = open(args.output, "w") if args.output else sys.stdout
-
         startOfGenMorp = time.time()
 
         for name in namesR:
 
-            # filtrování
-            if not namesFilter(name):
-
-                # Na základě uživatelských filtrů nemají být pro toto jméno
-                # generovány tvary.
-
-                logging.info("Neprošlo filtrem: " + str(name))
+            if name.language is None:
+                # neidentifikovaný jazyk
+                print(Errors.ErrorMessenger.getMessage(
+                    Errors.ErrorMessenger.CODE_UNKNOWN_LANGUAGE).format(str(name)), file=sys.stderr, flush=True)
 
                 if args.include_no_morphs:
                     # uživatel chce vytisknout i slova bez tvarů
                     print(name.printName(), file=outF)
 
-                continue
-
-            if name.language is None:
-                # neidentifikovaný jazyk
-                print(Errors.ErrorMessenger.getMessage(
-                    Errors.ErrorMessenger.CODE_UNKNOWN_LANGUAGE).format(str(name), file=sys.stderr, flush=True))
-                print(name.printName(), file=outF)
                 continue
 
             lang = languages[name.language.code]

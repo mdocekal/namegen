@@ -73,6 +73,8 @@ class NameLanguagesFilter(Filter):
         :return: True pokud má být jméno o propuštěno filtrem. False pokud má být odfiltrováno.
         :rtype: bool
         """
+        if o.language is None:
+            return False
 
         return o.language.code in self._languages
 
