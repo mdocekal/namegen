@@ -241,7 +241,7 @@ ak.soch. ak.sochař akad.soch. akad.sochař ak.mal. ak.malíř akad.mal. akad.ma
 voj. svob. des. čet. rtn. rtm. nrtm. šrtm. pprap. prap. nprap. šprap. ppor. por. npor. kpt. mjr. pplk. plk. brig. gen. genmjr. genpor. arm.
 
 #náboženské/církevní
-Sv. St. sv.
+Sv. St. sv. Sv
 
 #jiné
 Mr. Mrs. Ms.

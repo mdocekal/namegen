@@ -1,8 +1,8 @@
 S
 #číslovku dovolujeme protože chceme i jména jako:
 #	1. Baron z Aucklandu
-S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 1{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vatý|[sS]aint)$).*$"} AFTER_GIVEN_NAME
-S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 2{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vatý|[sS]aint)$).*$"} AFTER_GIVEN_NAME	#Chceme i indiánská jména: Sedící býk
+S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 1{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vat[ýé]|[sS]aint)$).*$"} AFTER_GIVEN_NAME
+S -> SAINT !T_GROUP !NUMERIC  NUM(t=G) 2{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vat[ýé]|[sS]aint)$).*$"} AFTER_GIVEN_NAME	#Chceme i indiánská jména: Sedící býk
 SAINT -> 1{t=T,c=1,n=S,g=M,r="^([sS]vatý|[sS]aint)$"} #Svatý ...
 SAINT -> ε
 

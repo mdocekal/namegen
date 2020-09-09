@@ -79,8 +79,6 @@ class NameMorph(object):
                 # přidáváme mezeru nulové délky, pokud neni separator
                 morph += putSep if len(putSep) > 0 else u'\u200b'
 
-
-
         return morph
 
 
@@ -255,6 +253,15 @@ class Name(object):
         # rozdělíme jméno na jednotlivá slova a oddělovače
         words, self._separators = self._findWords(name)
         self._words = [wordDatabase[w] if w in wordDatabase else Word(w) for w in words]
+
+    def copy(self) -> "Name":
+        """
+        Makes copy of this Name.
+        :return: Copy of this name
+        :rtype: Name
+        """
+
+        return Name(str(self), self._language, None if self._type is None else str(self._type), self.additionalInfo)
 
     def __str__(self):
         n = ""
@@ -501,7 +508,7 @@ class Name(object):
         return self._words
 
     @words.setter
-    def words(self, newWords:List[Word]):
+    def words(self, newWords: List[Word]):
         """
         Přiřadí nové slova do jména.
         Používat obezřetně. Dojde opravdu jen k náhradě slov, sepárotory zůstavají.
@@ -837,6 +844,28 @@ class Name(object):
         """Getter pro jazyk jména."""
         return self._language
 
+    @property
+    def grammar(self):
+        """Getter pro gramatiku, která odpovídá jazyku a druhu jména."""
+        try:
+            if self.type == Name.Type.MainType.LOCATION:
+                g = self.language.gLocations
+            elif self.type == Name.Type.PersonGender.MALE:
+                g = self.language.gMale
+            elif self.type == Name.Type.PersonGender.FEMALE:
+                g = self.language.gFemale
+            elif self.type == Name.Type.MainType.EVENTS:
+                g = self.language.gEvents
+            else:
+                # je cosi prohnilého ve stavu tohoto programu
+                raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
+
+            return g
+
+        except KeyError:
+            # je cosi prohnilého ve stavu tohoto programu
+            raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
+
 
 class NameReader(object):
     """
@@ -868,7 +897,14 @@ class NameReader(object):
                 self._readInput(rInput, languages, langDef)
 
         if shouldSort:
-            self.names = sorted(self.names)
+            self.sortNames()
+
+    def sortNames(self):
+        """
+        Performs sorting of all names.
+        """
+
+        self.names = sorted(self.names)
 
     def _readInput(self, rInput, languages: Dict[str, Language], langDef: str):
         """

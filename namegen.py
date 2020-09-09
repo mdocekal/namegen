@@ -10,11 +10,12 @@ namegen je program pro generování tvarů jmen osob a lokací.
 """
 
 import configparser
-import copy
 import os
 import time
 import traceback
 from argparse import ArgumentParser
+from collections import defaultdict
+from functools import reduce
 from typing import Any
 
 import regex as re
@@ -22,7 +23,7 @@ import regex as re
 import namegenPack.Grammar
 import namegenPack.morpho.MorphCategories
 import namegenPack.morpho.MorphoAnalyzer
-from namegenPack.Filters import NamesFilter
+from namegenPack.Filters import NamesFilter, NamesGrammarFilter
 from namegenPack.Generators import GenerateAbbreFormOfPrep, GenerateNope
 from namegenPack.Language import Language
 from namegenPack.Name import *
@@ -250,6 +251,7 @@ class ConfigManager(object):
             "GRAMMAR_EVENTS": self.configParser[self.sectionDataFiles]["GRAMMAR_EVENTS"],
             "DEFAULT_LANGUAGE": self.configParser[self.sectionDataFiles]["DEFAULT_LANGUAGE"],
             "TITLES": self.configParser[self.sectionDataFiles]["TITLES"],
+            "EQ_GEN": self.configParser[self.sectionDataFiles]["EQ_GEN"],
             "LANGUAGES_DIRECTORY": self.__makePath(self.configParser[self.sectionDataFiles]["LANGUAGES"])
         }
 
@@ -418,6 +420,100 @@ def priorityDerivationFilter(aTokens: List[List[namegenPack.Grammar.AnalyzedToke
     return list(set(x for x in range(len(aTokens))) - derivationsLeft)
 
 
+def equGen(names: List[Name], languages: Dict[str, Language]) -> List[Name]:
+    """
+    Generuje nová jména s ekvivalentními slovy (ml. mladší).
+
+    :param names: Všechna jména pro rozgenerování.
+    :type names: List[Name]
+    :param languages: Jazyky, které chceme použít.
+    :type languages: Dict[str, Language]
+    :return: Rozgenerovaná jména.
+    :rtype: List[Name]
+    """
+
+    interestingWords = defaultdict(lambda: defaultdict(set))
+    for code, lng in languages.items():
+        for nameType, eqSets in lng.eqGen.items():
+            for eSet in eqSets:
+                interestingWords[code][Name.Type(nameType)] = interestingWords[code][Name.Type(nameType)].union(eSet)
+
+    generatedNames = []
+    for name in names:
+        newWords = []
+        shouldGenerate = False
+        for word in name:
+            word = str(word)
+
+            try:
+                if word in interestingWords[name.language.code][name.type]:
+                    shouldGenerate = True
+                    allEq = set()
+                    for eqSet in name.language.eqGen[str(name.type)]:
+                        if word in eqSet:
+                            allEq = allEq.union(eqSet)
+                    newWords.append(list(allEq))
+                else:
+                    newWords.append([word])
+            except KeyError:
+                # pro tento druh slova a jazyk nemáme množinu ekvivalentních slov
+                continue
+
+        if shouldGenerate:
+            # generate new name
+            """
+            Toy Example:
+                0 [A,B] 1 [a,b,c] 2 [x,y]
+                ->
+                0 A 1 a 2 x
+                0 B 1 a 2 x
+                0 A 1 b 2 x
+                0 B 1 b 2 x
+                0 A 1 c 2 x
+                0 B 1 c 2 x
+                0 A 1 a 2 y
+                0 B 1 a 2 y
+                0 A 1 b 2 y
+                0 B 1 b 2 y
+                0 A 1 c 2 y
+                0 B 1 c 2 y
+            """
+
+            numberOfVariants = reduce(lambda x, y: x*len(y), newWords, 1)
+
+            for variantOffset in range(numberOfVariants):
+                lastPeriod = 1  # number of items in a last words period
+                newName = name.copy()
+                for wordsOffset, words in enumerate(newWords):
+                    newName.words[wordsOffset] = Word(words[(variantOffset//lastPeriod) % len(words)], newName, wordsOffset)
+                    lastPeriod *= len(words)
+                generatedNames.append(newName)
+
+    return generatedNames
+
+
+def gramAnalyzeName(name: Name, tokens: List[Token]) -> \
+        Tuple[List[List[namegenPack.Grammar.Rule]], List[List[namegenPack.Grammar.AnalyzedToken]]]:
+    """
+    Provedou analýzu na základě správné gramatiky, která má být použita pro dané jméno.
+
+    :param name: Jméno pro analýzu.
+    :type name: Name
+    :param tokens: Tokeny z lexikální analýzy.
+    :type tokens: List[Token]
+    :return: Analyze for given name.
+    :rtype: Tuple[List[List[namegenPack.Grammar.Rule]], List[List[namegenPack.Grammar.AnalyzedToken]]]
+    :raise NotInLanguage: Řetězec není v jazyce generovaným danou gramatikou.
+    :raise TimeoutException: Při provádění syntaktické analýzy, nad daným řetězcem, došlo k timeoutu.
+    :raise ExceptionMessageCode: je cosi prohnilého ve stavu tohoto programu
+    """
+    # rules a aTokens může obsahovat více než jednu možnou derivaci
+
+    rules, aTokens = name.grammar.analyse(tokens)
+
+    return rules, aTokens
+
+
 def main():
     """
     Vstupní bod programu.
@@ -450,6 +546,7 @@ def main():
                                    gLocations=configAll[configManager.sectionDataFiles]["GRAMMAR_LOCATIONS"],
                                    gEvents=configAll[configManager.sectionDataFiles]["GRAMMAR_EVENTS"],
                                    titles=configAll[configManager.sectionDataFiles]["TITLES"],
+                                   eqGen=configAll[configManager.sectionDataFiles]["EQ_GEN"],
                                    gTimeout=configAll[configManager.sectionGrammar]["TIMEOUT"])
 
                     languages[lng.code] = lng
@@ -472,7 +569,15 @@ def main():
         # načtení jmen pro zpracování
         namesR = NameReader(languages=languages,
                             langDef=configAll[configManager.sectionDataFiles]["DEFAULT_LANGUAGE"],
-                            inputFile=args.input)
+                            inputFile=args.input,
+                            shouldSort=False)
+        logging.info("\thotovo")
+
+        logging.info("Rozgenerování ekvivalentních vstupů")
+
+        equGenerated = equGen(namesR.names, languages)
+        namesR.names = namesR.names + equGenerated
+
         logging.info("\thotovo")
 
         logging.info("analýza slov")
@@ -482,12 +587,32 @@ def main():
         mAnalyzer = namegenPack.morpho.MorphoAnalyzer.MorphoAnalyzerLibma(
             configAll[configManager.sectionMorphoAnalyzer]["PATH_TO"],
             namesR.allWords(True, True, namesFilter))
+        Word.setMorphoAnalyzer(mAnalyzer)
+        logging.info("\thotovo")
+
+        logging.info("Filtrace rozgenerovaných ekvivalentních vstupů")
+
+        namesR.names = namesR.names[:len(namesR.names)-len(equGenerated)]
+        filterGrammar = NamesGrammarFilter()
+
+        for name in equGenerated:
+            if filterGrammar(name):
+                namesR.names.append(name)
+
+        logging.info("\thotovo")
+
+        logging.info("analýza slov závislá na jménu")
         # připravíme analýzu závislou na jménu
         mAnalyzer.prepareNameDependentAnalysis(namesR.names)
 
-        Word.setMorphoAnalyzer(mAnalyzer)
+        logging.info("\thotovo")
+
+        logging.info("Řazení jmen")
+
+        namesR.sortNames()
 
         logging.info("\thotovo")
+
         logging.info("generování tvarů")
 
         # čítače chyb
@@ -526,7 +651,6 @@ def main():
 
         # nastaveni logování
         duplicityCheck = set()  # zde se budou ukládat jména pro zamezení duplicit
-
 
         # get output
         outF = open(args.output, "w") if args.output else sys.stdout
@@ -618,17 +742,7 @@ def main():
                     if aTokens is None:  # Nedostaly jsme aTokeny při určování druhu slova?
 
                         # rules a aTokens může obsahovat více než jednu možnou derivaci
-                        if name.type == Name.Type.MainType.LOCATION:
-                            rules, aTokens = lang.gLocations.analyse(tokens)
-                        elif name.type == Name.Type.PersonGender.MALE:
-                            rules, aTokens = lang.gMale.analyse(tokens)
-                        elif name.type == Name.Type.PersonGender.FEMALE:
-                            rules, aTokens = lang.gFemale.analyse(tokens)
-                        elif name.type == Name.Type.MainType.EVENTS:
-                            rules, aTokens = lang.gEvents.analyse(tokens)
-                        else:
-                            # je cosi prohnilého ve stavu tohoto programu
-                            raise Errors.ExceptionMessageCode(Errors.ErrorMessenger.CODE_ALL_VALUES_NOT_COVERED)
+                        rules, aTokens = gramAnalyzeName(name, tokens)
 
                     completedMorphs = set()  # pro odstranění dualit používáme set
                     noMorphsWords = set()

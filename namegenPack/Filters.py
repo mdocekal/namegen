@@ -13,6 +13,9 @@ import unicodedata
 
 
 # noinspection PyUnusedLocal
+import namegenPack
+
+
 def alwaysTrue(*args: Any, **kwargs: Any):
     """
     Tato funkce vždy vrací true bez ohledu na argumenty.
@@ -219,3 +222,34 @@ class NamesFilter(Filter):
         """
 
         return self._languages(o) and self._nameRegex(o) and self._alfaFilter(o) and self._scriptFilter(o)
+
+
+class NamesGrammarFilter(Filter):
+    """
+    Filtruje jména na základě přislušnosti do jejich gramatiky.
+    """
+
+    def __init__(self, guessType: bool = True):
+        """
+        Inicializace filtru.
+
+        :param guessType: True -> Použije odhad typu jména, před použitím gramatiky.
+        :type guessType: bool
+        """
+
+        self._guessType = guessType
+
+    def __call__(self, name) -> bool:
+        tokens = name.language.lex.getTokens(name)
+
+        try:
+            # test if the name is in grammar's language
+
+            tmpRes = name.guessType(tokens) if self._guessType else None
+            _ = name.grammar.analyse(tokens)
+
+            # jméno prošlo filtrem
+            return True
+        except namegenPack.Grammar.Grammar.NotInLanguage:
+            # not in language
+            return False

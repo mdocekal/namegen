@@ -21,6 +21,39 @@ Příklad obsahu:
 	#akademické
 	Bc. BcA. Ing.arch. Mgr. MgA. MUDr. MDDR. MVDr. JUDr. RNDr. PhDr.
 	
+## Generování ekvivalentních slov
+Generování ekvivalentních slov si uvedeme na příkladu. Mějme tedy jméno:
+
+    Sv. Petr
+    
+Dejme tomu, že chceme na výstupu získat i:
+
+    Svatý Petr
+    Sv Petr
+    sv. Petr
+    St Petr
+    
+K tomu slouží právě soubor (nastavení názvu souboru je v konfiguraci pod EQ_GEN=eq_gen.py)
+s definovanými slovy, které se mají považovat za ekvivalentní, pro náš příklad, by mohl vypadat následovně:
+
+    {
+        "P:::M": [
+            {"Sv.", "Sv", "St.", "sv.", "Svatí", "Svatý"},
+            {"Sr.", "sr.", "st.", "starší"},
+            {"Jr.", "jr.", "ml.", "mladší"}
+        ],
+    }
+
+namegen se automaticky snaží odstranit nehodící se tvary (Svatá, Svaté, ...). Na základě přislušnosti
+ jména v dané gramatice. "P:::M" značí, že se má použít pro mužská jména. Obecně jsou tyto možnosti:
+ 
+    P:::F   - ženská jména
+    P:::M   - mužská jména
+    L   - názvy lokací
+    E   - názvy událostí
+ 
+
+	
 ## Gramatiky
 Gramatiky slouží k určování slov, které se ve jméně skloňují a také určuji druh slova ve jméně (křestní, příjmení...). 
 

@@ -5,6 +5,7 @@ Modul pro práci s jazykem.
 
 :author:     Martin Dočekal
 """
+import ast
 import os
 from typing import Optional, Set
 
@@ -29,11 +30,16 @@ class Language(object):
     :vartype gEvents: Grammar
     :ivar titles: množina titulů
     :vartype titles: Set[str]
+    :ivar eqGen:
+            Definuje množiny slov, která jsou ekvivalentní a mají se rozgenerovat všechna
+            ostatní z dané množiny pokud je na vstupu jedno z nich.
+            Uveďte název python souboru.
+    :vartype eqGen: str
     :ivar lex: lexikální analyzátor pro tento jazyk
     :vartype lex: Lex
     """
 
-    def __init__(self, langFolder: str, gFemale: str, gMale: str, gLocations: str, gEvents: str, titles: str,
+    def __init__(self, langFolder: str, gFemale: str, gMale: str, gLocations: str, gEvents: str, titles: str, eqGen: str,
                  gTimeout: Optional[int]):
         """
         Načte jazyk z jeho složky.
@@ -50,6 +56,11 @@ class Language(object):
         :type gEvents: str
         :param titles: Název souboru s tituly.
         :type titles: str
+        :param eqGen:
+            Definuje množiny slov, která jsou ekvivalentní a mají se rozgenerovat všechna
+            ostatní z dané množiny pokud je na vstupu jedno z nich.
+            Uveďte název python souboru.
+        :type eqGen: str
         :param gTimeout: Timeout pro gramatiky.
         :type gTimeout: Optional[int]
         """
@@ -64,6 +75,10 @@ class Language(object):
         self.gLocations = Grammar(os.path.join(grammarsPath, gLocations), gTimeout)
         self.gEvents = Grammar(os.path.join(grammarsPath, gEvents), gTimeout)
         self.titles = self._readTitles(os.path.join(langFolder, titles))
+
+        with open(os.path.join(langFolder, eqGen), "r") as f:
+            self.eqGen = ast.literal_eval(f.read())
+
         self.lex = Lex(self.titles)
 
     @staticmethod
