@@ -1,6 +1,7 @@
 S
 S -> !NUMERIC S2
-S -> !ABBRE	#USA
+S -> !ABBRE_MUL	#USA
+S -> !ABBRE_TITLE(t=A) # L.A.
 
 #Volitelná skupina přídavných jmen následovaných nutným podstatným jménem, které může být následováno
 #další volitelnou skupinou přídavných jmen.
@@ -89,12 +90,12 @@ S2 -> NUM_ADJ_NOUN_CASE_SELECT !NUM_ADJ_NOUN_CASE_SELECT(c=2) !CONJ !NUM_ADJ_NOU
 !ADVERB -> 6{t=L}
 !ADVERB -> ε
 
-!ABBRE_TITLE -> !ABBRE_TITLE_MANDATORY
-!ABBRE_TITLE -> ε
+!ABBRE_TITLE(t=I) -> !ABBRE_TITLE_MANDATORY(t=$t)
+!ABBRE_TITLE(t=I) -> ε
 
-!ABBRE_TITLE_MANDATORY -> ia{t=I} !ABBRE_TITLE
-!ABBRE_TITLE_MANDATORY -> t{t=T} !ABBRE_TITLE
-!ABBRE_TITLE_MANDATORY -> !ABBRE !ABBRE_TITLE
+!ABBRE_TITLE_MANDATORY(t=I) -> ia{t=$t} !ABBRE_TITLE(t=$t)
+!ABBRE_TITLE_MANDATORY(t=I) -> t{t=$t} !ABBRE_TITLE(t=$t)
+!ABBRE_TITLE_MANDATORY(t=I) -> !ABBRE(t=$t) !ABBRE_TITLE(t=$t)
 
 
 END -> !PREP_GROUP !ROMAN_NUM !ABBRE_TITLE !NUMERIC NEXT

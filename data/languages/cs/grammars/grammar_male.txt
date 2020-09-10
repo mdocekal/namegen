@@ -30,6 +30,8 @@ NOUN_GROUP_2 -> 2{t=S,c=1,n=S,g=M,note?=jS}
 NOUN_GROUP_3 -> NOUN_GROUP_2
 NOUN_GROUP_3 -> ε
 
+VOL_MODIFIER -> MODIFIER
+VOL_MODIFIER -> ε
 MODIFIER -> *{p=1,t=M,c=1,n=S,g=M,r="^(mladší|starší)$"}
 MODIFIER -> !MODIFIER
 !MODIFIER -> *{p=1,t=M,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
@@ -52,7 +54,7 @@ NUM(t) -> ε
 !NUM_ABBREVIATION_GROUP_EMPTY -> ε
 
 PREP_GROUP -> !7{t=7} !AFTER_PREP
-PREP_GROUP -> M_PREP_GROUP_7(p=1)
+PREP_GROUP -> M_PREP_GROUP(p=1)
 PREP_GROUP -> ε
 
 #"von" předložek může být více po sobě jdoucích
@@ -63,11 +65,10 @@ PREP_GROUP -> ε
 !M_PREP_END(t,p) -> !M_PREP(t=$t,p=$p)
 !M_PREP_END(t,p) -> ε
 
-M_PREP_GROUP(p) -> !M_PREP(t=S,p=$p) AFTER_M_PREP M_PREP_GROUP_ADJ
-M_PREP_GROUP(p) -> M_PREP_GROUP_7(p=$p)
-M_PREP_GROUP_7(p) -> !M_PREP(t=7,p=$p) !AFTER_M_PREP M_PREP_GROUP_ADJ
-M_PREP_GROUP_ADJ -> 2{t=S,c=1,n=S,g=M,note?=jS} #Karl Korb von Weidenheim starší
-M_PREP_GROUP_ADJ -> ε
+M_PREP_GROUP(p) -> REPEAT_M_PREP_GROUP(p=$p) VOL_MODIFIER #Karl Korb von Weidenheim starší
+REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=S,p=$p) AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
+REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=7,p=$p) !AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
+REPEAT_M_PREP_GROUP(p) -> ε
 
 !AFTER_PREP -> 1{t=L} !AFTER_PREP_ENDING
 !AFTER_PREP -> 2{t=L} !AFTER_PREP_ENDING
@@ -81,7 +82,7 @@ M_PREP_GROUP_ADJ -> ε
 !AFTER_PREP_ENDING -> ε
 
 #John von Neumann
-AFTER_M_PREP -> 1{t=S,c=1,n=S,g=M,note?=jS} AFTER_M_PREP_ENDING
+AFTER_M_PREP -> 1{t=S,c=1,n=S,g=M,note?=jS,r="^(?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*$"} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !r{p=1,t=R} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !ia{p=1,t=I} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !8{t=8} AFTER_M_PREP_ENDING
@@ -89,7 +90,7 @@ AFTER_M_PREP_ENDING -> AFTER_M_PREP
 AFTER_M_PREP_ENDING -> ε
 
 
-!AFTER_M_PREP -> 1{t=L,c=1,note?=jL} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=L,c=1,note?=jL,r="^(?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*$"} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !r{p=1,t=R} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !ia{p=1,t=I} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !8{t=8} !AFTER_M_PREP_ENDING

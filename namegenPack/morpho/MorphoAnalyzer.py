@@ -1088,7 +1088,7 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
 
         # přidáme ke slovům von, da a de
         # analýzu, že se jedná o předložky za nimiž se slova ohýbají
-        for prep in ["dalla", "de", "da", "del", "di", "dos", "el", "la", "le", "van", "von", "O’", "ben", "bin", "y",
+        for prep in ["dalla", "de", "da", "del", "di", "dos", "el", "la", "le", "van", "von", "ben", "bin", "y",
                      "zu"]:
             for w in [prep, prep.capitalize()]:  # generujeme variantu s velkým a malým písmenem na začátku
                 g = self.MAWordGroup(w)
