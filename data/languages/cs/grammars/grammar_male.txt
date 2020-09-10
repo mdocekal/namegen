@@ -7,10 +7,11 @@ SAINT -> 1{t=T,c=1,n=S,g=M,r="^([sS]vatý|[sS]aint)$"} #Svatý ...
 SAINT -> ε
 
 #tento neterminál předpokládá, že předním je právě jedno křestní jméno
-AFTER_GIVEN_NAME ->  NOUN_GROUP_START PREP_GROUP !T_GROUP
+# chceme zachycovat i jména jako: Maria da Assunção Portugalská
+AFTER_GIVEN_NAME ->  NOUN_GROUP_START PREP_GROUP NOUN_GROUP_START !T_GROUP
 # "von" předložka před, kterou je jedno křestní jméno.
 #Je třeba větší priorita, protože velice pravděpodobně nás zajímá pouze varianta s "von" předložkou s jedním křestním jménem.
-AFTER_GIVEN_NAME ->  M_PREP_GROUP(p=1) !T_GROUP	
+AFTER_GIVEN_NAME ->  M_PREP_GROUP(p=1) NOUN_GROUP_START !T_GROUP
 
 
 NOUN_GROUP_START -> NOUN_GROUP
