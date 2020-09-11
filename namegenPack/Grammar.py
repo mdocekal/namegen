@@ -793,6 +793,7 @@ class Lex(object):
 
             # prvně zjistíme tituly
             wT = self.isTitle(name, wCnt)
+
             for _ in range(wT):
                 # zjistíme všechna slova, která tvoří titul
                 # Návratové hodnoty isTitle
@@ -871,44 +872,29 @@ class Lex(object):
         """
         w = name[pos]
 
-        pos += 1
+        lookAhead = pos
+        actTitlePrefix = str(w)
+        lastEvaluatedAsTitle = lookAhead if str(w) in self.__titles else None
 
-        if str(w) in self.__titles or (str(w) in self.__titles_prefixes and pos < len(name)):
-            # jedná se o titul nebo o jeho potencionální část
-            if str(w) in self.__titles_prefixes and pos < len(name):
-                # může se jednat o část delšího titulu
-                # musíme se tedy podívat dopředu
+        while str(actTitlePrefix) in self.__titles_prefixes and (lookAhead + 1) < len(name):
+            # může se jednat o část delšího titulu
+            # musíme se tedy podívat dopředu
 
-                # Bereme nejdelší možný titul, protože jinak bychom nemohli pracovat s tituly jako je
-                # Ing.Arch. kvůli existenci titulu Ing.
+            # Bereme nejdelší možný titul, protože jinak bychom nemohli pracovat s tituly jako je
+            # Ing.Arch. kvůli existenci titulu Ing.
 
-                lookAhead = pos
-                lastEvaluatedAsTitle = lookAhead if str(w) in self.__titles else None
-                actTitlePrefix = str(w) + str(name[lookAhead])
+            lookAhead += 1
+            actTitlePrefix = str(w) + str(name[lookAhead])
+            if actTitlePrefix in self.__titles:
+                lastEvaluatedAsTitle = lookAhead
 
-                lookAhead += 1
-
-                while str(actTitlePrefix) in self.__titles_prefixes and lookAhead < len(name):
-                    if actTitlePrefix in self.__titles:
-                        lastEvaluatedAsTitle = lookAhead
-                    actTitlePrefix += str(name[lookAhead])
-
-                    lookAhead += 1
-
-                if actTitlePrefix in self.__titles:
-                    lastEvaluatedAsTitle = lookAhead - 1
-
-                if lastEvaluatedAsTitle is not None:
-                    # našli jsme nejdelší možný
-                    # můsíme označit všechny slova, ze kterých se skládá jako tituly
-                    return lastEvaluatedAsTitle - pos + 2
-
-            elif str(w) in self.__titles:
-                # slovo je titulem nebo jeho částí
-                return 1
-
-        # nejedná se o titul
-        return 0
+        if lastEvaluatedAsTitle is not None:
+            # našli jsme nejdelší možný
+            # můsíme označit všechny slova, ze kterých se skládá titul
+            return lastEvaluatedAsTitle - pos + 1
+        else:
+            # nejedná se o titul
+            return 0
 
 
 class AnalyzedToken(object):
