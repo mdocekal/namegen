@@ -16,6 +16,7 @@ import traceback
 from argparse import ArgumentParser
 from collections import defaultdict
 from functools import reduce
+import random
 from typing import Any
 
 import regex as re
@@ -543,7 +544,7 @@ def main():
         logging.info("načtení jazyků")
 
         derivClassesOutput = args.deriv
-        derivClasses = defaultdict(set)
+        derivClasses = defaultdict(lambda: defaultdict(lambda:defaultdict(set)))
 
         languages = {}
         for langFolder in os.listdir(configAll[configManager.sectionDataFiles]["LANGUAGES_DIRECTORY"]):
@@ -783,7 +784,7 @@ def main():
 
                         if derivClassesOutput is not None:
                             #ulož jméno do příslušné třídy ekvivalence na základě derivace
-                            derivClasses[tuple(ru)].add(name)
+                            derivClasses[name.language.code][name.type][tuple(ru)].add(name)
                         aTTuple = tuple(aT)
                         if aTTuple in alreadyGenerated:
                             # Nechceme zpracovávat co jsme již zpracovávali.
@@ -1038,17 +1039,34 @@ def main():
                 # a "vytisknout je do souboru. Budou zde jen ta jména, která se opravdu generovala.
 
                 with open(derivClassesOutput, "w") as f:
-                    for deriv, names in derivClasses.items():
-                        for n in sorted(names):
+                    selectedNames = set()
+                    for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
+                        for typeG, allDerivations in sorted(types.items(), key=lambda s: str(s[0])):
+                            print(f"---------------- {lang}\t{typeG} ----------------", file=f)
+                            for deriv, names in allDerivations.items():
+                                for n in sorted(names):
+                                    resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(n.type) + "\t"
+                                    if len(n.additionalInfo) > 0:
+                                        resAdd += "\t".join(n.additionalInfo)
+                                    print(resAdd, file=f)
 
-                            resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(
-                                n.type) + "\t"
-                            if len(n.additionalInfo) > 0:
-                                resAdd += "\t".join(n.additionalInfo)
-                            print(resAdd, file=f)
+                                if len(names & selectedNames) == 0:  # tato derivace je již pokryta nějakým jménem z selectedNames
+                                    selectedNames.add(random.choice(tuple(names)))
 
-                        for rule in deriv:
-                            print(f"\t{rule}", file=f)
+                                for rule in deriv:
+                                    print(f"\t{rule}", file=f)
+
+                            print(f"Počet rozdílných derivací: {len(derivClasses)}", file=f)
+                            print("Výběr jmen pokrývající všechny derivace:", file=f)
+
+                            for n in sorted(selectedNames):
+                                resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(n.type) + "\t"
+                                if len(n.additionalInfo) > 0:
+                                    resAdd += "\t".join(n.additionalInfo)
+                                print(resAdd, file=f)
+
+                            print(f"/---------------- {lang}\t{typeG} ----------------", file=f)
+                            print(f"\n\n", file=f)
 
     except Errors.ExceptionMessageCode as e:
         Errors.ErrorMessenger.echoError(e.message, e.code)
