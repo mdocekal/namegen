@@ -345,6 +345,10 @@ class ArgumentsManager(object):
         parser.add_argument("-w", "--whole", help="Na výstupu se budou vyskytovat pouze tvary jmen ve všech pádech.",
                             action='store_true')
         parser.add_argument("-v", "--verbose", help="Vypisuje i příslušné derivace jmen/názvů.", action='store_true')
+        parser.add_argument("-d", "--deriv",
+                            help="Roztřídí jména do tříd ekvivalence, na základě relace MÁ STEJNOU DERIVACI, a "
+                                 "vytiskne je do souboru, který udává tento parametr. Budou zde jen ta jména, která se opravdu generovala.",
+                            type=str, required=False)
         parser.add_argument('input', nargs="?",
                             help='Vstupní soubor se jmény. Pokud není uvedeno očekává vstup na stdin.', default=None)
         parsed = None
@@ -537,6 +541,9 @@ def main():
         outF = open(args.output, "w") if args.output else sys.stdout
 
         logging.info("načtení jazyků")
+
+        derivClassesOutput = args.deriv
+        derivClasses = defaultdict(set)
 
         languages = {}
         for langFolder in os.listdir(configAll[configManager.sectionDataFiles]["LANGUAGES_DIRECTORY"]):
@@ -774,6 +781,9 @@ def main():
                     generatedNamesThatShouldBeInDuplicityCheckSet = set()
                     for ru, aT in zip(rules, aTokens):
 
+                        if derivClassesOutput is not None:
+                            #ulož jméno do příslušné třídy ekvivalence na základě derivace
+                            derivClasses[tuple(ru)].add(name)
                         aTTuple = tuple(aT)
                         if aTTuple in alreadyGenerated:
                             # Nechceme zpracovávat co jsme již zpracovávali.
@@ -1022,6 +1032,23 @@ def main():
                             str(name) + ("\t" + name.additionalInfo[0] if len(name.additionalInfo) > 0 else "") for name in
                             names)  # name.additionalInfo by mělo na první pozici obsahovat URL zdroje
                         print(resultStr, file=errWFile)
+
+            if derivClassesOutput is not None:
+                # Uživatel chtěl roztřídit jména do tříd ekvivalence, na základě relace MÁ STEJNOU DERIVACI,
+                # a "vytisknout je do souboru. Budou zde jen ta jména, která se opravdu generovala.
+
+                with open(derivClassesOutput, "w") as f:
+                    for deriv, names in derivClasses.items():
+                        for n in sorted(names):
+
+                            resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(
+                                n.type) + "\t"
+                            if len(n.additionalInfo) > 0:
+                                resAdd += "\t".join(n.additionalInfo)
+                            print(resAdd, file=f)
+
+                        for rule in deriv:
+                            print(f"\t{rule}", file=f)
 
     except Errors.ExceptionMessageCode as e:
         Errors.ErrorMessenger.echoError(e.message, e.code)

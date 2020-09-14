@@ -1,7 +1,7 @@
 S
 #číslovku dovolujeme protože chceme i jména jako:
 #	1. Baron z Aucklandu
-S -> SAINT !T_ABBRE_GROUP !IA_GROUP !NUMERIC  NUM(t=G) AFTER_GIVEN_NAME #
+S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC NUM(t=G) AFTER_GIVEN_NAME
 S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=G) 1{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vat[ýé]|[sS]aint)$).*$"} AFTER_GIVEN_NAME
 S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=G) 2{t=G,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vat[ýé]|[sS]aint)$).*$"} AFTER_GIVEN_NAME	#Chceme i indiánská jména: Sedící býk
 SAINT -> 1{t=T,c=1,n=S,g=M,r="^([sS]vatý|[sS]aint)$"} #Svatý ...
@@ -54,8 +54,10 @@ NUM(t) -> ε
 !T_ABBRE_GROUP -> !ABBRE !T_ABBRE_GROUP
 !T_ABBRE_GROUP -> ε
 
-!IA_GROUP -> ia{p=1,t=I} !IA_GROUP
+!MANDATORY_IA_GROUP -> ia{p=1,t=I} !IA_GROUP
+!IA_GROUP -> !MANDATORY_IA_GROUP  !IA_GROUP
 !IA_GROUP -> ε
+
 
 !NUM_ABBREVIATION_GROUP -> r{p=1,t=R} !NUM_ABBREVIATION_GROUP_EMPTY
 !NUM_ABBREVIATION_GROUP -> ia{p=1,t=I} !NUM_ABBREVIATION_GROUP_EMPTY
