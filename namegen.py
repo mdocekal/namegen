@@ -1039,8 +1039,8 @@ def main():
                 # a "vytisknout je do souboru. Budou zde jen ta jména, která se opravdu generovala.
 
                 with open(derivClassesOutput, "w") as f:
-                    selectedNames = set()
                     for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
+                        selectedNames = set()
                         for typeG, allDerivations in sorted(types.items(), key=lambda s: str(s[0])):
                             print(f"---------------- {lang}\t{typeG} ----------------", file=f)
                             for deriv, names in allDerivations.items():
@@ -1056,7 +1056,7 @@ def main():
                                 for rule in deriv:
                                     print(f"\t{rule}", file=f)
 
-                            print(f"Počet rozdílných derivací: {len(derivClasses)}", file=f)
+                            print(f"Počet rozdílných derivací: {len(allDerivations)}", file=f)
                             print("Výběr jmen pokrývající všechny derivace:", file=f)
 
                             for n in sorted(selectedNames):
