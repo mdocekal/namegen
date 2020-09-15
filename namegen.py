@@ -348,7 +348,7 @@ class ArgumentsManager(object):
         parser.add_argument("-v", "--verbose", help="Vypisuje i příslušné derivace jmen/názvů.", action='store_true')
         parser.add_argument("-d", "--deriv",
                             help="Roztřídí jména do tříd ekvivalence, na základě relace MÁ STEJNOU DERIVACI, a "
-                                 "vytiskne je do souboru, který udává tento parametr. Budou zde jen ta jména, která se opravdu generovala.",
+                                 "vytiskne náhodné reprezentanty (jména) derivací, který udává tento parametr. Budou zde jen ta jména, která se opravdu generovala.",
                             type=str, required=False)
         parser.add_argument('input', nargs="?",
                             help='Vstupní soubor se jmény. Pokud není uvedeno očekává vstup na stdin.', default=None)
@@ -784,7 +784,7 @@ def main():
 
                         if derivClassesOutput is not None:
                             #ulož jméno do příslušné třídy ekvivalence na základě derivace
-                            derivClasses[name.language.code][name.type][tuple(ru)].add(name)
+                            derivClasses[name.language.code][os.path.basename(name.grammar.filePath)][tuple(ru)].add(name)
                         aTTuple = tuple(aT)
                         if aTTuple in alreadyGenerated:
                             # Nechceme zpracovávat co jsme již zpracovávali.
@@ -1040,21 +1040,12 @@ def main():
 
                 with open(derivClassesOutput, "w") as f:
                     for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
-                        for typeG, allDerivations in sorted(types.items(), key=lambda s: str(s[0])):
+                        for typeG, allDerivations in sorted(types.items(), key=lambda s: s[0]):
                             print(f"---------------- {lang}\t{typeG} ----------------", file=f)
                             selectedNames = set()
                             for deriv, names in allDerivations.items():
-                                for n in sorted(names):
-                                    resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(n.type) + "\t"
-                                    if len(n.additionalInfo) > 0:
-                                        resAdd += "\t".join(n.additionalInfo)
-                                    print(resAdd, file=f)
-
                                 if len(names & selectedNames) == 0:  # tato derivace je již pokryta nějakým jménem z selectedNames
                                     selectedNames.add(random.choice(tuple(names)))
-
-                                for rule in deriv:
-                                    print(f"\t{rule}", file=f)
 
                             print(f"Počet rozdílných derivací: {len(allDerivations)}", file=f)
                             print(f"Výběr jmen pokrývající všechny derivace: {len(selectedNames)}", file=f)
