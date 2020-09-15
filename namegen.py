@@ -1040,9 +1040,9 @@ def main():
 
                 with open(derivClassesOutput, "w") as f:
                     for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
-                        selectedNames = set()
                         for typeG, allDerivations in sorted(types.items(), key=lambda s: str(s[0])):
                             print(f"---------------- {lang}\t{typeG} ----------------", file=f)
+                            selectedNames = set()
                             for deriv, names in allDerivations.items():
                                 for n in sorted(names):
                                     resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(n.type) + "\t"
@@ -1057,7 +1057,7 @@ def main():
                                     print(f"\t{rule}", file=f)
 
                             print(f"Počet rozdílných derivací: {len(allDerivations)}", file=f)
-                            print("Výběr jmen pokrývající všechny derivace:", file=f)
+                            print(f"Výběr jmen pokrývající všechny derivace: {len(selectedNames)}", file=f)
 
                             for n in sorted(selectedNames):
                                 resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(n.type) + "\t"
