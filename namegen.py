@@ -966,6 +966,35 @@ def main():
                         file=fileW)
             logging.info("\thotovo")
 
+        if derivClassesOutput is not None:
+            # Uživatel chtěl roztřídit jména do tříd ekvivalence, na základě relace MÁ STEJNOU DERIVACI,
+            # a "vytisknout je do souboru. Budou zde jen ta jména, která se opravdu generovala.
+            logging.info("Výpis reprezentantů derivací pro všechny gramatiky.")
+
+            with open(derivClassesOutput, "w") as f:
+                for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
+                    for typeG, allDerivations in sorted(types.items(), key=lambda s: s[0]):
+                        print(f"---------------- {lang}\t{typeG} ----------------", file=f)
+                        selectedNames = set()
+                        for deriv, names in allDerivations.items():
+                            if len(
+                                    names & selectedNames) == 0:  # tato derivace je již pokryta nějakým jménem z selectedNames
+                                selectedNames.add(random.choice(tuple(names)))
+
+                        print(f"Počet rozdílných derivací: {len(allDerivations)}", file=f)
+                        print(f"Výběr jmen pokrývající všechny derivace: {len(selectedNames)}", file=f)
+
+                        for n in sorted(selectedNames):
+                            resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(n.type) + "\t"
+                            if len(n.additionalInfo) > 0:
+                                resAdd += "\t".join(n.additionalInfo)
+                            print(resAdd, file=f)
+
+                        print(f"/---------------- {lang}\t{typeG} ----------------", file=f)
+                        print(f"\n\n", file=f)
+
+            logging.info("\thotovo")
+
         print("-------------------------", file=sys.stderr)
         print("Celkem jmen: " + str(namesR.errorCnt + len(namesR.names)), file=sys.stderr)
         print("\tNenačtených jmen: " + str(namesR.errorCnt), file=sys.stderr)
@@ -1033,31 +1062,6 @@ def main():
                             str(name) + ("\t" + name.additionalInfo[0] if len(name.additionalInfo) > 0 else "") for name in
                             names)  # name.additionalInfo by mělo na první pozici obsahovat URL zdroje
                         print(resultStr, file=errWFile)
-
-            if derivClassesOutput is not None:
-                # Uživatel chtěl roztřídit jména do tříd ekvivalence, na základě relace MÁ STEJNOU DERIVACI,
-                # a "vytisknout je do souboru. Budou zde jen ta jména, která se opravdu generovala.
-
-                with open(derivClassesOutput, "w") as f:
-                    for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
-                        for typeG, allDerivations in sorted(types.items(), key=lambda s: s[0]):
-                            print(f"---------------- {lang}\t{typeG} ----------------", file=f)
-                            selectedNames = set()
-                            for deriv, names in allDerivations.items():
-                                if len(names & selectedNames) == 0:  # tato derivace je již pokryta nějakým jménem z selectedNames
-                                    selectedNames.add(random.choice(tuple(names)))
-
-                            print(f"Počet rozdílných derivací: {len(allDerivations)}", file=f)
-                            print(f"Výběr jmen pokrývající všechny derivace: {len(selectedNames)}", file=f)
-
-                            for n in sorted(selectedNames):
-                                resAdd = str(n) + "\t" + str(n.language.code) + "\t" + str(n.type) + "\t"
-                                if len(n.additionalInfo) > 0:
-                                    resAdd += "\t".join(n.additionalInfo)
-                                print(resAdd, file=f)
-
-                            print(f"/---------------- {lang}\t{typeG} ----------------", file=f)
-                            print(f"\n\n", file=f)
 
     except Errors.ExceptionMessageCode as e:
         Errors.ErrorMessenger.echoError(e.message, e.code)
