@@ -242,6 +242,9 @@ class POS(MorphCategory):
     ABBREVIATION = "A"
     """zkratka"""
 
+    DETERMINER = "D"
+    """člen"""
+
     @staticmethod
     def category():
         return MorphCategories.POS
@@ -479,6 +482,9 @@ class Note(MorphCategory):
 
     SURNAME = "jS"
     """Vyjadřuje príjmení."""
+
+    UNIQ_NAME = "jB"
+    """Jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB)"""
 
     CHARACTER_AS_NOUN = "iP"
     """

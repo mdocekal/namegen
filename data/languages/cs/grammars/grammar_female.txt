@@ -1,4 +1,6 @@
 S
+
+S -> 1{t=G,c=1,n=S,g=F,note?=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
 #číslovku dovolujeme protože chceme i jména jako:
 #	1. Baronka z Aucklandu
 S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC  NUM(t=G) AFTER_GIVEN_NAME
@@ -22,12 +24,14 @@ NOUN_GROUP_START -> !NUM_ABBREVIATION_GROUP
 NOUN_GROUP_START -> ε
 NOUN_GROUP -> 1{t=G,c=1,n=S,g=F,r="^.*(?<!(ová|cká|ská))$",note?=jG} NOUN_GROUP
 NOUN_GROUP -> 1{t=S,c=1,n=S,g=F,r="^.*(ová|cká|ská)$",note?=jS} NOUN_GROUP
-NOUN_GROUP -> MODIFIER NOUN_GROUP
+NOUN_GROUP -> GENERATION_SPECIFIER NOUN_GROUP
 NOUN_GROUP -> !SURNAME_M_NOUN NOUN_GROUP	#v mužském rodě pouze příjmení
 NOUN_GROUP -> !NUM_ABBREVIATION_GROUP NOUN_GROUP_2
 NOUN_GROUP -> 1{t=S,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> 1{t=S,c=1,n=S,g=N,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY	#Mistryně Oplakávání ze Žebráka
+NOUN_GROUP -> 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> 2{t=S,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jS} 1{t=S,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> 2{t=S,c=1,n=S,g=F,note?=jS} 1{t=S,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> !SURNAME_M_NOUN !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> !SURNAME_M_ADJECTIVE !NUM_ABBREVIATION_GROUP_EMPTY
@@ -38,6 +42,7 @@ NOUN_GROUP -> !SURNAME_M_ADJECTIVE !SURNAME_M_NOUN !NUM_ABBREVIATION_GROUP_EMPTY
 !SURNAME_M_ADJECTIVE -> 2{t=S,c=1,n=S,g=M,note?=jS}
 
 NOUN_GROUP_2 -> 1{t=S,c=1,n=S,g=F,note?=jS} NOUN_GROUP_3
+NOUN_GROUP_2 -> 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jS}
 NOUN_GROUP_2 -> 2{t=S,c=1,n=S,g=F,note?=jS}
 NOUN_GROUP_2 -> !SURNAME_M_NOUN NOUN_GROUP_3
 NOUN_GROUP_2 -> !SURNAME_M_ADJECTIVE
@@ -45,11 +50,11 @@ NOUN_GROUP_2 -> 1{t=S,c=1,n=S,g=N,note?=jS} NOUN_GROUP_3
 NOUN_GROUP_3 -> NOUN_GROUP_2
 NOUN_GROUP_3 -> ε
 
-VOL_MODIFIER -> MODIFIER
-VOL_MODIFIER -> ε
-MODIFIER -> *{p=1,t=M,c=1,n=S,g=F,r="^(mladší|starší)$"}
-MODIFIER -> !MODIFIER
-!MODIFIER -> *{p=1,t=M,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
+VOL_GENERATION_SPECIFIER -> GENERATION_SPECIFIER
+VOL_GENERATION_SPECIFIER -> ε
+GENERATION_SPECIFIER -> *{p=1,t=GS,c=1,n=S,g=F,r="^(mladší|starší)$"}
+GENERATION_SPECIFIER -> !GENERATION_SPECIFIER
+!GENERATION_SPECIFIER -> *{p=1,t=GS,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
 
 #	1. Baronka z Aucklandu
 NUM(t) -> 4{c=1,t=L,n=S,g=M}
@@ -83,7 +88,7 @@ PREP_GROUP -> ε
 
 
 #U jmen ženských záleží na tom, zda příjmení přechylujeme. Pokud ano, skloňujeme je vždy, pokud ne (nejčastěji u šlechtických přídomků), zůstává nesklonné: Diana de Poitiers, Simone de Beauvoir/Beauvoirová – 2. p. Diany de Poitiers, Simone de Beauvoir/Beauvoirové – 5. p. Diano de Poitiers, Simone de Beauvoir/Beauvoirová – viz též Přechylování.
-M_PREP_GROUP(p) -> REPEAT_M_PREP_GROUP(p=$p) VOL_MODIFIER #Karl Korb von Weidenheim starší
+M_PREP_GROUP(p) -> REPEAT_M_PREP_GROUP(p=$p) VOL_GENERATION_SPECIFIER #Karl Korb von Weidenheim starší
 REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=S,p=$p) AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
 REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=7,p=$p) !AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
 REPEAT_M_PREP_GROUP(p) -> ε
@@ -98,6 +103,7 @@ REPEAT_M_PREP_GROUP(p) -> ε
 
 
 !AFTER_PREP -> 1{t=L} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=H,note=jS,p=1} !AFTER_PREP_ENDING
 !AFTER_PREP -> 2{t=L} !AFTER_PREP_ENDING
 !AFTER_PREP -> 4{t=L} !AFTER_PREP_ENDING
 !AFTER_PREP -> !ABBRE !AFTER_PREP_ENDING

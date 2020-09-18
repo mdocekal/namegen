@@ -344,7 +344,7 @@ class MorphoAnalyzer(ABC):
     """
 
     @abstractmethod
-    def isNameDependant(self, word: str, name=None) -> bool:
+    def isNameDependant(self, word: str, name) -> bool:
         """
         Zjistí zdali daná kombinace slova a jména má na jméně závislou analýzu.
 

@@ -18,7 +18,7 @@ def main():
 
     for word in sys.stdin:
         word = word.strip()
-        if len(word)>0:
+        if len(word) > 0:
             lemma = morphodita.lemmatize(word)
 
             print(f"ma><s> {word}")

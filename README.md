@@ -17,7 +17,7 @@ Program pro generování tvarů jmen osob, lokací a událostí.
 
 Je nutné mít k dispozici Morfologický analyzátor pro češtinu ( [MA - odkaz na interní wiki](http://knot.fit.vutbr.cz/wiki/index.php/Morfologick%C3%BD_slovn%C3%Adk_a_morfologick%C3%BD_analyz%C3%A1tor_pro_%C4%8De%C5%A1tinu#Morfologick.C3.BD_analyz.C3.A1tor_pro_.C4.8De.C5.A1tinu) ). 
 
-Cestu k analyzátoru (příkaz ke spuštění) lze nastavovat v konfiguračním souboru v sekci MA položka PATH_TO. 
+Název skriptu spouštějící analyzátor lze nastavovat v konfiguračním souboru v sekci DATA_FILES položka MA. Očekává se, že tento skript se jménem, které je uvedeno v konfiguračním souboru, existuje ve složce každého jazyka. Více o samotných složkách jazyků lze nalézt v README.md ve složce data
 
 Další závislosti jsou uvedeny v souboru **requirements.txt**.
 

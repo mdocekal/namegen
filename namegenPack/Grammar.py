@@ -204,6 +204,7 @@ class Terminal(object):
         ROMAN_NUMBER = "r"  # římská číslice
         NUMBER = "n"  # číslovka (pouze z číslic) Příklady: 12., 12
         INITIAL_ABBREVIATION = "ia"  # Iniciálová zkratka.
+        DETERMINER = "d"  # člen/determiner (Příklad: the)
         ANY = "*"   # jakýkoliv token
 
         X = "x"  # neznámé
@@ -234,7 +235,7 @@ class Terminal(object):
                 return None
 
     Type.POSTypes = {Type.N, Type.A, Type.P, Type.C, Type.V, Type.D, Type.R, Type.RA, Type.RM, Type.J, Type.T, Type.I,
-                     Type.ABBREVIATION}
+                     Type.ABBREVIATION, Type.DETERMINER}
     """Typy, které jsou POS"""
 
     Type.toPOSMap = {
@@ -250,7 +251,9 @@ class Terminal(object):
         Type.J: POS.CONJUNCTION,  # spojka
         Type.T: POS.PARTICLE,  # částice
         Type.I: POS.INTERJECTION,  # citoslovce
-        Type.ABBREVIATION: POS.ABBREVIATION  # zkratka
+        Type.ABBREVIATION: POS.ABBREVIATION,  # zkratka
+        Type.DETERMINER: POS.DETERMINER
+
     }
     """Zobrazení typu do POS."""
 
@@ -1747,6 +1750,14 @@ class Grammar(object):
         self.filePath = filePath
 
         self.analyzeStartTime = None
+
+    @property
+    def flaxible(self) -> bool:
+        """
+        True -> pokud se jedná o ohebnou gramatiku. False jinak.
+        Neohebná gramatika má neohebný počáteční neterminál (!S).
+        """
+        return self._startS[0] != self.NON_GEN_MORPH_SIGN
 
     def _load(self, filePath):
         """

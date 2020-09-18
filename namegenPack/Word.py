@@ -28,7 +28,10 @@ class WordTypeMark(Enum):
     DEGREE_TITLE = "T"  # Titul. Příklad: prof.
     INITIAL_ABBREVIATION = "I"  # Iniciálová zkratka. Příklad H. ve jméně John H. White
     ABBREVIATION = "A"  # Zkratka. Příklad Sv. ve jméně Sv. Nikola
-    MODIFIER = "M" # Přívlastek. Příklad: mladší
+    GENERATION_SPECIFIER = "GS"  # Generační specifikace. Příklad: mladší
+    MODIFIER = "M" # Přívlastek/epiteton. Příklad: sličný
+    UNIQ_NAME = "B" # Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
+    HOUSE = "H" # House/Rod Příklad: z Přemyslovců
     UNKNOWN = "U"  # Neznámé
 
     def __str__(self):
@@ -70,57 +73,41 @@ class Word(object):
         """
         pass
 
-    ma = None
-    """Morfologický analyzátor."""
-
-    def __init__(self, w, name=None, wordPos: int = None):
+    def __init__(self, w, name, wordPos: int):
         """
         Konstruktor slova.
         
         :param w: Řetězcová reprezentace slova.
         :type w: String
         :param name: Jméno ze kterého pochází toto slovo.
-            Pokud je toto jméno předáno, pak se vytvoří na jméně závislé slovo. Tento druh slova se využívá v případech,
-            kdy chceme na jméně zásvilou morfologickou analýzu.
-        :type name: Optional[Name]
+        :type name: Name
         :param wordPos: Pozice slova ve jméně.
-        :type wordPos: Optional[int]
+        :type wordPos: int
         """
         self._w = w
         self.name = name
         self.wordPos = wordPos
 
     @classmethod
-    def createNameDependantWord(cls, w, name=None, wordPos: int = None):
+    def createNameDependantWord(cls, w, name, wordPos: int):
         """
         Vytvoří na jméně závislé slovo, ale jen pokud má na jméně závislou analýzu.
 
         :param w: Řetězcová reprezentace slova.
         :type w: String
         :param name: Jméno ze kterého pochází toto slovo.
-            Pokud je toto jméno předáno, pak se vytvoří na jméně závislé slovo. Tento druh slova se využívá v případech,
+            Vytvoří na jméně závislé slovo. Tento druh slova se využívá v případech,
             kdy chceme na jméně zásvilou morfologickou analýzu.
-        :type name: Optional[Name]
+        :type name: Name
         :param wordPos: Pozice slova ve jméně.
         :type wordPos: int
         :return: Na jméně závislé slovo nebo None.
         :rtype: Union[None, Word]
         """
 
-        if cls.ma.isNameDependant(w, name):
+        if name.language.ma.isNameDependant(w, name):
             return cls(w, name, wordPos)
         return None
-
-    @classmethod
-    def setMorphoAnalyzer(cls, ma: MorphoAnalyzer):
-        """
-        Přiřazení morfologického analyzátoru.
-        
-        :param ma: Morfologický analyzátor, který se bude používat k získávání informací o slově.
-        :type ma: MorphoAnalyzer
-        """
-
-        cls.ma = ma
 
     @property
     def info(self) -> MorphoAnalyze:
@@ -131,14 +118,9 @@ class Word(object):
         :rtype: MorphoAnalyze
         :raise WordCouldntGetInfoException: Problém při analýze slova.
         """
-        if self.ma is None:
-            # nemohu provést morfologickou analýzu bez analyzátoru
-            raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
-                                                   Errors.ErrorMessenger.getMessage(
-                                                       Errors.ErrorMessenger.CODE_WORD_ANALYZE) + "\t" + self._w)
 
         # získání analýzy
-        a = self.ma.analyze(self._w, self.name, self.wordPos)
+        a = self.name.language.ma.analyze(self._w, self.name, self.wordPos)
         if a is None:
             raise self.WordCouldntGetInfoException(self, Errors.ErrorMessenger.CODE_WORD_ANALYZE,
                                                    Errors.ErrorMessenger.getMessage(
@@ -186,7 +168,7 @@ class Word(object):
 
     def __repr__(self):
         return self._w + ("" if self.name is None else (" -> " + str(self.name))) + \
-               ("" if self.wordPos is None else ("[" + str(self.wordPos)+"]"))
+               ("[" + str(self.wordPos)+"]")
 
     def __hash__(self):
         return hash((self._w, self.name, self.wordPos))

@@ -11,7 +11,7 @@ import logging
 import sys
 from builtins import str
 from enum import Enum
-from typing import List, Dict, Set, Tuple, Union
+from typing import List, Dict, Set, Tuple, Union, Optional, TextIO
 
 import namegenPack.Grammar
 from namegenPack import Errors
@@ -252,7 +252,7 @@ class Name(object):
 
         # rozdělíme jméno na jednotlivá slova a oddělovače
         words, self._separators = self._findWords(name)
-        self._words = [wordDatabase[w] if w in wordDatabase else Word(w) for w in words]
+        self._words = [wordDatabase[w] if w in wordDatabase else Word(w, self, offset) for offset, w in enumerate(words)]
 
     def copy(self) -> "Name":
         """
@@ -275,7 +275,11 @@ class Name(object):
         return n
 
     def __repr__(self):
-        return str((str(self), self._language, self._type, self.additionalInfo))
+        resAdd = str(self) + "\t" + str(self.language.code) + "\t" + str(self.type) + "\t"
+        if len(self.additionalInfo) > 0:
+            resAdd += "\t".join(self.additionalInfo)
+
+        return resAdd
 
     def __lt__(self, other):
         # porovnání s ohledem na aktuální locale
@@ -754,8 +758,14 @@ class Name(object):
         # Set[Tuple[MARule,str]]
         morphs = []
 
-        for c in [Case.NOMINATIVE, Case.GENITIVE, Case.DATIVE, Case.ACCUSATIVE, Case.VOCATIVE, Case.LOCATIVE,
-                  Case.INSTRUMENTAL]:  # pády
+        if self.grammar.flaxible:
+            cases = [Case.NOMINATIVE, Case.GENITIVE, Case.DATIVE, Case.ACCUSATIVE, Case.VOCATIVE, Case.LOCATIVE,
+                     Case.INSTRUMENTAL]
+        else:
+            # neohebná gramatika (angličtina apod.) nechcem další tvary
+            cases = [Case.NOMINATIVE]
+
+        for c in cases:  # pády
             wordsTypes=[]
             wordsWithRules=[]
             for i, (word, aToken) in enumerate(zip(self._words, analyzedTokens)):
@@ -805,6 +815,10 @@ class Name(object):
             if len(wordsWithRules) == len(self._words):
                 # máme tvar pro všechna slova
                 morphs.append(NameMorph(self, wordsWithRules, wordsTypes))
+
+            if not self.grammar.flaxible:
+                # neohebná gramatika (angličtina apod.) nechcem další tvary
+                break
 
         return morphs
 
@@ -953,47 +967,24 @@ class NameReader(object):
         """
         return self._errorCnt
 
-    def allWords(self, stringRep=False, alnumCheck=False, but: Filter = None):
+    def allWords(self, alnumCheck: bool = False) -> Set[Word]:
         """
         Slova vyskytující se ve všech jménech.
 
-        :param stringRep: True v str reprezentaci. False jako Word objekt.
-        :type stringRep: bool
         :param alnumCheck: Vybere jen ta slova, která obsahují aspoň jeden alfanumerický znak.
-        :type alnumCheck: bool
-        :param but: Volitelně je možné přidat filtr jmen jejichž slova nemají být použita.
-        :type but: Filter
         :return Množina všech slov ve jménech.
-        :rtype: Set[Word] | Set[str]
         """
         words = set()
 
-        filteredNames = self.names
-
-        if but is not None:
-            filteredNames = filter(but, filteredNames)
-
-        if stringRep:
-            if alnumCheck:
-                for name in filteredNames:
-                    for w in name:
-                        st = str(w)
-                        if any(s.isalnum() for s in st):
-                            words.add(st)
-            else:
-                for name in filteredNames:
-                    for w in name:
-                        words.add(str(w))
-        else:
-            if alnumCheck:
-                for name in filteredNames:
-                    for w in name:
-                        if any(s.isalnum() for s in str(w)):
-                            words.add(w)
-            else:
-                for name in filteredNames:
-                    for w in name:
+        if alnumCheck:
+            for name in self.names:
+                for w in name:
+                    if any(s.isalnum() for s in str(w)):
                         words.add(w)
+        else:
+            for name in self.names:
+                for w in name:
+                    words.add(w)
         return words
 
     def __iter__(self):
@@ -1001,4 +992,34 @@ class NameReader(object):
         Iterace přes všechna jména. V seřazeném pořadí.
         """
         return iter(self.names)
+
+    def filter(self, useF: Filter, printFiltered: Optional[TextIO] = None):
+        """
+        Profiltruje načtená jména pomocí zvoleného filtru.
+
+        :param useF: Filtr, který mý být použit.
+        :param printFiltered: Vytiskne dané jméno do tohoto souboru/TextIO, pokud bude odfiltrováno.
+        Jinak pouze oznámí do logu.
+        """
+
+
+        filteredNames = []
+        for name in self:
+
+            if useF(name):
+                filteredNames.append(name)
+            else:
+                # Na základě uživatelských filtrů nemají být pro toto jméno
+                # generovány tvary.
+
+                logging.info("Neprošlo filtrem: " + str(name))
+
+                if printFiltered is not None:
+                    print(name.printName(), file=printFiltered)
+
+                continue
+
+        self.names = filteredNames
+
+
 

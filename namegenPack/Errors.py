@@ -68,6 +68,7 @@ class ErrorMessenger(object):
     CODE_GRAMMAR_COULDNT_GENERATE_RULE = 32
     CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE = 33
     CODE_UNKNOWN_LANGUAGE = 34
+    CODE_LANGUAGE_NOT_INIT_MA = 35
 
     CODE_ALL_VALUES_NOT_COVERED = 99
     CODE_UNKNOWN_ERROR = 100
@@ -112,6 +113,7 @@ class ErrorMessenger(object):
         CODE_GRAMMAR_NONTERMINAL_NO_CORESPONDING_RULE: "Neterminál {} nemá korespondující pravidlo.",
         CODE_ALL_VALUES_NOT_COVERED: "Nejsou pokryty všechny hodnoty.",
         CODE_UNKNOWN_LANGUAGE: "Jméno {} je v neznámém jazyce.",
+        CODE_LANGUAGE_NOT_INIT_MA: "Je nutné nejprve inicializovat morfologický analyzátor.",
         CODE_UNKNOWN_ERROR: "Neznámá chyba.",
     }
 

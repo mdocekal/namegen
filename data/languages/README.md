@@ -63,7 +63,7 @@ Zde si popíšeme formát souboru s gramatikou.
 * Zbytek řádků představuje pravidla. Vždy jedno pravidlo na řádku.
   * Formát pravidla: Neterminál -> Terminály a neterminály odděleny bílým znakem
 * Startovací symbol je z množiny neterminálů. Znak ε je vyhrazen pro prázdný řetězec.
-* Pokud je jako 1. znak v ne/terminálu uveden !, pak se jedná o neohebnou část jména (dědí se dále v derivačním stromu).
+* Pokud je jako 1. znak v ne/terminálu uveden !, pak se jedná o neohebnou část jména (dědí se dále v derivačním stromu). Pokud je takto označen počíteční neterminál, pak je celá gramatika neohebná a při výpisu je vypsán pouze základní tvar.
 * Neterminály mohou být zvoleny libovolně avšak odlišně od terminálů. Nepoužívejte vyhrazené posloupnosti znaků jako jsou: ->,$.
 * Je možné používat komentáře, které jsou uvozeny znakem #. Stejně, tak ignoruje prázdné řádky, či řádky, které obsahují pouze komentář.
 * Neterminály mohou mít přiřazeny parametry, v takovém případě tvoří šablonu, která bude použita pro vygenerování pravidel. Umožňují kompaktnější a přehlednější zápis množiny pravidel, která se liší pouze v několika málo hodnotách. Více v sekci [Šablony](#šablony).
@@ -86,6 +86,7 @@ Terminály jsou předdefinované. Jejich seznam je následující:
 	r	- římská číslice (od I do XXXIX)
 	a	- zkratka
 	ia	- Iniciálová zkratka. (Slovo s tečkou na konci o délce 2 [včetně tečky])
+	d   - člen/determiner (Příklad: the)
 	n	- číslo (pouze z číslic) Příklady: 12., 12
 	*   - libovolný token
 
@@ -126,8 +127,11 @@ Možné atributy a jejich hodnoty:
     	8	Spojka.
     	T	Titul. Příklad: prof.
     	I	Iniciálová zkratka. Příklad H. ve jméně John H. White
-    	A	Zkratka. Příklad jr. (junior) ve jméně Jan jr.
-    	M	Přívlastek. Příklad: mladší
+    	A	Zkratka. Příklad DJ ve jméně DJ Wich
+    	GS	Generační specifikace. Příklad: mladší
+    	M	Přívlastek/epiteton. Příklad: sličný
+    	B   Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
+    	H   House/Rod Příklad: z Přemyslovců
     	U	Neznámé
     r - Regulární výraz, který určuje podobu slova.
     	Hodnota musí být vepsána v uvozovkách.

@@ -9,7 +9,9 @@ import ast
 import os
 from typing import Optional, Set
 
+from namegenPack.Errors import ExceptionMessageCode, ErrorMessenger
 from namegenPack.Grammar import Grammar, Lex
+from namegenPack.morpho.MorphoAnalyzer import MorphoAnalyzerLibma
 
 
 class Language(object):
@@ -40,6 +42,7 @@ class Language(object):
     """
 
     def __init__(self, langFolder: str, gFemale: str, gMale: str, gLocations: str, gEvents: str, titles: str, eqGen: str,
+                 ma: str,
                  gTimeout: Optional[int]):
         """
         Načte jazyk z jeho složky.
@@ -61,6 +64,8 @@ class Language(object):
             ostatní z dané množiny pokud je na vstupu jedno z nich.
             Uveďte název python souboru.
         :type eqGen: str
+        :param ma: Název skriptu pro morfologický analyzátor.
+        :type ma: str
         :param gTimeout: Timeout pro gramatiky.
         :type gTimeout: Optional[int]
         """
@@ -80,6 +85,31 @@ class Language(object):
             self.eqGen = ast.literal_eval(f.read())
 
         self.lex = Lex(self.titles)
+        self._maPath = os.path.join(langFolder, ma)
+
+        self._ma = None
+
+    @property
+    def ma(self) -> MorphoAnalyzerLibma:
+        """
+        Morfologický analyzátor.
+
+        :raise ExceptionMessageCode: Musí být inicializován pomocí :func:`~Language.Language.initMAnalyzer` jinak
+        exception.
+        """
+        
+        if self._ma is None:
+            raise ExceptionMessageCode(ErrorMessenger.CODE_LANGUAGE_NOT_INIT_MA)
+        return self._ma
+
+    def initMAnalyzer(self, words: Set[str]):
+        """
+        Provede inicializaci morfologického analyzátoru pomocí daných slov.
+
+        :param words: Slova pro inicializaci
+        """
+
+        self._ma = MorphoAnalyzerLibma(self._maPath, words)
 
     @staticmethod
     def _readTitles(pathT) -> Set[str]:
