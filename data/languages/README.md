@@ -132,6 +132,7 @@ Možné atributy a jejich hodnoty:
     	M	Přívlastek/epiteton. Příklad: sličný
     	B   Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
     	H   House/Rod Příklad: z Přemyslovců
+    	D   člen/determiner (Příklad: the)
     	U	Neznámé
     r - Regulární výraz, který určuje podobu slova.
     	Hodnota musí být vepsána v uvozovkách.

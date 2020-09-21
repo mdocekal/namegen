@@ -1752,7 +1752,7 @@ class Grammar(object):
         self.analyzeStartTime = None
 
     @property
-    def flaxible(self) -> bool:
+    def flexible(self) -> bool:
         """
         True -> pokud se jedná o ohebnou gramatiku. False jinak.
         Neohebná gramatika má neohebný počáteční neterminál (!S).

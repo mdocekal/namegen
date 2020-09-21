@@ -32,6 +32,7 @@ class WordTypeMark(Enum):
     MODIFIER = "M" # Přívlastek/epiteton. Příklad: sličný
     UNIQ_NAME = "B" # Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
     HOUSE = "H" # House/Rod Příklad: z Přemyslovců
+    DETERMINER = "D"  # člen/determiner (Příklad: the)
     UNKNOWN = "U"  # Neznámé
 
     def __str__(self):

@@ -928,7 +928,7 @@ def main():
                             morphs = name.genMorphs(aT, missingCaseWords)
 
                             if args.whole and (
-                                    (name.grammar.flaxible and len(morphs) < len(Case)) or (not name.grammar.flaxible and len(morphs) < 1)):
+                                    (name.grammar.flexible and len(morphs) < len(Case)) or (not name.grammar.flexible and len(morphs) < 1)):
                                 # Uživatel chce tisknout pouze pokud máme tvary pro všechny pády.
                                 continue
 

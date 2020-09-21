@@ -1,6 +1,6 @@
 S
 
-S -> 1{t=G,c=1,n=S,g=F,note?=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
+S -> 1{t=G,c=1,n=S,g=F,note=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
 #číslovku dovolujeme protože chceme i jména jako:
 #	1. Baronka z Aucklandu
 S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC  NUM(t=G) AFTER_GIVEN_NAME

@@ -380,26 +380,28 @@ class Name(object):
         grammars = {Name.Type.PersonGender.FEMALE: self.language.gFemale,
                     Name.Type.PersonGender.MALE: self.language.gMale}
         try:
-            for token in reversed(tokens):
-                if token.type == namegenPack.Grammar.Token.Type.ANALYZE:
-                    # získáme možné mluvnické kategorie
-                    analyze = token.word.info
-                    posCat = analyze.getAllForCategory(MorphCategories.MorphCategories.POS,
-                                                       {Case.NOMINATIVE})  # máme zájem jen o 1. pád
-                    if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
+            if self._language.code == "cs":
+                # pro češtinu máme i další kontroly
+                for token in reversed(tokens):
+                    if token.type == namegenPack.Grammar.Token.Type.ANALYZE:
+                        # získáme možné mluvnické kategorie
+                        analyze = token.word.info
+                        posCat = analyze.getAllForCategory(MorphCategories.MorphCategories.POS,
+                                                           {Case.NOMINATIVE})  # máme zájem jen o 1. pád
+                        if MorphCategories.POS.NOUN in posCat or MorphCategories.POS.ADJECTIVE in posCat:
+                            if token.word[-3:] in {"ová", "cká", "ská"}:
+                                # muž s přijmení končícím na ová,cká a ská zřejmě není
+                                # změníme typ pokud není ženský
+                                changeTo = self.Type.PersonGender.FEMALE
+                            break
+                    elif token.type == namegenPack.Grammar.Token.Type.ANALYZE_UNKNOWN:
+                        # Máme token, který by potřeboval analýzu, ale analyzátor nezná dané slovo.
+                        # Zkusme aspoň bez závislost na slovním druhu (protože ho nezjistíme) otestovat slovo na ženská koncovky.
                         if token.word[-3:] in {"ová", "cká", "ská"}:
-                            # muž s přijmení končícím na ová,cká a ská zřejmě není
+                            # muž s přijmení končícím na ová,cká a ská, zřejmě není
                             # změníme typ pokud není ženský
                             changeTo = self.Type.PersonGender.FEMALE
                         break
-                elif token.type == namegenPack.Grammar.Token.Type.ANALYZE_UNKNOWN:
-                    # Máme token, který by potřeboval analýzu, ale analyzátor nezná dané slovo.
-                    # Zkusme aspoň bez závislost na slovním druhu (protože ho nezjistíme) otestovat slovo na ženská koncovky.
-                    if token.word[-3:] in {"ová", "cká", "ská"}:
-                        # muž s přijmení končícím na ová,cká a ská, zřejmě není
-                        # změníme typ pokud není ženský
-                        changeTo = self.Type.PersonGender.FEMALE
-                    break
 
             # Provedeme odhad na základě gramatik, pokud bude odpovídat právě jedna gramatika, pak ji přířazený typ
             # určuje daný odhad.
@@ -407,7 +409,6 @@ class Name(object):
             rules = None
 
             if changeTo is None and grammars:
-                # příjmení nekončí na ová
                 for t, g in grammars.items():
                     try:
                         rules, aTokens = g.analyse(tokens)
@@ -430,6 +431,7 @@ class Name(object):
             cleanDeriv = True
 
             if changeTo is not None:
+
                 if self._type == None:   #Používáme rozšířené porovnání implementované v Name.__eq__.
                     logging.info("Pro " + str(self) + " přiřazuji " + str(changeTo) + ".")
                     if self._type is None:
@@ -443,51 +445,52 @@ class Name(object):
 
                     cleanDeriv = False  # tyto derivace chceme použít
 
-                elif self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER] != changeTo and aTokens is not None:
-                    # Změníme typ pouze pokud morfologická analýza říká, že daná slova opravdu mohou být G či S.
-                    # Tedy například pokud gramatika říká, že dané slovo má být příjmení, tak morfologický analyzátor
-                    # musí dané příjmení jako příjmení znát (note=jS).
+                else:
+                    if self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER] != changeTo and aTokens is not None:
+                        couldNotChange = False  # příznak, že se druh nemůže změnit
+                        if self._language.code == "cs":
+                            # pro češtinu klademe tvrdší podmínky při změně
+                            # Změníme typ pouze pokud morfologická analýza říká, že daná slova opravdu mohou být G či S.
+                            # Tedy například pokud gramatika říká, že dané slovo má být příjmení, tak morfologický analyzátor
+                            # musí dané příjmení jako příjmení znát (note=jS).
 
-                    couldNotChange = False  # příznak, že se druh nemůže změnit
+                            for actDerivAnalTokens in aTokens:
 
-                    for actDerivAnalTokens in aTokens:
+                                for aT in actDerivAnalTokens:
 
-                        for aT in actDerivAnalTokens:
+                                    # získejme prvně druh slova ve jméně
 
-                            # získejme prvně druh slova ve jméně
+                                    wordType = aT.matchingTerminal.getAttribute(
+                                        namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE)
 
-                            wordType = aT.matchingTerminal.getAttribute(
-                                namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE)
+                                    if wordType.value in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
+                                        # kontrolujeme jen pro jméno a příjmení
 
-                            if wordType.value in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
-                                # kontrolujeme jen pro jméno a příjmení
+                                        if aT.token.type == namegenPack.Grammar.Token.Type.ANALYZE_UNKNOWN:
+                                            # budeme provádět změnu jen v případech, kdy máme pro všechna zkoumaná slova potřebnou analýzyu
+                                            couldNotChange = True
+                                            break
 
-                                if aT.token.type == namegenPack.Grammar.Token.Type.ANALYZE_UNKNOWN:
-                                    # budeme provádět změnu jen v případech, kdy máme pro všechna zkoumaná slova potřebnou analýzyu
-                                    couldNotChange = True
+                                        # podmínky na slovo, které budou použity při generování tvarů
+                                        # použijeme
+                                        conditionWord = aT.morphCategories
+
+                                        # zjistíme jaké máme poznámky
+                                        notes = aT.token.word.info.getAllForCategory(MorphCategories.MorphCategories.NOTE,
+                                                                                     conditionWord)
+
+                                        if (Note.GIVEN_NAME if wordType.value == WordTypeMark.GIVEN_NAME else Note.SURNAME) not in notes:
+                                            # nemáme přislušnou poznámku v morfologické analýze nemůžeme tedy druh změnit
+                                            couldNotChange = True
+                                            break
+                                if couldNotChange:
                                     break
 
-                                # podmínky na slovo, které budou použity při generování tvarů
-                                # použijeme
-                                conditionWord = aT.morphCategories
-
-                                # zjistíme jaké máme poznámky
-                                notes = aT.token.word.info.getAllForCategory(MorphCategories.MorphCategories.NOTE,
-                                                                             conditionWord)
-
-
-                                if (Note.GIVEN_NAME if wordType.value == WordTypeMark.GIVEN_NAME else Note.SURNAME) not in notes:
-                                    # nemáme přislušnou poznámku v morfologické analýze nemůžeme tedy druh změnit
-                                    couldNotChange = True
-                                    break
-                        if couldNotChange:
-                            break
-
-                    if not couldNotChange:
-                        logging.info("Pro " + str(self) + " měním " + str(
-                            self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER]) + " na " + str(changeTo) + ".")
-                        self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER] = changeTo
-                        cleanDeriv = False  # tyto derivace chceme použít
+                        if not couldNotChange:
+                            logging.info("Pro " + str(self) + " měním " + str(
+                                self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER]) + " na " + str(changeTo) + ".")
+                            self._type.levels[self.Type.INDEX_OF_PERSONS_GENDER] = changeTo
+                            cleanDeriv = False  # tyto derivace chceme použít
 
         except Word.WordCouldntGetInfoException:
             # nepovedlo se získat informace o slově
@@ -758,7 +761,7 @@ class Name(object):
         # Set[Tuple[MARule,str]]
         morphs = []
 
-        if self.grammar.flaxible:
+        if self.grammar.flexible:
             cases = [Case.NOMINATIVE, Case.GENITIVE, Case.DATIVE, Case.ACCUSATIVE, Case.VOCATIVE, Case.LOCATIVE,
                      Case.INSTRUMENTAL]
         else:
@@ -816,8 +819,9 @@ class Name(object):
                 # máme tvar pro všechna slova
                 morphs.append(NameMorph(self, wordsWithRules, wordsTypes))
 
-            if not self.grammar.flaxible:
+            if not self.grammar.flexible:
                 # neohebná gramatika (angličtina apod.) nechcem další tvary
+                missingCaseToken.clear()
                 break
 
         return morphs
