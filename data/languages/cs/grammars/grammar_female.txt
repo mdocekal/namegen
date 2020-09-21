@@ -12,7 +12,7 @@ S -> SAINT !T_I_ABBRE_GROUP !NUMERIC  NUM(t=G) 2{t=S,r="^.*(ová|cká|ská)$",c=
 #tento neterminál předpokládá, že předním je právě jedno křestní jméno
 # chceme zachycovat i jména jako: Maria da Assunção Portugalská
 #   Albrecht starší z Kolowrat
-AFTER_GIVEN_NAME ->  NOUN_GROUP_START VOL_GENERATION_SPECIFIER PREP_GROUP NOUN_GROUP_START !T_I_ABBRE_GROUP
+AFTER_GIVEN_NAME ->  NOUN_GROUP_START VOL_GENERATION_SPECIFIER PREP_GROUP !T_I_ABBRE_GROUP
 # "von" předložka před, kterou je jedno křestní jméno.
 #Je třeba větší priorita, protože velice pravděpodobně nás zajímá pouze varianta s "von" předložkou s jedním křestním jménem.
 AFTER_GIVEN_NAME ->  M_PREP_GROUP(p=1) NOUN_GROUP_START !T_I_ABBRE_GROUP
