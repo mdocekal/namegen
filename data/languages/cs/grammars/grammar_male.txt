@@ -10,7 +10,8 @@ SAINT -> ε
 
 #tento neterminál předpokládá, že předním je právě jedno křestní jméno
 # chceme zachycovat i jména jako: Maria da Assunção Portugalská
-AFTER_GIVEN_NAME ->  NOUN_GROUP_START PREP_GROUP NOUN_GROUP_START !T_I_ABBRE_GROUP
+#   Albrecht starší z Kolowrat
+AFTER_GIVEN_NAME ->  NOUN_GROUP_START VOL_GENERATION_SPECIFIER PREP_GROUP NOUN_GROUP_START !T_I_ABBRE_GROUP
 # "von" předložka před, kterou je jedno křestní jméno.
 #Je třeba větší priorita, protože velice pravděpodobně nás zajímá pouze varianta s "von" předložkou s jedním křestním jménem.
 AFTER_GIVEN_NAME ->  M_PREP_GROUP(p=1) NOUN_GROUP_START !T_I_ABBRE_GROUP
@@ -24,20 +25,20 @@ NOUN_GROUP -> GENERATION_SPECIFIER NOUN_GROUP
 NOUN_GROUP -> !NUM_ABBREVIATION_GROUP NOUN_GROUP_2
 NOUN_GROUP -> 1{t=S,c=1,n=S,g=M,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> 1{t=S,c=1,n=S,g=N,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY	#Jiří Strniště, Mistr Oplakávání ze Žebráka
-NOUN_GROUP -> 2{t=M,c=1,n=S,g=M,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
-NOUN_GROUP -> 2{t=M,c=1,n=S,g=M,note?=jS} 1{t=S,c=1,n=S,g=M,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=M,c=1,n=S,g=M} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=M,c=1,n=S,g=M} 1{t=S,c=1,n=S,g=M,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 
 NOUN_GROUP_2 -> 1{t=S,c=1,n=S,g=M,note?=jS} NOUN_GROUP_3
 NOUN_GROUP_2 -> 1{t=S,c=1,n=S,g=N,note?=jS} NOUN_GROUP_3
-NOUN_GROUP_2 -> 2{t=M,c=1,n=S,g=M,note?=jS}
+NOUN_GROUP_2 -> 2{t=M,c=1,n=S,g=M}
 NOUN_GROUP_3 -> NOUN_GROUP_2
 NOUN_GROUP_3 -> ε
 
 VOL_GENERATION_SPECIFIER -> GENERATION_SPECIFIER
 VOL_GENERATION_SPECIFIER -> ε
-GENERATION_SPECIFIER -> *{p=1,t=GS,c=1,n=S,g=M,r="^(mladší|starší)$"}
+GENERATION_SPECIFIER -> *{p=2,t=GS,c=1,n=S,g=M,r="^(mladší|starší)$"}
 GENERATION_SPECIFIER -> !GENERATION_SPECIFIER
-!GENERATION_SPECIFIER -> *{p=1,t=GS,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
+!GENERATION_SPECIFIER -> *{p=2,t=GS,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
 
 #	1. Baron z Aucklandu
 NUM(t) -> 4{c=1,t=L,n=S,g=M}
@@ -83,7 +84,7 @@ REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=7,p=$p) !AFTER_M_PREP REPEAT_M_PREP_GROUP(p=
 REPEAT_M_PREP_GROUP(p) -> ε
 
 !AFTER_PREP -> 1{t=L} !AFTER_PREP_ENDING
-!AFTER_PREP -> 1{t=H,note=jS,p=1} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=H,note=jS,n=P,p=1} !AFTER_PREP_ENDING
 !AFTER_PREP -> 2{t=L} !AFTER_PREP_ENDING
 !AFTER_PREP -> 4{t=L} !AFTER_PREP_ENDING
 !AFTER_PREP -> !ABBRE !AFTER_PREP_ENDING
