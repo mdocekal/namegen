@@ -59,7 +59,7 @@ GENERATION_SPECIFIER -> !GENERATION_SPECIFIER
 !GENERATION_SPECIFIER -> *{p=2,t=GS,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
 
 #	1. Baronka z Aucklandu
-NUM(t) -> 4{c=1,t=L,n=S,g=M}
+NUM(t) -> 4{c=1,t=S,n=S,g=M}
 NUM(t) -> ε
 !NUMERIC -> n{t=4}
 !NUMERIC -> ε
@@ -104,10 +104,10 @@ REPEAT_M_PREP_GROUP(p) -> ε
 !M_PREP_END(t,p) -> ε
 
 
-!AFTER_PREP -> 1{t=L} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=S} !AFTER_PREP_ENDING
 !AFTER_PREP -> 1{t=H,note=jS,n=P,p=1} !AFTER_PREP_ENDING
-!AFTER_PREP -> 2{t=L} !AFTER_PREP_ENDING
-!AFTER_PREP -> 4{t=L} !AFTER_PREP_ENDING
+!AFTER_PREP -> 2{t=S} !AFTER_PREP_ENDING
+!AFTER_PREP -> 4{t=S} !AFTER_PREP_ENDING
 !AFTER_PREP -> !ABBRE !AFTER_PREP_ENDING
 !AFTER_PREP -> 7{t=7} !AFTER_PREP
 !AFTER_PREP -> 7m{t=7} !AFTER_PREP
@@ -126,9 +126,9 @@ AFTER_M_PREP_ENDING -> AFTER_M_PREP
 AFTER_M_PREP_ENDING -> ε
 
 #nesklonné M_PREP předpokládá u žen nepřechýlení
-!AFTER_M_PREP -> 1{t=L,c=1,g=M,r="(?=((?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
-!AFTER_M_PREP -> 1{t=L,c=1,g=I,r="(?=((?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
-!AFTER_M_PREP -> 1{t=L,c=1,g=N,r="(?=((?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=S,c=1,g=M,r="(?=((?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=S,c=1,g=I,r="(?=((?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=S,c=1,g=N,r="(?=((?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !r{p=1,t=R} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !ia{p=1,t=I} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !8{t=8} !AFTER_M_PREP_ENDING
