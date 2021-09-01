@@ -645,7 +645,10 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
             if len(rule) > 1:
                 # Pravidlo obsahuje alespoň jednu poznámku.
 
-                notes = rule[1:]
+                notes = []
+                for n in rule[1:]:
+                    for chunkOffset in range(0, len(n), 2):
+                        notes.append(n[chunkOffset:chunkOffset+2])
 
             rule = rule[0]
 
@@ -1088,8 +1091,8 @@ class MorphoAnalyzerLibma(MorphoAnalyzer):
 
         # přidáme ke slovům von, da a de
         # analýzu, že se jedná o předložky za nimiž se slova ohýbají
-        for prep in ["dalla", "de", "da", "del", "di", "dos", "el", "la", "le", "van", "von", "ben", "bin", "y",
-                     "zu"]:
+        for prep in ["dalla", "de", "der", "da", "del", "di", "dos", "el", "la", "le", "van", "von", "und", "ben",
+                     "bin", "y", "zu"]:
             for w in [prep, prep.capitalize()]:  # generujeme variantu s velkým a malým písmenem na začátku
                 g = self.MAWordGroup(w)
                 g.lemma = w
