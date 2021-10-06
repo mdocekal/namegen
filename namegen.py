@@ -12,6 +12,7 @@ namegen je program pro generování tvarů jmen osob a lokací.
 import configparser
 import csv
 import os
+import sys
 import time
 import traceback
 from argparse import ArgumentParser
@@ -1139,10 +1140,12 @@ def main():
 
     except Errors.ExceptionMessageCode as e:
         Errors.ErrorMessenger.echoError(e.message, e.code)
+        traceback.print_tb(e.__traceback__)
     except IOError as e:
         Errors.ErrorMessenger.echoError(
             Errors.ErrorMessenger.getMessage(Errors.ErrorMessenger.CODE_COULDNT_WORK_WITH_FILE) + "\n" + str(e),
             Errors.ErrorMessenger.CODE_COULDNT_WORK_WITH_FILE)
+        traceback.print_tb(e.__traceback__)
 
     except Exception as e:
         print("--------------------", file=sys.stderr)

@@ -1413,7 +1413,9 @@ class RuleTemplate(object):
             self._leftSide, self._rightSide = fromString.split("->", 1)
             self._leftSide = self._leftSide.strip()
             self._rightSide = self._rightSide.strip()
-            self._variables = set(self.VARIABLE_REGEX.findall(self._rightSide))
+            self._variables = set(
+                r[0] if isinstance(r, tuple) else r for r in self.VARIABLE_REGEX.findall(self._rightSide)
+            )
         except ValueError:
             # špatný formát šablony
             raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE,
@@ -1436,7 +1438,7 @@ class RuleTemplate(object):
                                               Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE) + "\n\t" + fromString)
 
         # neterminál, vše je ok
-        if not self._variables.issubset(set(self._leftSide.params)):
+        if not self._variables.issubset(set(self._leftSide.params.keys())):
             # Některé proměnné jsou v pravidle na levé straně navíc.
             raise InvalidGrammarException(Errors.ErrorMessenger.CODE_GRAMMAR_INVALID_FILE,
                                           Errors.ErrorMessenger.getMessage(
