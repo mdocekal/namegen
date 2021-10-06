@@ -1,13 +1,13 @@
 S
-
-S -> 1{t=G,c=1,n=S,g=F,note=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
+S -> 1{t=jB,c=1,n=S,g=F,note=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
 #číslovku dovolujeme protože chceme i jména jako:
 #	1. Baronka z Aucklandu
-S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC  NUM(t=G) AFTER_GIVEN_NAME
-S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=G) 1{t=G,r="^(?!^([sS]vatá|[sS]aint|.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jG} AFTER_GIVEN_NAME
-S -> SAINT !T_I_ABBRE_GROUP !NUMERIC  NUM(t=G) 1{t=S,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} AFTER_GIVEN_NAME
-S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=G) 2{t=G,r="^(?!^([sS]vatá|[sS]aint|.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jG} AFTER_GIVEN_NAME #Chceme i indiánská jména: Sedící sova
-S -> SAINT !T_I_ABBRE_GROUP !NUMERIC  NUM(t=G) 2{t=S,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} AFTER_GIVEN_NAME
+S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC  NUM(t=jG) AFTER_GIVEN_NAME
+S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=jG) 1{t=jG,r="^(?!^([sS]vatá|[sS]aint|.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jG} AFTER_GIVEN_NAME
+S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=jG) 1{t=jG,r="^(?!^([sS]vatá|[sS]aint|.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jG} AFTER_GIVEN_NAME
+S -> SAINT !T_I_ABBRE_GROUP !NUMERIC  NUM(t=jG) 1{t=jS,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} AFTER_GIVEN_NAME
+S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=jG) 2{t=jG,r="^(?!^([sS]vatá|[sS]aint|.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F,note?=jG} AFTER_GIVEN_NAME #Chceme i indiánská jména: Sedící sova
+S -> SAINT !T_I_ABBRE_GROUP !NUMERIC  NUM(t=jG) 2{t=jS,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} AFTER_GIVEN_NAME
 
 #tento neterminál předpokládá, že předním je právě jedno křestní jméno
 # chceme zachycovat i jména jako: Maria da Assunção Portugalská
@@ -17,38 +17,40 @@ AFTER_GIVEN_NAME ->  NOUN_GROUP_START VOL_GENERATION_SPECIFIER PREP_GROUP !T_I_A
 #Je třeba větší priorita, protože velice pravděpodobně nás zajímá pouze varianta s "von" předložkou s jedním křestním jménem.
 AFTER_GIVEN_NAME ->  M_PREP_GROUP(p=1) NOUN_GROUP_START !T_I_ABBRE_GROUP
 
-SAINT -> 1{t=T,r="^([sS]vatá|[sS]aint)$",c=1,n=S,g=F,note?=jG} #Svatá ...
+SAINT -> 1{t=jT,r="^([sS]vatá|[sS]aint)$",c=1,n=S,g=F,note?=jG} #Svatá ...
 SAINT -> ε
 
 NOUN_GROUP_START -> NOUN_GROUP
 NOUN_GROUP_START -> !NUM_ABBREVIATION_GROUP
 NOUN_GROUP_START -> ε
-NOUN_GROUP -> 1{t=G,c=1,n=S,g=F,r="^.*(?<!(ová|cká|ská))$",note?=jG} NOUN_GROUP
-NOUN_GROUP -> 1{t=S,c=1,n=S,g=F,r="^.*(ová|cká|ská)$",note?=jS} NOUN_GROUP
+NOUN_GROUP -> 1{t=jG,c=1,n=S,g=F,r="^.*(?<!(ová|cká|ská))$",note?=jG} NOUN_GROUP
+NOUN_GROUP -> 1{t=jS,c=1,n=S,g=F,r="^.*(ová|cká|ská)$",note?=jS} NOUN_GROUP
+NOUN_GROUP -> 1{t=jP,c=1,n=S,g=F,r="^.*vna$",p=1} NOUN_GROUP    # Albertovna
+NOUN_GROUP -> 1{t=jP,c=1,n=S,g=F,r="^.*vna$",p=1} NOUN_GROUP_3    # Albertovna
 NOUN_GROUP -> GENERATION_SPECIFIER NOUN_GROUP
 NOUN_GROUP -> !SURNAME_M_NOUN NOUN_GROUP	#v mužském rodě pouze příjmení
 NOUN_GROUP -> !NUM_ABBREVIATION_GROUP NOUN_GROUP_2
-NOUN_GROUP -> 1{t=S,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
-NOUN_GROUP -> 1{t=S,c=1,n=S,g=N,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY	#Mistryně Oplakávání ze Žebráka
-NOUN_GROUP -> 2{t=S,c=1,n=S,g=F,note?=jS} 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F} !NUM_ABBREVIATION_GROUP_EMPTY
-NOUN_GROUP -> 2{t=S,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
-NOUN_GROUP -> 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F} 1{t=S,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
-NOUN_GROUP -> 2{t=S,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} 1{t=S,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 1{t=jS,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 1{t=jS,c=1,n=S,g=N,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY	#Mistryně Oplakávání ze Žebráka
+NOUN_GROUP -> 2{t=jS,c=1,n=S,g=F,note?=jS} 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=jS,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F} 1{t=jS,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=jS,r="^.*(ová|cká|ská)$",c=1,n=S,g=F,note?=jS} 1{t=jS,c=1,n=S,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> !SURNAME_M_NOUN !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> !SURNAME_M_ADJECTIVE !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> !SURNAME_M_ADJECTIVE !SURNAME_M_NOUN !NUM_ABBREVIATION_GROUP_EMPTY
 
 #nepřechýlená příjmení
-!SURNAME_M_NOUN -> 1{t=S,c=1,n=S,g=M,note?=jS}
-!SURNAME_M_ADJECTIVE -> 2{t=S,c=1,n=S,g=M,note?=jS}
+!SURNAME_M_NOUN -> 1{t=jS,c=1,n=S,g=M,note?=jS}
+!SURNAME_M_ADJECTIVE -> 2{t=jS,c=1,n=S,g=M,note?=jS}
 
-NOUN_GROUP_2 -> 1{t=S,c=1,n=S,g=F,note?=jS} NOUN_GROUP_3
+NOUN_GROUP_2 -> 1{t=jS,c=1,n=S,g=F,note?=jS} NOUN_GROUP_3
 NOUN_GROUP_2 -> 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F}
-NOUN_GROUP_2 -> 2{t=S,c=1,n=S,g=F,note?=jS}
+NOUN_GROUP_2 -> 2{t=jS,c=1,n=S,g=F,note?=jS}
 NOUN_GROUP_2 -> 2{t=M,r="^(?!^(.*ová|.*cká|.*ská)$).*$",c=1,n=S,g=F}
 NOUN_GROUP_2 -> !SURNAME_M_NOUN NOUN_GROUP_3
 NOUN_GROUP_2 -> !SURNAME_M_ADJECTIVE
-NOUN_GROUP_2 -> 1{t=S,c=1,n=S,g=N,note?=jS} NOUN_GROUP_3
+NOUN_GROUP_2 -> 1{t=jS,c=1,n=S,g=N,note?=jS} NOUN_GROUP_3
 NOUN_GROUP_3 -> NOUN_GROUP_2
 NOUN_GROUP_3 -> ε
 
@@ -59,19 +61,19 @@ GENERATION_SPECIFIER -> !GENERATION_SPECIFIER
 !GENERATION_SPECIFIER -> *{p=2,t=GS,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
 
 #	1. Baronka z Aucklandu
-NUM(t) -> 4{c=1,t=S,n=S,g=M}
+NUM(t) -> 4{c=1,t=$t,n=S,g=M}
 NUM(t) -> ε
 !NUMERIC -> n{t=4}
 !NUMERIC -> ε
 
 
 #tituly a zkratky a inicialové zkratky
-!T_I_ABBRE_GROUP -> t{t=T} !T_I_ABBRE_GROUP
+!T_I_ABBRE_GROUP -> t{t=jT} !T_I_ABBRE_GROUP
 !T_I_ABBRE_GROUP -> !ABBRE !T_I_ABBRE_GROUP
 !T_I_ABBRE_GROUP -> ia{p=1,t=I} !T_I_ABBRE_GROUP
 !T_I_ABBRE_GROUP -> ε
 
-!T_ABBRE_GROUP -> t{t=T} !T_ABBRE_GROUP
+!T_ABBRE_GROUP -> t{t=jT} !T_ABBRE_GROUP
 !T_ABBRE_GROUP -> !ABBRE !T_ABBRE_GROUP
 !T_ABBRE_GROUP -> ε
 
@@ -91,7 +93,7 @@ PREP_GROUP -> ε
 
 #U jmen ženských záleží na tom, zda příjmení přechylujeme. Pokud ano, skloňujeme je vždy, pokud ne (nejčastěji u šlechtických přídomků), zůstává nesklonné: Diana de Poitiers, Simone de Beauvoir/Beauvoirová – 2. p. Diany de Poitiers, Simone de Beauvoir/Beauvoirové – 5. p. Diano de Poitiers, Simone de Beauvoir/Beauvoirová – viz též Přechylování.
 M_PREP_GROUP(p) -> REPEAT_M_PREP_GROUP(p=$p) VOL_GENERATION_SPECIFIER #Karl Korb von Weidenheim starší
-REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=S,p=$p) AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
+REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=jS,p=$p) AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
 REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=7,p=$p) !AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
 REPEAT_M_PREP_GROUP(p) -> ε
 
@@ -104,10 +106,10 @@ REPEAT_M_PREP_GROUP(p) -> ε
 !M_PREP_END(t,p) -> ε
 
 
-!AFTER_PREP -> 1{t=S} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=jS} !AFTER_PREP_ENDING
 !AFTER_PREP -> 1{t=H,note=jS,n=P,p=1} !AFTER_PREP_ENDING
-!AFTER_PREP -> 2{t=S} !AFTER_PREP_ENDING
-!AFTER_PREP -> 4{t=S} !AFTER_PREP_ENDING
+!AFTER_PREP -> 2{t=jS} !AFTER_PREP_ENDING
+!AFTER_PREP -> 4{t=jS} !AFTER_PREP_ENDING
 !AFTER_PREP -> !ABBRE !AFTER_PREP_ENDING
 !AFTER_PREP -> 7{t=7} !AFTER_PREP
 !AFTER_PREP -> 7m{t=7} !AFTER_PREP
@@ -118,7 +120,7 @@ REPEAT_M_PREP_GROUP(p) -> ε
 !AFTER_PREP_ENDING -> ε
 
 
-AFTER_M_PREP -> 1{t=S,c=1,g=F,note?=jS,r="^(?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*$"} AFTER_M_PREP_ENDING
+AFTER_M_PREP -> 1{t=jS,c=1,g=F,note?=jS,r="^(?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*$"} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !r{p=1,t=R} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !ia{p=1,t=I} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !8{t=8} AFTER_M_PREP_ENDING
@@ -126,9 +128,9 @@ AFTER_M_PREP_ENDING -> AFTER_M_PREP
 AFTER_M_PREP_ENDING -> ε
 
 #nesklonné M_PREP předpokládá u žen nepřechýlení
-!AFTER_M_PREP -> 1{t=S,c=1,g=M,r="(?=((?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
-!AFTER_M_PREP -> 1{t=S,c=1,g=I,r="(?=((?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
-!AFTER_M_PREP -> 1{t=S,c=1,g=N,r="(?=((?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=jS,c=1,g=M,r="(?=((?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=jS,c=1,g=I,r="(?=((?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=jS,c=1,g=N,r="(?=((?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*))(?=(^.*(?<!(ová|cká|ská))$))",note?=jL} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !r{p=1,t=R} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !ia{p=1,t=I} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !8{t=8} !AFTER_M_PREP_ENDING

@@ -118,19 +118,24 @@ Možné atributy a jejich hodnoty:
     	6	6. pád: Lokál (kom, čem)
     	7	7. pád: Instrumentál (kým, čím)
 	t - Druh slova ve jméně: Křestní, příjmení atd. (Informační atribut)
-		G	Křestní jméno. Příklad: Petra
-    	S	Příjmení. Příklad: Novák
-    	L	Lokace. Příklad: Brno
+		jG	Křestní jméno. Příklad: Petra
+    	jS	Příjmení. Příklad: Novák
+    	jL	Lokace. Příklad: Brno
     	E	Událost. Příklad: Osvobození Československa
     	R	Římská číslice. Příklad: IV
     	7	Předložka.
+        7a	Například Nové Město n. Moravě
     	8	Spojka.
-    	T	Titul. Příklad: prof.
+        4   číslovka. Příklad: 2
+    	jT	Titul. Příklad: prof.
     	I	Iniciálová zkratka. Příklad H. ve jméně John H. White
     	A	Zkratka. Příklad DJ ve jméně DJ Wich
     	GS	Generační specifikace. Příklad: mladší
     	M	Přívlastek/epiteton. Příklad: sličný
-    	B   Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
+    	jB  Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
+        jP  ženská patronyma - Albertovna, Vasilijevna
+        jQ  mužská patronyma - Alexandrovič, Alexejevič
+        jI  pseudonymy lidí, např. Šusťa, Švanci, Švícko
     	H   House/Rod Příklad: z Přemyslovců
     	D   člen/determiner (Příklad: the)
     	U	Neznámé
@@ -164,6 +169,15 @@ Možné atributy a jejich hodnoty:
     			2 0 0 0
     			
     			Bude vybrána druhá derivace, protože jsme první odstřihli již při prvním slově, tudiž vyšší priorita není brána v úvahu.
+
+    name_type - druh jména
+        Regulární výraz, který určuje podobu druhu slova.
+        formát druhu slova:
+            Formát řetězce pro jména osob:
+                <Type: P=Person>:<Subtype: F/G=Fictional/Group>:<Future purposes: determine regular name and alias>:<Gender: F/M=Female/Male>
+            Pro názvy lokací je to jen značka L.
+    	
+    	Příklad: "P::P:.$"
 
 Je také možné označit atribut jako volitelný pomocí ?. Příklad:
 

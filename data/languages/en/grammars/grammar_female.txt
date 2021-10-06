@@ -1,9 +1,9 @@
 !S
-!S -> 1{t=B,c=1,g=F,note=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
-!S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC NUM(t=G) AFTER_GIVEN_NAME VOL_MODIFIER
-!S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=G) 1{t=G,c=1,g=F,note?=jG,r="^(?!^([sS]aint)$).*$"} AFTER_GIVEN_NAME VOL_MODIFIER
-!S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=G) 2{t=G,c=1,g=F,note?=jG,r="^(?!^([sS]aint)$).*$"} AFTER_GIVEN_NAME VOL_MODIFIER	#Chceme i indiánská jména: Sitting Bull
-SAINT -> 1{t=T,r="^([sS]aint)$"} #Saint ...
+!S -> 1{t=jB,c=1,g=F,note=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
+!S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC NUM(t=jG) AFTER_GIVEN_NAME VOL_MODIFIER
+!S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=jG) 1{t=jG,c=1,g=F,note?=jG,r="^(?!^([sS]aint)$).*$"} AFTER_GIVEN_NAME VOL_MODIFIER
+!S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=jG) 2{t=jG,c=1,g=F,note?=jG,r="^(?!^([sS]aint)$).*$"} AFTER_GIVEN_NAME VOL_MODIFIER	#Chceme i indiánská jména: Sitting Bull
+SAINT -> 1{t=jT,r="^([sS]aint)$"} #Saint ...
 SAINT -> ε
 
 #tento neterminál předpokládá, že předním je právě jedno křestní jméno
@@ -17,16 +17,16 @@ AFTER_GIVEN_NAME ->  M_PREP_GROUP(p=1) NOUN_GROUP_START !T_I_ABBRE_GROUP
 NOUN_GROUP_START -> NOUN_GROUP
 NOUN_GROUP_START -> !NUM_ABBREVIATION_GROUP
 NOUN_GROUP_START -> ε
-NOUN_GROUP -> 1{t=G,c=1,g=F,note?=jG} NOUN_GROUP
+NOUN_GROUP -> 1{t=jG,c=1,g=F,note?=jG} NOUN_GROUP
 NOUN_GROUP -> GENERATION_SPECIFIER NOUN_GROUP
 NOUN_GROUP -> !NUM_ABBREVIATION_GROUP NOUN_GROUP_2
-NOUN_GROUP -> 1{t=S,c=1,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 1{t=jS,c=1,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 NOUN_GROUP -> VOL_MODIFIER_INTRO 2{t=M,c=1,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
-NOUN_GROUP -> VOL_MODIFIER_INTRO 2{t=S,c=1,g=F} 2{t=M,c=1,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
-NOUN_GROUP -> VOL_MODIFIER_INTRO 2{t=M,c=1,g=F,note?=jS} 1{t=S,c=1,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> VOL_MODIFIER_INTRO 2{t=jS,c=1,g=F} 2{t=M,c=1,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> VOL_MODIFIER_INTRO 2{t=M,c=1,g=F,note?=jS} 1{t=jS,c=1,g=F,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
 
-NOUN_GROUP_2 -> 1{t=S,c=1,g=F,note?=jS} NOUN_GROUP_3
-NOUN_GROUP_2 -> 1{t=S,c=1,g=N,note?=jS} NOUN_GROUP_3
+NOUN_GROUP_2 -> 1{t=jS,c=1,g=F,note?=jS} NOUN_GROUP_3
+NOUN_GROUP_2 -> 1{t=jS,c=1,g=N,note?=jS} NOUN_GROUP_3
 NOUN_GROUP_2 -> VOL_MODIFIER_INTRO 2{t=M,c=1,g=F,note?=jS}
 NOUN_GROUP_3 -> NOUN_GROUP_2
 NOUN_GROUP_3 -> ε
@@ -51,18 +51,18 @@ GENERATION_SPECIFIER -> !GENERATION_SPECIFIER
 !GENERATION_SPECIFIER -> *{p=1,t=GS,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
 
 #	1. Baron z Aucklandu
-NUM(t) -> 4{c=1,t=S,g=F}
+NUM(t) -> 4{c=1,t=$t,g=F}
 NUM(t) -> ε
 !NUMERIC -> n{t=4}
 !NUMERIC -> ε
 
 #tituly a zkratky a inicialové zkratky
-!T_I_ABBRE_GROUP -> t{t=T} !T_I_ABBRE_GROUP
+!T_I_ABBRE_GROUP -> t{t=jT} !T_I_ABBRE_GROUP
 !T_I_ABBRE_GROUP -> !ABBRE !T_I_ABBRE_GROUP
 !T_I_ABBRE_GROUP -> ia{p=1,t=I} !T_I_ABBRE_GROUP
 !T_I_ABBRE_GROUP -> ε
 
-!T_ABBRE_GROUP -> t{t=T} !T_ABBRE_GROUP
+!T_ABBRE_GROUP -> t{t=jT} !T_ABBRE_GROUP
 !T_ABBRE_GROUP -> !ABBRE !T_ABBRE_GROUP
 !T_ABBRE_GROUP -> ε
 
@@ -89,14 +89,14 @@ PREP_GROUP -> ε
 !M_PREP_END(t,p) -> ε
 
 M_PREP_GROUP(p) -> REPEAT_M_PREP_GROUP(p=$p) VOL_GENERATION_SPECIFIER #Karl Korb von Weidenheim starší
-REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=S,p=$p) AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
+REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=jS,p=$p) AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
 REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=7,p=$p) !AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
 REPEAT_M_PREP_GROUP(p) -> ε
 
-!AFTER_PREP -> 1{t=S} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=jS} !AFTER_PREP_ENDING
 !AFTER_PREP -> 1{t=H,note=jS,p=1} !AFTER_PREP_ENDING
-!AFTER_PREP -> 2{t=S} !AFTER_PREP_ENDING
-!AFTER_PREP -> 4{t=S} !AFTER_PREP_ENDING
+!AFTER_PREP -> 2{t=jS} !AFTER_PREP_ENDING
+!AFTER_PREP -> 4{t=jS} !AFTER_PREP_ENDING
 !AFTER_PREP -> !ABBRE !AFTER_PREP_ENDING
 !AFTER_PREP -> 7{t=7} !AFTER_PREP
 !AFTER_PREP -> r{p=1,t=R} !AFTER_PREP_ENDING
@@ -106,7 +106,7 @@ REPEAT_M_PREP_GROUP(p) -> ε
 !AFTER_PREP_ENDING -> ε
 
 #John von Neumann
-AFTER_M_PREP -> 1{t=S,c=1,g=F,note?=jS,r="^(?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*$"} AFTER_M_PREP_ENDING
+AFTER_M_PREP -> 1{t=jS,c=1,g=F,note?=jS,r="^(?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*$"} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !r{p=1,t=R} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !ia{p=1,t=I} AFTER_M_PREP_ENDING
 AFTER_M_PREP -> !8{t=8} AFTER_M_PREP_ENDING
@@ -114,7 +114,7 @@ AFTER_M_PREP_ENDING -> AFTER_M_PREP
 AFTER_M_PREP_ENDING -> ε
 
 
-!AFTER_M_PREP -> 1{t=S,c=1,note?=jL,r="^(?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*$"} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> 1{t=jS,c=1,note?=jL,r="^(?!^(dalla|de|da|del|di|dos|el|la|le|van|von|ben|bin|y|zu)$).*$"} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !r{p=1,t=R} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !ia{p=1,t=I} !AFTER_M_PREP_ENDING
 !AFTER_M_PREP -> !8{t=8} !AFTER_M_PREP_ENDING

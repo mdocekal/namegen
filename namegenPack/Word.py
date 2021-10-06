@@ -16,21 +16,24 @@ class WordTypeMark(Enum):
     """
     Značka druhu slova ve jméně. Vyskytuje se jako atribut v gramatice.
     """
-    GIVEN_NAME = "G"  # Křestní jméno. Příklad: Petra
-    SURNAME = "S"  # Příjmení. Příklad: Novák
-    LOCATION = "L"  # Lokace. Příklad: Brno
+    GIVEN_NAME = "jG"  # Křestní jméno. Příklad: Petra
+    SURNAME = "jS"  # Příjmení. Příklad: Novák
+    LOCATION = "jL"  # Lokace. Příklad: Brno
     EVENT = "E"  # Událost: Příklad: Osvobození Československa
     ROMAN_NUMBER = "R"  # Římská číslice. Příklad: IV
     PREPOSITION = "7"  # Předložka.
     PREPOSITION_ABBREVIATION = "7A"  # Například Nové Město n. Moravě
     CONJUCTION = "8"  # Spojka.
     NUMBER = "4"  # Číslovka. Příklad: 2
-    DEGREE_TITLE = "T"  # Titul. Příklad: prof.
+    DEGREE_TITLE = "jT"  # Titul. Příklad: prof.
     INITIAL_ABBREVIATION = "I"  # Iniciálová zkratka. Příklad H. ve jméně John H. White
     ABBREVIATION = "A"  # Zkratka. Příklad Sv. ve jméně Sv. Nikola
     GENERATION_SPECIFIER = "GS"  # Generační specifikace. Příklad: mladší
     MODIFIER = "M" # Přívlastek/epiteton. Příklad: sličný
-    UNIQ_NAME = "B" # Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
+    UNIQ_NAME = "jB" # Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
+    FEMALE_PATRONYM = "jP" # ženská patronyma - Albertovna, Vasilijevna
+    MALE_PATRONYM = "jQ"  # mužská patronyma - Alexandrovič, Alexejevič
+    ALIAS = "jI"  # pseudonymy lidí, např. Šusťa, Švanci, Švícko
     HOUSE = "H" # House/Rod Příklad: z Přemyslovců
     DETERMINER = "D"  # člen/determiner (Příklad: the)
     UNKNOWN = "U"  # Neznámé

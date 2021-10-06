@@ -765,8 +765,9 @@ def main():
         errorWordsShouldSave = True if args.error_words is not None else False
 
         # slova ke, kterým nemůže vygenerovat tvary, zjistit POS...
-        # Klíč trojice (druh názvu (mužský, ženský, lokace),druhu slova ve jméně, dané slovo).
-        # Hodnota množina jmen/názvů, kde se problém vyskytl.
+        # Klíč čtveřice (druh názvu (mužský, ženský, lokace),druhu slova ve jméně, dané slovo).
+        # Hodnota je množina dvojic jméno/název, kde se problém vyskytl a boolean zda dané jméno má více než jednu
+        # derivace (True více derivací).
         errorWords = {}
 
         # slouží pro výpis křestních jmen, příjmení atd.
@@ -812,7 +813,7 @@ def main():
             morphsPrinted = False
 
             wNoInfo = set()  # Zde budou uložena slova nemající analýzu, která by ji měla mít.
-            tokens = []
+
             try:
                 if name in duplicityCheck:
                     # již jsme jednou generovali
@@ -822,6 +823,8 @@ def main():
                 duplicityCheck.add(name)
 
                 tokens = lang.lex.getTokens(name)
+
+                wNoInfo = set(t.word for _, t in enumerate(tokens) if t.type == Token.Type.ANALYZE_UNKNOWN)
 
                 if (configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"] or len(wNoInfo) == 0) \
                         and len(wNoInfo) != len(name.words):
@@ -851,14 +854,12 @@ def main():
                     # zda-li se má dané slovo ohýbat, či nikoliv a další
 
                     if aTokens is None:  # Nedostaly jsme aTokeny při určování druhu slova?
-
                         # rules a aTokens může obsahovat více než jednu možnou derivaci
                         rules, aTokens = gramAnalyzeName(name, tokens)
 
                     completedMorphs = set()  # pro odstranění dualit používáme set
                     noMorphsWords = set()
                     missingCaseWords = set()
-                    wNoInfo = set()
 
                     if configAll[configManager.sectionDefault]["ALLOW_PRIORITY_FILTRATION"]:
                         # filtr derivací na základě priorit terminálů
@@ -872,7 +873,6 @@ def main():
 
                     generatedNamesThatShouldBeInDuplicityCheckSet = set()
                     for ru, aT in zip(rules, aTokens):
-
                         if derivClassesOutput is not None:
                             #ulož jméno do příslušné třídy na základě derivace
                             derivClasses[name.language.code][os.path.basename(name.grammar.filePath)][tuple(ru)][all(tmpAT.token.type != Token.Type.ANALYZE_UNKNOWN for tmpAT in aT)].add(name)
@@ -894,18 +894,16 @@ def main():
                                         # přidáme informaci o druhu slova ve jméně a druh jména
                                         # používá se pro výpis chybových slov
 
-                                        wNoInfo.add((t.token.word, t.matchingTerminal.getAttribute(
-                                            namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value))
                                         try:
                                             errorWords[(name.type,
                                                         t.matchingTerminal.getAttribute(
                                                             namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
-                                                        t.token.word)].add(name)
+                                                        t.token.word)].add((name, len(rules) > 1))
                                         except KeyError:
                                             errorWords[(name.type,
                                                         t.matchingTerminal.getAttribute(
                                                             namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
-                                                        t.token.word)] = {name}
+                                                        t.token.word)] = {(name, len(rules) > 1)}
 
                             # Získáme tvary a pokud budou pro nějaké slovo problémy, při získání tvarů, tak si necháme
                             # uložit korespondující token ke slovo do množiny missingCaseWords (společně s problémovým
@@ -1024,15 +1022,8 @@ def main():
             if len(wNoInfo) > 0:
                 print(str(name) + "\t" + Errors.ErrorMessenger.getMessage(
                     Errors.ErrorMessenger.CODE_WORD_ANALYZE) + "\t" + (
-                          ", ".join(str(w) + "#" + str(m) for w, m in wNoInfo)),
+                          ", ".join(str(w) for w in wNoInfo)),
                       file=sys.stderr, flush=True)
-
-                for w, m in wNoInfo:
-                    # přidáme informaci o druhu slova ve jméně a druh jména
-                    try:
-                        errorWords[(name.type, m, w)].add(name)
-                    except KeyError:
-                        errorWords[(name.type, m, w)] = {name}
 
             if args.include_no_morphs and not morphsPrinted:
                 # uživatel chce vytisknout i slova bez tvarů
@@ -1126,7 +1117,7 @@ def main():
                     for (nT, m, w), names in errorWords.items():  # druh názvu (mužský, ženský, lokace),označení typu slova ve
                         # jméně(jméno, příjmení), společně se jménem
                         # u ženských a mužských jmen přidáme odhad lntrf značky
-                        resultStr = str(w) + "\t" + "j" + str(m)
+                        resultStr = str(w) + "\t" + str(m)
                         if m in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
                             if nT == Name.Type.PersonGender.FEMALE:
                                 resultStr += "\tk1gFnSc1::"
@@ -1134,8 +1125,9 @@ def main():
                                 resultStr += "\tk1gMnSc1::"
                         # přidáme jména/názvy kde se problém vyskytl
                         resultStr += "\t" + str(nT) + "\t@\t" + "\t".join(
-                            str(name) + ("\t" + name.additionalInfo[0] if len(name.additionalInfo) > 0 else "") for name in
-                            names)  # name.additionalInfo by mělo na první pozici obsahovat URL zdroje
+                            str(name) + ("\t" + name.additionalInfo[0] if len(name.additionalInfo) > 0 else "")
+                            for name, _ in names)  # name.additionalInfo by mělo na první pozici obsahovat URL zdroje
+                        resultStr += f"\t{'all names have multiple derivations' if all(multi_deriv for _, multi_deriv in names) else ''} "
                         print(resultStr, file=errWFile)
 
     except Errors.ExceptionMessageCode as e:

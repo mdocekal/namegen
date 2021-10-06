@@ -10,7 +10,7 @@ import os
 from typing import Optional, Set
 
 from namegenPack.Errors import ExceptionMessageCode, ErrorMessenger
-from namegenPack.Grammar import Grammar, Lex
+from namegenPack.Grammar import Grammar, Lex, InvalidGrammarException
 from namegenPack.morpho.MorphoAnalyzer import MorphoAnalyzerLibma
 
 
@@ -75,11 +75,23 @@ class Language(object):
 
         grammarsPath = os.path.join(langFolder, "grammars")
 
-        self.gFemale = Grammar(os.path.join(grammarsPath, gFemale), gTimeout)
-        self.gMale = Grammar(os.path.join(grammarsPath, gMale), gTimeout)
-        self.gLocations = Grammar(os.path.join(grammarsPath, gLocations), gTimeout)
-        self.gEvents = Grammar(os.path.join(grammarsPath, gEvents), gTimeout)
+        grammar = "female"  # just to mark which grammar is problematic
+        try:
+            self.gFemale = Grammar(os.path.join(grammarsPath, gFemale), gTimeout)
+            grammar = "male"
+            self.gMale = Grammar(os.path.join(grammarsPath, gMale), gTimeout)
+            grammar = "locations"
+            self.gLocations = Grammar(os.path.join(grammarsPath, gLocations), gTimeout)
+            grammar = "events"
+            self.gEvents = Grammar(os.path.join(grammarsPath, gEvents), gTimeout)
+
+        except InvalidGrammarException as e:
+            e.message = "\n" + grammar + "\n" + e.message
+            raise e
+
         self.titles = self._readTitles(os.path.join(langFolder, titles))
+
+
 
         with open(os.path.join(langFolder, eqGen), "r") as f:
             self.eqGen = ast.literal_eval(f.read())

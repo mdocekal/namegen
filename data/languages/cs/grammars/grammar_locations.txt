@@ -44,21 +44,21 @@ NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN(c=$c,n=P,g=F)
 #neohebná verze NUM_ADJ_NOUN_CASE_SELECT
 !NUM_ADJ_NOUN_CASE_SELECT(c=1) -> NUM_ADJ_NOUN_CASE_SELECT(c=$c)
 
-!NUM_ADJ_NOUN_CONTINUE -> 1{t=L} !CONJ 1{t=L}	#Např pro: Národní akademické divadlo opery a baletu
+!NUM_ADJ_NOUN_CONTINUE -> 1{t=jL} !CONJ 1{t=jL}	#Např pro: Národní akademické divadlo opery a baletu
 
 #Nevolitelná předložková skupina
 #Příklad: Pod Šibenicí
 S -> !PREP_GROUP_MANDATORY END
 
 #Obecné přídavné jméno a vlastní jméno místní
-S2 -> 2{c=1,t=L,n=S,g=M,f=GW} 1{c=1,t=L,n=S,g=M,note=jL} END
-S2 -> 2{c=1,t=L,n=S,g=I,f=GW} 1{c=1,t=L,n=S,g=I,note=jL} END
-S2 -> 2{c=1,t=L,n=S,g=N,f=GW} 1{c=1,t=L,n=S,g=N,note=jL} END
-S2 -> 2{c=1,t=L,n=S,g=F,f=GW} 1{c=1,t=L,n=S,g=F,note=jL} END
-S2 -> 2{c=1,t=L,n=P,g=M,f=GW} 1{c=1,t=L,n=P,g=M,note=jL} END
-S2 -> 2{c=1,t=L,n=P,g=I,f=GW} 1{c=1,t=L,n=P,g=I,note=jL} END
-S2 -> 2{c=1,t=L,n=P,g=N,f=GW} 1{c=1,t=L,n=P,g=N,note=jL} END
-S2 -> 2{c=1,t=L,n=P,g=F,f=GW} 1{c=1,t=L,n=P,g=F,note=jL} END
+S2 -> 2{c=1,t=jL,n=S,g=M,f=GW} 1{c=1,t=jL,n=S,g=M,note=jL} END
+S2 -> 2{c=1,t=jL,n=S,g=I,f=GW} 1{c=1,t=jL,n=S,g=I,note=jL} END
+S2 -> 2{c=1,t=jL,n=S,g=N,f=GW} 1{c=1,t=jL,n=S,g=N,note=jL} END
+S2 -> 2{c=1,t=jL,n=S,g=F,f=GW} 1{c=1,t=jL,n=S,g=F,note=jL} END
+S2 -> 2{c=1,t=jL,n=P,g=M,f=GW} 1{c=1,t=jL,n=P,g=M,note=jL} END
+S2 -> 2{c=1,t=jL,n=P,g=I,f=GW} 1{c=1,t=jL,n=P,g=I,note=jL} END
+S2 -> 2{c=1,t=jL,n=P,g=N,f=GW} 1{c=1,t=jL,n=P,g=N,note=jL} END
+S2 -> 2{c=1,t=jL,n=P,g=F,f=GW} 1{c=1,t=jL,n=P,g=F,note=jL} END
 
 #Skupina přídavných jmen
 #Příklad: Velký a Malý Kamýk
@@ -87,7 +87,7 @@ S2 -> NUM(n=P,g=F) ADJ_GROUP_MANDATORY(n=P,g=F) LOC2(n=P,g=F) END
 S2 -> NUM_ADJ_NOUN_CASE_SELECT !NUM_ADJ_NOUN_CASE_SELECT(c=2) END
 S2 -> NUM_ADJ_NOUN_CASE_SELECT !NUM_ADJ_NOUN_CASE_SELECT(c=2) !CONJ !NUM_ADJ_NOUN_CASE_SELECT(c=2) END
 
-!ADVERB -> 6{t=L}
+!ADVERB -> 6{t=jL}
 !ADVERB -> ε
 
 !ABBRE_TITLE(t=I) -> !ABBRE_TITLE_MANDATORY(t=$t)
@@ -102,7 +102,7 @@ END -> !PREP_GROUP !ROMAN_NUM !ABBRE_TITLE !NUMERIC NEXT
 
 #číslovka
 #Příklad výskytu: Devět Křížů
-NUM(c=1,n,g) -> 4{c=$c,t=L,n=$n,g=$g}
+NUM(c=1,n,g) -> 4{c=$c,t=jL,n=$n,g=$g}
 NUM(c=1,n,g) -> ε
 #/
 
@@ -128,9 +128,9 @@ NEXT -> ε
 # i s volitelným příslovcem
 # vhodné např pro: Etiopská lidově demokratická republika
 
-ADJ_GROUP_MANDATORY(c=1,n,g) -> !ADVERB  2{c=$c,t=L,n=$n,g=$g} ADJ_GROUP(c=$c,n=$n,g=$g)
-ADJ_GROUP(c=1,n,g) -> !ADVERB  2{c=$c,t=L,n=$n,g=$g} ADJ_GROUP(c=$c,n=$n,g=$g)
-ADJ_GROUP(c=1,n,g) -> !ADVERB  2{c=1,t=L,n=S,g=M} !CONJ ADJ_GROUP_MANDATORY(c=$c,n=$n,g=$g)
+ADJ_GROUP_MANDATORY(c=1,n,g) -> !ADVERB  2{c=$c,t=jL,n=$n,g=$g} ADJ_GROUP(c=$c,n=$n,g=$g)
+ADJ_GROUP(c=1,n,g) -> !ADVERB  2{c=$c,t=jL,n=$n,g=$g} ADJ_GROUP(c=$c,n=$n,g=$g)
+ADJ_GROUP(c=1,n,g) -> !ADVERB  2{c=1,t=jL,n=S,g=M} !CONJ ADJ_GROUP_MANDATORY(c=$c,n=$n,g=$g)
 ADJ_GROUP(c=1,n,g) -> ε
 #/
 
@@ -141,20 +141,20 @@ ADJ_GROUP(c=1,n,g) -> ε
 #	Brno
 #	Jirsko 2.díl
 
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g} !ABBRE_TITLE_MANDATORY !VOLUNTARY_NO_FLEX_N	#Kaple sv. Anny
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g} !NUMERIC !NAME_NOMINATIVE	#Jirsko 2.díl (nevím jestli je 2.díl nominativ, ale nema se ohybat)
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=GW} !NAME_NOMINATIVE	#Palác Flóra
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=GW} !VOLUNTARY_NO_FLEX_N
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=NGW} !VOLUNTARY_NO_FLEX_N
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=NGW} !ABBRE_MUL(t=A) LOC2_CONTINUE(c=$c,n=$n,g=$g) #Karlov t. Doubrava
-LOC2(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g,f=NGW} LOC2_CONTINUE(c=$c,n=$n,g=$g)
+LOC2(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g} !ABBRE_TITLE_MANDATORY !VOLUNTARY_NO_FLEX_N	#Kaple sv. Anny
+LOC2(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g} !NUMERIC !NAME_NOMINATIVE	#Jirsko 2.díl (nevím jestli je 2.díl nominativ, ale nema se ohybat)
+LOC2(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g,f=GW} !NAME_NOMINATIVE	#Palác Flóra
+LOC2(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g,f=GW} !VOLUNTARY_NO_FLEX_N
+LOC2(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g,f=NGW} !VOLUNTARY_NO_FLEX_N
+LOC2(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g,f=NGW} !ABBRE_MUL(t=A) LOC2_CONTINUE(c=$c,n=$n,g=$g) #Karlov t. Doubrava
+LOC2(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g,f=NGW} LOC2_CONTINUE(c=$c,n=$n,g=$g)
 
-LOC2_CONTINUE(c=1,n,g) -> 1{c=$c,t=L,n=$n,g=$g}
+LOC2_CONTINUE(c=1,n,g) -> 1{c=$c,t=jL,n=$n,g=$g}
 LOC2_CONTINUE(c=1,n,g) ->ε
 
-!NAME_NOMINATIVE -> 1{c=1,t=L} !NAME_NOMINATIVE
-!NAME_NOMINATIVE -> 1{c=1,t=L}
-!VOLUNTARY_NO_FLEX_N -> 1{c=2,t=L} !VOLUNTARY_NO_FLEX_N
+!NAME_NOMINATIVE -> 1{c=1,t=jL} !NAME_NOMINATIVE
+!NAME_NOMINATIVE -> 1{c=1,t=jL}
+!VOLUNTARY_NO_FLEX_N -> 1{c=2,t=jL} !VOLUNTARY_NO_FLEX_N
 !VOLUNTARY_NO_FLEX_N -> ε
 #/
 
@@ -166,15 +166,15 @@ LOC2_CONTINUE(c=1,n,g) ->ε
 !PREP_GROUP -> 7{t=7} !AFTER_PREP
 !PREP_GROUP -> 7A{t=7A} !AFTER_PREP
 !PREP_GROUP -> ε
-!AFTER_PREP -> 1{t=L} !AFTER_PREP_ENDING
-!AFTER_PREP -> 2{t=L} !AFTER_PREP_ENDING
-!AFTER_PREP -> 4{t=L} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=jL} !AFTER_PREP_ENDING
+!AFTER_PREP -> 2{t=jL} !AFTER_PREP_ENDING
+!AFTER_PREP -> 4{t=jL} !AFTER_PREP_ENDING
 !AFTER_PREP -> 7{t=7} !AFTER_PREP
 !AFTER_PREP -> 7A{t=7A} !AFTER_PREP
-!AFTER_PREP -> t{t=T} !AFTER_PREP
+!AFTER_PREP -> t{t=jT} !AFTER_PREP
 !AFTER_PREP -> ia{t=I} !AFTER_PREP
 !AFTER_PREP -> !ABBRE !AFTER_PREP
-!AFTER_PREP -> 1{t=L} 8{t=8,r="^(\p{Ll}+)$"} 1{t=L} !AFTER_PREP
+!AFTER_PREP -> 1{t=jL} 8{t=8,r="^(\p{Ll}+)$"} 1{t=jL} !AFTER_PREP
 !AFTER_PREP -> r{t=R} !AFTER_PREP_ENDING
 !AFTER_PREP_ENDING -> !AFTER_PREP
 !AFTER_PREP_ENDING -> ε

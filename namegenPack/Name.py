@@ -113,6 +113,7 @@ class Name(object):
         """
 
         INDEX_OF_MAIN_TYPE = 0
+        INDEX_OF_FUTURE_PURPOSES = 2
         INDEX_OF_PERSONS_GENDER = 3
 
         class MainType(Enum):
