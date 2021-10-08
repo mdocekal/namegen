@@ -1,6 +1,6 @@
 S
 S -> !T_ABBRE_GROUP  # JFK jr.
-S -> 1{t=jI,c=1,n=S,g=M,name_type="P:.?:[NP]:M$",p=2}   # přezdívky
+S -> 1{t=jI,c=1,n=S,g?=M,name_type="P:.?:[NP]:M$",p=2}   # přezdívky
 S -> 1{t=jB,c=1,n=S,g=M,note=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
 #číslovku dovolujeme protože chceme i jména jako:
 #	1. Baron z Aucklandu
