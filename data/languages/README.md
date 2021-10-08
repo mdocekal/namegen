@@ -124,18 +124,18 @@ Možné atributy a jejich hodnoty:
     	E	Událost. Příklad: Osvobození Československa
     	R	Římská číslice. Příklad: IV
     	7	Předložka.
-        7a	Například Nové Město n. Moravě
+    	7a	Například Nové Město n. Moravě
     	8	Spojka.
-        4   číslovka. Příklad: 2
+    	4   číslovka. Příklad: 2
     	jT	Titul. Příklad: prof.
     	I	Iniciálová zkratka. Příklad H. ve jméně John H. White
     	A	Zkratka. Příklad DJ ve jméně DJ Wich
     	GS	Generační specifikace. Příklad: mladší
     	M	Přívlastek/epiteton. Příklad: sličný
     	jB  Jedná se o jméno, které je v historii pevně spjato s jednou osobou. Příklad: Aristotelés
-        jP  ženská patronyma - Albertovna, Vasilijevna
-        jQ  mužská patronyma - Alexandrovič, Alexejevič
-        jI  pseudonymy lidí, např. Šusťa, Švanci, Švícko
+    	jP  ženská patronyma - Albertovna, Vasilijevna
+    	jQ  mužská patronyma - Alexandrovič, Alexejevič
+    	jI  pseudonymy lidí, např. Šusťa, Švanci, Švícko
     	H   House/Rod Příklad: z Přemyslovců
     	D   člen/determiner (Příklad: the)
     	U	Neznámé
