@@ -717,7 +717,7 @@ def main():
         logging.info("Rozgenerování ekvivalentních vstupů")
 
         equGenerated = equGen(namesR.names, languages)
-        namesR.names = namesR.names + equGenerated
+        namesR.names = namesR.names + equGenerated  # must to add it here because of the analyzer
 
         logging.info("\thotovo")
 
