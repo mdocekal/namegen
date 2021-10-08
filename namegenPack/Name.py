@@ -638,7 +638,8 @@ class Name(object):
 
         if len(tokens) == 2:
             # jednoslovné
-            if self._type.levels[self.Type.INDEX_OF_FUTURE_PURPOSES] in {"N", "P"}:
+            if self.Type.INDEX_OF_FUTURE_PURPOSES < len(self._type.levels) \
+                    and self._type.levels[self.Type.INDEX_OF_FUTURE_PURPOSES] in {"N", "P"}:
                 # jednoslovný alias
                 types.append(namegenPack.Word.WordTypeMark.ALIAS)
         elif len(tokens) == 3:
