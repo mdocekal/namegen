@@ -635,86 +635,24 @@ class Name(object):
 
         types = []
         logging.info(str(self) + "\tPoužívám zjednodušené určování druhu slov.")
-        # používá se u mužských/ženských jmen, kde za předložkou dáváme lokaci
-        womanManType = namegenPack.Word.WordTypeMark.GIVEN_NAME
 
-        lastGivenName = None  # uchováváme si index posledního křestních jmen pro pozdější změnu na příjmení
+        if len(tokens) == 2:
+            # jednoslovné
+            if self._type.levels[self.Type.INDEX_OF_FUTURE_PURPOSES] in {"N", "P"}:
+                # jednoslovný alias
+                types.append(namegenPack.Word.WordTypeMark.ALIAS)
+        elif len(tokens) == 3:
+            #dvojslovné
+            if (self._type == self.Type.PersonGender.FEMALE or self._type == None) and self._words[-1][-3:] == "ová":
+                # ženské dvojslovné jméno končící na ová
+                types.append(namegenPack.Word.WordTypeMark.GIVEN_NAME)
+                types.append(namegenPack.Word.WordTypeMark.SURNAME)
 
-        for token in tokens:
-            if token.type == namegenPack.Grammar.Token.Type.ANALYZE or token.type == namegenPack.Grammar.Token.Type.ANALYZE_UNKNOWN:
-                if self._type == self.Type.MainType.LOCATION:
-                    types.append(namegenPack.Word.WordTypeMark.LOCATION)
-                else:
-                    try:
+        types.append(None)  # koncový terminál
 
-                        pos = token.word.info.getAllForCategory(MorphCategories.MorphCategories.POS)
-                        if len({POS.PREPOSITION, POS.PREPOSITION_M} & pos) > 0:
-                            # jedná se o předložku
-                            types.append(namegenPack.Word.WordTypeMark.PREPOSITION)
-                            logging.info("\t" + str(token.word) + "\t" + str(
-                                namegenPack.Word.WordTypeMark.PREPOSITION) + "\tNa základě morfologické analýzy.")
-                            # přepneme z křestního na lokaci
-                            womanManType = namegenPack.Word.WordTypeMark.LOCATION
-                        else:
-                            if womanManType == namegenPack.Word.WordTypeMark.LOCATION:
-                                logging.info("\t" + str(token.word) + "\t" + str(
-                                    womanManType) + "\tSlovo se nachází za předložkou.")
-                            else:
-                                lastGivenName = len(types)
-                            types.append(womanManType)
-
-                    except Word.WordCouldntGetInfoException:
-                        if womanManType != namegenPack.Word.WordTypeMark.LOCATION:
-                            lastGivenName = len(types)
-                        types.append(womanManType)
-            elif token.type == namegenPack.Grammar.Token.Type.INITIAL_ABBREVIATION:
-                logging.info("\t" + str(token.word) + "\t" + str(
-                    namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION) + "\tNa základě lexikální analýzy.")
-                types.append(namegenPack.Word.WordTypeMark.INITIAL_ABBREVIATION)
-            elif token.type == namegenPack.Grammar.Token.Type.ROMAN_NUMBER:
-                if self._type != self.Type.MainType.LOCATION:
-                    # může být i předložka v, kvůli stejné reprezentaci s římskou číslicí 5
-                    if str(token.word) == "v":
-                        # jedná se o malé v bez tečky, bereme jako předložku
-                        logging.info("\t" + str(token.word) + "\t" + str(
-                            namegenPack.Word.WordTypeMark.PREPOSITION) + "\tJedná se o malé v bez tečky.")
-                        types.append(namegenPack.Word.WordTypeMark.PREPOSITION)
-                        # přepneme z křestního na lokaci
-                        womanManType = namegenPack.Word.WordTypeMark.LOCATION
-                    else:
-                        logging.info("\t" + str(token.word) + "\t" + str(
-                            namegenPack.Word.WordTypeMark.ROMAN_NUMBER) + "\tNa základě lexikální analýzy.")
-                        types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
-                else:
-                    types.append(namegenPack.Word.WordTypeMark.ROMAN_NUMBER)
-            elif token.type == namegenPack.Grammar.Token.Type.DEGREE_TITLE:
-                logging.info("\t" + str(token.word) + "\t" + str(
-                    namegenPack.Word.WordTypeMark.DEGREE_TITLE) + "\tNa základě lexikální analýzy.")
-                types.append(namegenPack.Word.WordTypeMark.DEGREE_TITLE)
-            else:
-                if token.word is not None:
-                    logging.info("\t" + str(token.word) + "\t" + str(namegenPack.Word.WordTypeMark.UNKNOWN))
-                types.append(namegenPack.Word.WordTypeMark.UNKNOWN)
-
-        firstGivenName = True
-        for i in range(len(types)):
-            if not firstGivenName and i == lastGivenName:
-                # poslední křestní se stane příjmením
-                # pokud není zároveň prvním
-                logging.info("\t" + str(tokens[i].word) + "\t" + str(
-                    namegenPack.Word.WordTypeMark.SURNAME) + "\tPoslední doposud neurčené slovo.")
-                types[i] = namegenPack.Word.WordTypeMark.SURNAME
-                break
-            if types[i] == namegenPack.Word.WordTypeMark.GIVEN_NAME:
-
-                if (self._type == self.Type.PersonGender.FEMALE or self._type == None) and self._words[i][-3:] == "ová":
-                    logging.info("\t" + str(tokens[i].word) + "\t" + str(
-                        namegenPack.Word.WordTypeMark.SURNAME) + "\tJedná se o ženské jméno(či neznámého druhu) a slovo končí na ová.")
-                    types[i] = namegenPack.Word.WordTypeMark.SURNAME
-                else:
-                    logging.info("\t" + str(tokens[i].word) + "\t" + str(types[i]) + "\tVýchozí druh slova.")
-
-                firstGivenName = False
+        if len(types) != len(tokens):
+            # no simple guess available
+            types = [namegenPack.Word.WordTypeMark.UNKNOWN] * len(tokens)
 
         return types
 

@@ -824,7 +824,21 @@ def main():
 
                 tokens = lang.lex.getTokens(name)
 
-                wNoInfo = set(t.word for _, t in enumerate(tokens) if t.type == Token.Type.ANALYZE_UNKNOWN)
+                wordsMarks = []
+                for tokenPos, t in enumerate(tokens):
+                    if t.type == Token.Type.ANALYZE_UNKNOWN:
+                        # Vybíráme ty tokeny, pro které není dostupná analýza a měla by být.
+
+                        # Musíme přidat druh jména získaný pomocí simpleWordsTypesGuess, protože nemůžeme použít
+                        # bud použít syntaktickou analýzu (PARSE_UNKNOWN_ANALYZE=FALSE)
+                        # a i kdybychom ji použít mohli, tak v případě, kdy nebude název v jazyce generovaným danou
+                        # gramtikou, tak nedostaneme požadovaná značení.
+                        try:
+                            wNoInfo.add((t.word, wordsMarks[tokenPos]))
+                        except IndexError:
+                            # Nemáme analýzu druhu slov pomocí simpleWordsTypesGuess
+                            wordsMarks = name.simpleWordsTypesGuess(tokens)
+                            wNoInfo.add((t.word, wordsMarks[tokenPos]))
 
                 if (configAll[configManager.sectionGrammar]["PARSE_UNKNOWN_ANALYZE"] or len(wNoInfo) == 0) \
                         and len(wNoInfo) != len(name.words):
@@ -997,6 +1011,12 @@ def main():
                                     wordRules[wordType][str(w)] = wordRules[wordType][str(w)] | rules
                                 except KeyError:
                                     wordRules[wordType][str(w)] = rules
+                else:
+                    for word, word_mark in wNoInfo:
+                        try:
+                            errorWords[(name.type, word_mark, word)].add((name, False))
+                        except KeyError:
+                            errorWords[(name.type, word_mark, word)] = {(name, False)}
 
             except namegenPack.Grammar.Grammar.TimeoutException as e:
                 # Při provádění syntaktické analýzy, nad aktuálním jménem, došlo k timeoutu.
@@ -1022,7 +1042,7 @@ def main():
             if len(wNoInfo) > 0:
                 print(str(name) + "\t" + Errors.ErrorMessenger.getMessage(
                     Errors.ErrorMessenger.CODE_WORD_ANALYZE) + "\t" + (
-                          ", ".join(str(w) for w in wNoInfo)),
+                          ", ".join(str(w) for w, _ in wNoInfo)),
                       file=sys.stderr, flush=True)
 
             if args.include_no_morphs and not morphsPrinted:

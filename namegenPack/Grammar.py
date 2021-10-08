@@ -277,7 +277,7 @@ class Terminal(object):
             WORD_TYPE = "t"  # druh slova ve jméně Křestní, příjmení atd. (Informační atribut)
             MATCH_REGEX = "r"  # Slovo samotné sedí na daný regulární výraz. (Speciální atribut)
             PRIORITY = "p"  # Přenastavuje prioritu terminálu (výchozí 0). Ve fázi generování tvarů je možné
-            NAME_TYPE = "name_type"  # typ jména (regulární výraz)    (filtrovací atribut)
+            NAME_TYPE = "name_type"  # typ jména (regulární výraz)    (Speciální atribut)
 
             # filtrovat na základě priority. (Speciální atribut)
 
@@ -294,7 +294,7 @@ class Terminal(object):
 
                 return self in self.FILTERING_TYPES
 
-        Type.FILTERING_TYPES = {Type.GENDER, Type.NUMBER, Type.CASE, Type.NOTE, Type.NAME_TYPE}
+        Type.FILTERING_TYPES = {Type.GENDER, Type.NUMBER, Type.CASE, Type.NOTE}
         """Filtrovací atributy. POZOR filtrovací atributy musí mít value typu MorphCategory!"""
 
         def __init__(self, attrType, val, voluntary=False):
@@ -592,7 +592,7 @@ class Terminal(object):
             return False
 
         mr = self.getAttribute(self.Attribute.Type.NAME_TYPE)
-        if mr is not None and not mr.value.match(str(t.word.name.type)):
+        if mr is not None and t.word is not None and not mr.value.match(str(t.word.name.type)):
             # kontrola na regex match druhu jména neprošla
             return False
 
