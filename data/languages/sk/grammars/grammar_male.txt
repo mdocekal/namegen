@@ -1,0 +1,120 @@
+S
+S -> !T_ABBRE_GROUP  # JFK jr.
+S -> 1{t=jI,c=1,n=S,g?=M,name_type="P:.?:[NP]:M$",p=2}   # přezdívky
+S -> 1{t=jB,c=1,n=S,g=M,note=jB,p=1}    # jedná se o jméno, které je v historii pevně spjato s jednou osobou (jB) Příklad: Aristotelés
+#číslovku dovolujeme protože chceme i jména jako:
+#	1. Baron z Aucklandu
+S -> SAINT !T_ABBRE_GROUP !MANDATORY_IA_GROUP !NUMERIC NUM(t=jG) AFTER_GIVEN_NAME
+S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=jG) 1{t=jG,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vat[ýé]|[sS]aint)$).*$"} AFTER_GIVEN_NAME
+S -> SAINT !T_ABBRE_GROUP !NUMERIC  NUM(t=jG) 2{t=jG,c=1,n=S,g=M,note?=jG,r="^(?!^([sS]vat[ýé]|[sS]aint)$).*$"} AFTER_GIVEN_NAME	#Chceme i indiánská jména: Sedící býk
+SAINT -> 1{t=jT,c=1,n=S,g=M,r="^([sS]vatý|[sS]aint)$"} #Svatý ...
+SAINT -> ε
+
+#tento neterminál předpokládá, že předním je právě jedno křestní jméno
+# chceme zachycovat i jména jako: Maria da Assunção Portugalská
+#   Albrecht starší z Kolowrat
+AFTER_GIVEN_NAME ->  NOUN_GROUP_START VOL_GENERATION_SPECIFIER PREP_GROUP !T_I_ABBRE_GROUP
+# "von" předložka před, kterou je jedno křestní jméno.
+#Je třeba větší priorita, protože velice pravděpodobně nás zajímá pouze varianta s "von" předložkou s jedním křestním jménem.
+AFTER_GIVEN_NAME ->  M_PREP_GROUP(p=1) NOUN_GROUP_START !T_I_ABBRE_GROUP
+
+
+NOUN_GROUP_START -> NOUN_GROUP
+NOUN_GROUP_START -> !NUM_ABBREVIATION_GROUP
+NOUN_GROUP_START -> ε
+NOUN_GROUP -> 1{t=jG,c=1,n=S,g=M,note?=jG} NOUN_GROUP
+NOUN_GROUP -> 1{t=jQ,c=1,n=S,g=M,r="^.*ovič$",p=1} NOUN_GROUP    # Vladimirovič
+NOUN_GROUP -> 1{t=jQ,c=1,n=S,g=M,r="^.*ovič$",p=1} NOUN_GROUP_3    # Vladimirovič
+NOUN_GROUP -> GENERATION_SPECIFIER NOUN_GROUP
+NOUN_GROUP -> !NUM_ABBREVIATION_GROUP NOUN_GROUP_2
+NOUN_GROUP -> 1{t=jS,c=1,n=S,g=M,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 1{t=jS,c=1,n=S,g=N,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY	#Jiří Strniště, Mistr Oplakávání ze Žebráka
+NOUN_GROUP -> 2{t=M,c=1,n=S,g=M} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=jS,c=1,n=S,g=M} 2{t=M,c=1,n=S,g=M} !NUM_ABBREVIATION_GROUP_EMPTY
+NOUN_GROUP -> 2{t=M,c=1,n=S,g=M} 1{t=jS,c=1,n=S,g=M,note?=jS} !NUM_ABBREVIATION_GROUP_EMPTY
+
+NOUN_GROUP_2 -> 1{t=jS,c=1,n=S,g=M,note?=jS} NOUN_GROUP_3
+NOUN_GROUP_2 -> 1{t=jS,c=1,n=S,g=N,note?=jS} NOUN_GROUP_3
+NOUN_GROUP_2 -> 2{t=M,c=1,n=S,g=M}
+NOUN_GROUP_3 -> NOUN_GROUP_2
+NOUN_GROUP_3 -> ε
+
+VOL_GENERATION_SPECIFIER -> GENERATION_SPECIFIER
+VOL_GENERATION_SPECIFIER -> ε
+GENERATION_SPECIFIER -> *{p=2,t=GS,c=1,n=S,g=M,r="^(mladší|starší|nejmladší|nejstarší)$"}
+GENERATION_SPECIFIER -> !GENERATION_SPECIFIER
+!GENERATION_SPECIFIER -> *{p=2,t=GS,r="^(Jr\.|jr\.|ml\.|Sr\.|sr\.|st\.)$"}
+
+#	1. Baron z Aucklandu
+NUM(t) -> 4{c=1,t=$t,n=S,g=M}
+NUM(t) -> ε
+!NUMERIC -> n{t=4}
+!NUMERIC -> ε
+
+#tituly a zkratky a inicialové zkratky
+!T_I_ABBRE_GROUP -> t{t=jT} !T_I_ABBRE_GROUP
+!T_I_ABBRE_GROUP -> !ABBRE !T_I_ABBRE_GROUP
+!T_I_ABBRE_GROUP -> ia{p=1,t=I} !T_I_ABBRE_GROUP
+!T_I_ABBRE_GROUP -> ε
+
+!T_ABBRE_GROUP -> t{t=jT} !T_ABBRE_GROUP
+!T_ABBRE_GROUP -> !ABBRE !T_ABBRE_GROUP
+!T_ABBRE_GROUP -> ε
+
+!MANDATORY_IA_GROUP -> ia{p=1,t=I} !IA_GROUP
+!IA_GROUP -> !MANDATORY_IA_GROUP  !IA_GROUP
+!IA_GROUP -> ε
+
+
+!NUM_ABBREVIATION_GROUP -> r{p=1,t=R} !NUM_ABBREVIATION_GROUP_EMPTY
+!NUM_ABBREVIATION_GROUP -> ia{p=1,t=I} !NUM_ABBREVIATION_GROUP_EMPTY
+!NUM_ABBREVIATION_GROUP_EMPTY -> !NUM_ABBREVIATION_GROUP
+!NUM_ABBREVIATION_GROUP_EMPTY -> ε
+
+PREP_GROUP -> !7{t=7} !AFTER_PREP
+PREP_GROUP -> M_PREP_GROUP(p=1)
+PREP_GROUP -> ε
+
+#"von" předložek může být více po sobě jdoucích
+#výchozí hodnota priority je jedna, aby jsme vyloučili derivace typu:
+#	de#7 La#L
+#když chceme: de#7 La#7
+!M_PREP(t,p) -> 7m{t=$t,p=$p} !M_PREP_END(t=$t,p=$p)
+!M_PREP_END(t,p) -> !M_PREP(t=$t,p=$p)
+!M_PREP_END(t,p) -> ε
+
+M_PREP_GROUP(p) -> REPEAT_M_PREP_GROUP(p=$p) VOL_GENERATION_SPECIFIER #Karl Korb von Weidenheim starší
+REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=jS,p=$p) AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
+REPEAT_M_PREP_GROUP(p) -> !M_PREP(t=7,p=$p) !AFTER_M_PREP REPEAT_M_PREP_GROUP(p=$p)
+REPEAT_M_PREP_GROUP(p) -> ε
+
+!AFTER_PREP -> 1{t=jS} !AFTER_PREP_ENDING
+!AFTER_PREP -> 1{t=H,note=jS,n=P,p=1} !AFTER_PREP_ENDING
+!AFTER_PREP -> 2{t=jS} !AFTER_PREP_ENDING
+!AFTER_PREP -> 4{t=jS} !AFTER_PREP_ENDING
+!AFTER_PREP -> !ABBRE !AFTER_PREP_ENDING
+!AFTER_PREP -> 7{t=7} !AFTER_PREP
+!AFTER_PREP -> r{p=1,t=R} !AFTER_PREP_ENDING
+!AFTER_PREP -> ia{p=1,t=I} !AFTER_PREP_ENDING
+!AFTER_PREP -> 8{t=8} !AFTER_PREP_ENDING
+!AFTER_PREP_ENDING -> !AFTER_PREP
+!AFTER_PREP_ENDING -> ε
+
+#John von Neumann
+AFTER_M_PREP -> 1{t=jS,c=1,n=S,g=M,note?=jS,r="^(?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*$"} AFTER_M_PREP_ENDING
+AFTER_M_PREP -> !r{p=1,t=R} AFTER_M_PREP_ENDING
+AFTER_M_PREP -> !ia{p=1,t=I} AFTER_M_PREP_ENDING
+AFTER_M_PREP -> !8{t=8} AFTER_M_PREP_ENDING
+AFTER_M_PREP_ENDING -> AFTER_M_PREP
+AFTER_M_PREP_ENDING -> ε
+
+
+!AFTER_M_PREP -> 1{t=jS,c=1,note?=jL,r="^(?!^(dalla|de|der|da|del|di|dos|el|la|le|van|von|und|ben|bin|y|zu)$).*$"} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> !r{p=1,t=R} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> !ia{p=1,t=I} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP -> !8{t=8} !AFTER_M_PREP_ENDING
+!AFTER_M_PREP_ENDING -> !AFTER_M_PREP
+!AFTER_M_PREP_ENDING -> ε
+
+#regex vylučuje římskou číslici, mimo to musí končit tečkou nebo obsahovat pouze velká písmena. Je též dovoleno jedno malé písmeno s tečkou.
+!ABBRE -> a{t=A,r="^(?!^((X{1,3}(IX|IV|V?I{0,3}))|((IX|IV|I{1,3}|VI{0,3})))\.?$)((\p{Lu}\p{Lu}+\.?)|(\p{Ll}\.)|(..+\.))$"}
