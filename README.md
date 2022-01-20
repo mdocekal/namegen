@@ -34,7 +34,11 @@ Formát vstupního souboru je následující:
 	
 ### Jazyk
 
-Tento sloupec má význam pro filtrování a výběr jazyka dle kterého se má dané jméno zpracovávat. V konfiguračním souboru ([více](#config)) je možné si nastavit filtr na základě jazyka. Jedná se o pole LANGUAGES v sekci FILTERS. Pokud není jazyk uveden (sloupec je prázdný) rozumí se jako neznámí (UNKNOWN). Více informací k filtrování lze nalézt přímo v konfiguračním souboru.
+Tento sloupec má význam pro filtrování a výběr jazyka dle kterého se má dané jméno zpracovávat. Podporované jazyky lze nalézt ve složce:
+
+    data/languages/
+
+V konfiguračním souboru ([více](#config)) je možné si nastavit filtr na základě jazyka. Jedná se o pole LANGUAGES v sekci FILTERS. Pokud není jazyk uveden (sloupec je prázdný) rozumí se jako neznámí (UNKNOWN). Více informací k filtrování lze nalézt přímo v konfiguračním souboru.
 
 Příklad označení jména jako českého:
 
