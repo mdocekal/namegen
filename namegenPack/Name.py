@@ -213,13 +213,15 @@ class Name(object):
         def __str__(self):
             return ":".join("" if x is None else str(x) for x in self.levels)
 
-    def __init__(self, name, language: Language, nType, addit=None, wordDatabase=None):
+    def __init__(self, name, orig_language_code: str, language: Language, nType, addit=None, wordDatabase=None):
         """
         Konstruktor jména.
 
         :param name: Řetězec se jménem.
         :type name: String
-        :param language: Jazyk tohoto jména.
+        :param orig_language_code: Originální kód jazyk uvedený u jména.
+        :type orig_language_code: str
+        :param language: Jazyk tohoto jména, který má být použit pro zpracování.
         :type language: Language
         :param nType: Druh jména.
         :type nType: str
@@ -236,6 +238,7 @@ class Name(object):
         if wordDatabase is None:
             wordDatabase = {}
 
+        self._orig_language_code = orig_language_code
         self._language = language
         self._type = None if len(nType) == 0 else nType
         self.additionalInfo = addit
@@ -262,7 +265,8 @@ class Name(object):
         :rtype: Name
         """
 
-        return Name(str(self), self._language, None if self._type is None else str(self._type), self.additionalInfo)
+        return Name(str(self), self._orig_language_code, self._language, None if self._type is None else str(self._type),
+                    self.additionalInfo)
 
     def __str__(self):
         n = ""
@@ -798,6 +802,11 @@ class Name(object):
         return self._type
 
     @property
+    def orig_language_code(self):
+        """Getter pro originální kód jazyk jména, který byl uveden na vstupu."""
+        return self._orig_language_code
+
+    @property
     def language(self):
         """Getter pro jazyk jména."""
         return self._language
@@ -898,7 +907,7 @@ class NameReader(object):
                 except KeyError:
                     lang = None
 
-                self.names.append(Name(parts[0], lang, parts[2], additInfo, wordDatabase))
+                self.names.append(Name(parts[0], parts[1], lang, parts[2], additInfo, wordDatabase))
             except Name.NameCouldntCreateException as e:
                 # problém při vytváření jména
                 print(e.message, file=sys.stderr)

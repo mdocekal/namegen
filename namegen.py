@@ -12,13 +12,11 @@ namegen je program pro generování tvarů jmen osob a lokací.
 import configparser
 import csv
 import os
-import sys
 import time
 import traceback
 from argparse import ArgumentParser
 from collections import defaultdict
 from functools import reduce
-import random
 from typing import Any
 
 import regex as re
@@ -233,19 +231,11 @@ class ConfigManager(object):
             "GRAMMAR_FEMALE": self.configParser[self.sectionDataFiles]["GRAMMAR_FEMALE"],
             "GRAMMAR_LOCATIONS": self.configParser[self.sectionDataFiles]["GRAMMAR_LOCATIONS"],
             "GRAMMAR_EVENTS": self.configParser[self.sectionDataFiles]["GRAMMAR_EVENTS"],
-            "DEFAULT_LANGUAGE": self.configParser[self.sectionDataFiles]["DEFAULT_LANGUAGE"],
             "TITLES": self.configParser[self.sectionDataFiles]["TITLES"],
             "EQ_GEN": self.configParser[self.sectionDataFiles]["EQ_GEN"],
             "MA": self.configParser[self.sectionDataFiles]["MA"],
             "LANGUAGES_DIRECTORY": self.__makePath(self.configParser[self.sectionDataFiles]["LANGUAGES"])
         }
-
-        # koukneme jestli je tu opravdu vychozi jazyk
-
-        if result["DEFAULT_LANGUAGE"] not in \
-                set(os.listdir(result["LANGUAGES_DIRECTORY"])):
-            raise ConfigManagerInvalidException(Errors.ErrorMessenger.CODE_INVALID_CONFIG,
-                                                f"Nenašel jsem výchozí jazyk DEFAULT_LANGUAGE={result['DEFAULT_LANGUAGE']}.")
 
         return result
 
@@ -343,6 +333,10 @@ class ArgumentsManager(object):
                             type=str, required=False)
         parser.add_argument('input', nargs="?",
                             help='Vstupní soubor se jmény. Pokud není uvedeno očekává vstup na stdin.', default=None)
+        parser.add_argument("--def-lang",
+                            help="Jazyk, který bude použit jako výchozí v případě neznámého jazyka (výchozí cs).",
+                            type=str, required=False, default="cs")
+
         parsed = None
 
         try:
@@ -476,13 +470,14 @@ def equGen(names: List[Name], languages: Dict[str, Language]) -> List[Name]:
                 0 B 1 c 2 y
             """
 
-            numberOfVariants = reduce(lambda x, y: x*len(y), newWords, 1)
+            numberOfVariants = reduce(lambda x, y: x * len(y), newWords, 1)
 
             for variantOffset in range(numberOfVariants):
                 lastPeriod = 1  # number of items in a last words period
                 newName = name.copy()
                 for wordsOffset, words in enumerate(newWords):
-                    newName.words[wordsOffset] = Word(words[(variantOffset//lastPeriod) % len(words)], newName, wordsOffset)
+                    newName.words[wordsOffset] = Word(words[(variantOffset // lastPeriod) % len(words)], newName,
+                                                      wordsOffset)
                     lastPeriod *= len(words)
                 generatedNames.append(newName)
 
@@ -522,16 +517,20 @@ def writeDerivStat(writeTo: str, derivClasses: Dict[str, Dict[str, Dict[List[Gra
 
     with open(writeTo, "w") as f:
         writer = csv.writer(f, delimiter="\t")
-        writer.writerow(["language", "grammar type", "known words only", "number of names", "representative", "derivative", "name line"])
+        writer.writerow(
+            ["language", "grammar type", "known words only", "number of names", "representative", "derivative",
+             "name line"])
         for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
             for typeG, allDerivations in sorted(types.items(), key=lambda s: s[0]):
-                for deriv, knownUnknownGroups in sorted(allDerivations.items(), key=lambda d: sum(len(x) for x in d[1].values()), reverse=True):
-                    #iteruje přes derivace, od derivace s největším počtem jmen po nejmenší počet jmen
-                    for unknownFlag in [True, False]:    # True -> všechna slove ve jméne jsou známa
+                for deriv, knownUnknownGroups in sorted(allDerivations.items(),
+                                                        key=lambda d: sum(len(x) for x in d[1].values()), reverse=True):
+                    # iteruje přes derivace, od derivace s největším počtem jmen po nejmenší počet jmen
+                    for unknownFlag in [True, False]:  # True -> všechna slove ve jméne jsou známa
                         names = knownUnknownGroups[unknownFlag]
                         if len(names) > 0:
                             representative = next(iter(names))
-                            writer.writerow([lang, typeG, unknownFlag, len(names), representative, " | ".join(str(d) for d in deriv), repr(representative)])
+                            writer.writerow([lang, typeG, unknownFlag, len(names), representative,
+                                             " | ".join(str(d) for d in deriv), repr(representative)])
 
 
 def writeDerivRep(writeTo: str, derivClasses: Dict[str, Dict[str, Dict[List[Grammar.Rule], Dict[bool, Set[Name]]]]]):
@@ -545,7 +544,8 @@ def writeDerivRep(writeTo: str, derivClasses: Dict[str, Dict[str, Dict[List[Gram
 
     with open(writeTo, "w") as f:
         writer = csv.writer(f, delimiter="\t")
-        writer.writerow(["language", "grammar type", "known words only", "number of names that shares derivation with representative", "class representative"])
+        writer.writerow(["language", "grammar type", "known words only",
+                         "number of names that shares derivation with representative", "class representative"])
         # number of names - počet jmen, které sdílý derivaci s reprezentantem
 
         for lang, types in sorted(derivClasses.items(), key=lambda s: s[0]):
@@ -555,7 +555,8 @@ def writeDerivRep(writeTo: str, derivClasses: Dict[str, Dict[str, Dict[List[Gram
                 # analýzu
 
                 selectedNames = {False: set(), True: set()}
-                selectedNamesShared = {False: {}, True: {}}  # každé jméno bude mít zde množinu jmen sdílejících s ním derivaci
+                selectedNamesShared = {False: {},
+                                       True: {}}  # každé jméno bude mít zde množinu jmen sdílejících s ním derivaci
 
                 for deriv, knownUnknownGroups in allDerivations.items():
                     for unknownFlag, names in knownUnknownGroups.items():
@@ -574,7 +575,8 @@ def writeDerivRep(writeTo: str, derivClasses: Dict[str, Dict[str, Dict[List[Gram
                                     selectedNamesShared[unknownFlag][sN] |= names
 
                 for unknownFlag in [True, False]:
-                    for name, sharedNames in sorted(selectedNamesShared[unknownFlag].items(), key=lambda x: len(x[1]), reverse=True):
+                    for name, sharedNames in sorted(selectedNamesShared[unknownFlag].items(), key=lambda x: len(x[1]),
+                                                    reverse=True):
                         writer.writerow([lang, typeG, unknownFlag, len(sharedNames), repr(name)])
 
 
@@ -656,6 +658,7 @@ def prepareNameDependantAnalysys(names: NameReader, languages: Dict[str, Languag
     for code, lang in languages.items():
         lang.ma.prepareNameDependentAnalysis(langNames[code])
 
+
 def main():
     """
     Vstupní bod programu.
@@ -674,6 +677,11 @@ def main():
             Terminal.UNKNOWN_ANALYZE_TERMINAL_MATCH = configAll[configManager.sectionGrammar][
                 "PARSE_UNKNOWN_ANALYZE_TERMINAL_MATCH"]
 
+        # koukneme jestli je tu opravdu validní vychozi jazyk
+        if args.def_lang not in set(os.listdir(configAll[configManager.sectionDataFiles]["LANGUAGES_DIRECTORY"])):
+            raise ConfigManagerInvalidException(Errors.ErrorMessenger.CODE_INVALID_CONFIG,
+                                                f"Nenašel jsem výchozí jazyk {args.def_lang}.")
+
         # get output
         outF = open(args.output, "w") if args.output else sys.stdout
 
@@ -687,7 +695,7 @@ def main():
         logging.info("\thotovo")
 
         useLanguages = configAll[configManager.sectionFilters]["LANGUAGES"]
-        if useLanguages  is None:
+        if useLanguages is None:
             # uživatel nezadal žádný filtr, odfiltrujeme tedy jen neznámé jazyky
             useLanguages = set(langCode for langCode in languages)
 
@@ -705,7 +713,7 @@ def main():
         logging.info("čtení jmen")
         # načtení jmen pro zpracování
         namesR = NameReader(languages=languages,
-                            langDef=configAll[configManager.sectionDataFiles]["DEFAULT_LANGUAGE"],
+                            langDef=args.def_lang,
                             inputFile=args.input,
                             shouldSort=False)
         logging.info("\thotovo")
@@ -732,7 +740,7 @@ def main():
 
         logging.info("Filtrace rozgenerovaných ekvivalentních vstupů")
 
-        namesR.names = namesR.names[:len(namesR.names)-len(equGenerated)]
+        namesR.names = namesR.names[:len(namesR.names) - len(equGenerated)]
         filterGrammar = NamesGrammarFilter()
 
         for name in equGenerated:
@@ -888,8 +896,9 @@ def main():
                     generatedNamesThatShouldBeInDuplicityCheckSet = set()
                     for ru, aT in zip(rules, aTokens):
                         if derivClassesOutput is not None:
-                            #ulož jméno do příslušné třídy na základě derivace
-                            derivClasses[name.language.code][os.path.basename(name.grammar.filePath)][tuple(ru)][all(tmpAT.token.type != Token.Type.ANALYZE_UNKNOWN for tmpAT in aT)].add(name)
+                            # ulož jméno do příslušné třídy na základě derivace
+                            derivClasses[name.language.code][os.path.basename(name.grammar.filePath)][tuple(ru)][
+                                all(tmpAT.token.type != Token.Type.ANALYZE_UNKNOWN for tmpAT in aT)].add(name)
                         aTTuple = tuple(aT)
                         if aTTuple in alreadyGenerated:
                             # Nechceme zpracovávat co jsme již zpracovávali.
@@ -909,12 +918,12 @@ def main():
                                         # používá se pro výpis chybových slov
 
                                         try:
-                                            errorWords[(name.type,
+                                            errorWords[(name.orig_language_code, name.language.code, name.type,
                                                         t.matchingTerminal.getAttribute(
                                                             namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
                                                         t.token.word)].add((name, len(rules) > 1))
                                         except KeyError:
-                                            errorWords[(name.type,
+                                            errorWords[(name.orig_language_code, name.language.code, name.type,
                                                         t.matchingTerminal.getAttribute(
                                                             namegenPack.Grammar.Terminal.Attribute.Type.WORD_TYPE).value,
                                                         t.token.word)] = {(name, len(rules) > 1)}
@@ -925,7 +934,8 @@ def main():
                             morphs = name.genMorphs(aT, missingCaseWords)
 
                             if args.whole and (
-                                    (name.grammar.flexible and len(morphs) < len(Case)) or (not name.grammar.flexible and len(morphs) < 1)):
+                                    (name.grammar.flexible and len(morphs) < len(Case)) or (
+                                    not name.grammar.flexible and len(morphs) < 1)):
                                 # Uživatel chce tisknout pouze pokud máme tvary pro všechny pády.
                                 continue
 
@@ -1014,9 +1024,11 @@ def main():
                 else:
                     for word, word_mark in wNoInfo:
                         try:
-                            errorWords[(name.type, word_mark, word)].add((name, False))
+                            errorWords[(name.orig_language_code, name.language.code, name.type, word_mark, word)]\
+                                .add((name, False))
                         except KeyError:
-                            errorWords[(name.type, word_mark, word)] = {(name, False)}
+                            errorWords[(name.orig_language_code, name.language.code, name.type, word_mark, word)]\
+                                = {(name, False)}
 
             except namegenPack.Grammar.Grammar.TimeoutException as e:
                 # Při provádění syntaktické analýzy, nad aktuálním jménem, došlo k timeoutu.
@@ -1129,15 +1141,16 @@ def main():
             print("\t\tNepokryto gramatikou:", errorsGrammerCnt, file=sys.stderr)
             print("\t\tPočet jmen, u kterých došlo k timeoutu při syntaktické analýze:", errorsTimout, file=sys.stderr)
             print("\t\tPočet slov, které poskytnutý morfologický analyzátor nezná:",
-                  len(set(w for (_, _, w), _ in errorWords.items())), file=sys.stderr)
+                  len(set(w for (_, _, _, _, w), _ in errorWords.items())), file=sys.stderr)
 
             if errorWordsShouldSave:
                 # save words with errors into a file
                 with open(args.error_words, "w") as errWFile:
-                    for (nT, m, w), names in errorWords.items():  # druh názvu (mužský, ženský, lokace),označení typu slova ve
+                    for (orig_lang_code, lang, nT, m,
+                         w), names in errorWords.items():  # kód jazyka na vstupu, kód jazyka pro zpracování, druh názvu (mužský, ženský, lokace),označení typu slova ve
                         # jméně(jméno, příjmení), společně se jménem
                         # u ženských a mužských jmen přidáme odhad lntrf značky
-                        resultStr = str(w) + "\t" + str(m)
+                        resultStr = f"{orig_lang_code}\t{lang}\t{w}\t{m}"
                         if m in {WordTypeMark.GIVEN_NAME, WordTypeMark.SURNAME}:
                             if nT == Name.Type.PersonGender.FEMALE:
                                 resultStr += "\tk1gFnSc1::"
