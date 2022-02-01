@@ -34,7 +34,11 @@ Formát vstupního souboru je následující:
 	
 ### Jazyk
 
-Tento sloupec má význam pro filtrování. V konfiguračním souboru ([více](#config)) je možné si nastavit filtr na základě jazyka. Jedná se o pole LANGUAGES v sekci FILTERS. Pokud není jazyk uveden (sloupec je prázdný) rozumí se jako neznámí (UNKNOWN). Více informací k filtrování lze nalézt přímo v konfiguračním souboru.
+Tento sloupec má význam pro filtrování a výběr jazyka dle kterého se má dané jméno zpracovávat. Podporované jazyky lze nalézt ve složce:
+
+    data/languages/
+
+V konfiguračním souboru ([více](#config)) je možné si nastavit filtr na základě jazyka. Jedná se o pole LANGUAGES v sekci FILTERS. Pokud není jazyk uveden (sloupec je prázdný) rozumí se jako neznámí (UNKNOWN). Více informací k filtrování lze nalézt přímo v konfiguračním souboru.
 
 Příklad označení jména jako českého:
 
@@ -127,14 +131,18 @@ Dále tato složka obsahuje podsložku s gramatikami. Více informací o gramati
 
 ### <a name="grammars">Gramatiky</a>
 
-Pro generování tvarů jmen používá namegen gramatik, které jsou uloženy v:
+Pro generování tvarů jmen používá namegen gramatik, které jsou uloženy v
 
-	data/grammars
+	data/languages/
+
+pro každý podporovaný jazyk. Například konkrétně pro češtinu 
+    
+    data/languages/cs/grammars/
 
 Z těchto gramatik například určuje části jména/názvu, které se mají ohýbat.
 Více informací ke gramatikám lze získat ve zmiňované složce v souboru README.md.
 
-Jaká z gramatik bude na konkrétní jméno použita je určeno dle druhu jména/názvu a mapování
+Jaká z gramatik bude na konkrétní jméno použita je určeno dle jazyka a druhu jména/názvu. Mapování
 
 	druh -> soubor s gramatikou
 	
