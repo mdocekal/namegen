@@ -108,6 +108,20 @@ by mohl odpovídat:
 	
 	[k1gMnSc1]#G
 
+## Formát výstupu chybových slov
+Pomocí argumentu --error-words je možné si vypsat slova, která poskytnutý morfologický analyzátor pro daný jazyk zpracování nezná.
+
+Na výstupu je na každém řádku uveden záznam v následujícím formátu:
+
+    <kód jazyka na vstupu>\t<kód jazyka pro zpracování>\t<problémové slovo>\t<označení typu slova ve jméně(jméno, příjmení,...)>[\t<odhad mluvnických kategorií pro muže a ženy>]\t<druh názvu (mužský, ženský,...)>\t@\t<libovolné množství zdrojových jmen ve formátu jméno\tURL>[\t<další poznámky>]
+
+Příklady:
+
+    cs	cs	Javorskij	jS	k1gMnSc1::	P:::M	@	Svatý Viktor Nikolajevič Javorskij	https://cs.wikipedia.org/wiki/Viktor_Nikolajevič_Javorskij
+    	cs	Bithýnie	jL	P:::M	@	Sv. Auxentius z Bithýnie	https://cs.wikipedia.org/wiki/Auxentius_z_Bithýnie
+
+Druhý řádek ukazuje případ, kdy není dán jazyk na vstupu a je zvolen výchozí.
+
 ## Příklad
 Chceme vygenerovat tvary jmen uložených v souboru example.txt a výsledek uložit do souboru gen.txt:
 

@@ -303,20 +303,16 @@ class ArgumentsManager(object):
                             required=False)
         parser.add_argument("-ew", "--error-words",
                             help="Cesta k souboru, kde budou uložena slova, která poskytnutý morfologický analyzátor "
-                                 "nezná. Výsledek je v lntrf formátu s tím, že provádí odhad značko-pravidel pro "
-                                 "ženská a mužská jména.",
+                                 "nezná.",
                             type=str)
         parser.add_argument("-gn", "--given-names",
-                            help="Cesta k souboru, kde budou uložena slova označená jako křestní. Výsledek je v lntrf "
-                                 "formátu.",
+                            help="Cesta k souboru, kde budou uložena slova označená jako křestní.",
                             type=str)
         parser.add_argument("-sn", "--surnames",
-                            help="Cesta k souboru, kde budou uložena slova označená jako příjmení. Výsledek je v "
-                                 "lntrf formátu.",
+                            help="Cesta k souboru, kde budou uložena slova označená jako příjmení.",
                             type=str)
         parser.add_argument("-l", "--locations",
-                            help="Cesta k souboru, kde budou uložena slova označená jako lokace. Výsledek je v lntrf "
-                                 "formátu.",
+                            help="Cesta k souboru, kde budou uložena slova označená jako lokace.",
                             type=str)
         parser.add_argument("-in", "--include-no-morphs",
                             help="Vytiskne i názvy/jména, u kterých se nepodařilo získat tvary, mezi výsledky.",
